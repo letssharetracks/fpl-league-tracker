@@ -1046,13 +1046,14 @@
                 refreshBtn.disabled = true;
             }
 
+            try {
             // Clear cached player scores to get fresh data
             livePlayerScores = null;
 
             const newLivePoints = {};
 
             // Fetch live data in parallel batches for speed
-            const LIVE_BATCH_SIZE = 8;
+            const LIVE_BATCH_SIZE = 15; // Increased for faster loading
             const totalBatches = Math.ceil(allPlayers.length / LIVE_BATCH_SIZE);
 
             for (let batchIdx = 0; batchIdx < totalBatches; batchIdx++) {
@@ -1087,9 +1088,9 @@
                     refreshBtn.textContent = `${Math.round((endIdx / allPlayers.length) * 100)}%`;
                 }
 
-                // Brief delay between batches
+                // Brief delay between batches (minimal for speed)
                 if (batchIdx < totalBatches - 1) {
-                    await new Promise(r => setTimeout(r, 50));
+                    await new Promise(r => setTimeout(r, 20));
                 }
             }
 
@@ -1155,6 +1156,15 @@
             renderPlayerToggles();
             if (currentFilter) filterPlayers(currentFilter);
             updateChart();
+
+            } catch (error) {
+                console.error('Error refreshing live data:', error);
+                showStatus('Error refreshing live data. Click Refresh Live to retry.', true);
+                if (refreshBtn) {
+                    refreshBtn.textContent = 'Refresh Live';
+                    refreshBtn.disabled = false;
+                }
+            }
         }
 
         async function loadAllData() {
@@ -1239,7 +1249,7 @@
         }
 
         // Parallel batch loading for faster performance
-        const BATCH_SIZE = 5; // Load 5 players at a time
+        const BATCH_SIZE = 10; // Load 10 players at a time for speed
 
         async function fetchFreshData() {
             const fetchingLeagueId = LEAGUE_ID; // Capture current league at start
@@ -1309,9 +1319,9 @@
                     if (loadingPercent) loadingPercent.textContent = percent + '%';
                     if (loadingText) loadingText.textContent = `Loading ${endIdx}/${freshPlayers.length}`;
 
-                    // Brief delay between batches to avoid rate limiting
+                    // Brief delay between batches (reduced for speed)
                     if (batchIdx < totalBatches - 1) {
-                        await new Promise(resolve => setTimeout(resolve, 100));
+                        await new Promise(resolve => setTimeout(resolve, 30));
                     }
                 }
 
