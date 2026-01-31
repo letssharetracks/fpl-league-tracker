@@ -444,29 +444,16 @@
                 }
                 const data = await response.json();
 
-                // Extract classic leagues
+                // Extract only user-created mini-leagues (not official FPL leagues)
                 const classicLeagues = data.leagues?.classic || [];
                 userLeagues = classicLeagues
-                    .filter(l => l.league_type === 'x') // Only user-created leagues
+                    .filter(l => l.league_type === 'x') // Only user-created mini-leagues
                     .map(l => ({
                         id: l.id,
                         name: l.name,
                         rank: l.entry_rank,
                         lastRank: l.entry_last_rank
                     }));
-
-                // Also include some public leagues if they're in interesting ones
-                const publicLeagues = classicLeagues
-                    .filter(l => l.league_type === 's' && l.id < 500) // Small public leagues
-                    .map(l => ({
-                        id: l.id,
-                        name: l.name,
-                        rank: l.entry_rank,
-                        lastRank: l.entry_last_rank,
-                        isPublic: true
-                    }));
-
-                userLeagues = [...userLeagues, ...publicLeagues];
 
                 if (userLeagues.length === 0) {
                     showSetupError('No mini-leagues found for this Team ID');
@@ -1277,9 +1264,18 @@
                     }
                 } else if (chartType === 'weekly') {
                     data = history.map(gw => gw ? gw.points : null);
-                    // Add live weekly points only if > 0 (avoid plotting 0 for incomplete data)
-                    if (hasLiveData && data.length < currentGameweek && live.points > 0) {
-                        data.push(live.points);
+                    // For current live gameweek, use our calculated netPoints (includes hits)
+                    if (hasLiveData && currentGameweek) {
+                        // If history includes current GW with 0/wrong value, replace it
+                        if (data.length >= currentGameweek) {
+                            data[currentGameweek - 1] = live.netPoints;
+                        } else {
+                            // Add live netPoints for current GW
+                            while (data.length < currentGameweek - 1) {
+                                data.push(null);
+                            }
+                            data.push(live.netPoints);
+                        }
                     }
                 } else if (chartType === 'rank') {
                     // Use pre-calculated positions
