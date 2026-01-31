@@ -1051,27 +1051,46 @@
 
             const newLivePoints = {};
 
-            // Fetch live data for ALL players so sidebar shows complete info
-            for (let i = 0; i < allPlayers.length; i++) {
-                const player = allPlayers[i];
-                const live = await fetchLivePoints(player.entry, currentGameweek);
-                if (live) {
-                    newLivePoints[player.entry] = {
-                        points: live.points,
-                        netPoints: live.netPoints,
-                        transferCost: live.transferCost,
-                        totalPoints: live.totalPoints,
-                        chip: live.chip,
-                        isLive: true
-                    };
-                }
+            // Fetch live data in parallel batches for speed
+            const LIVE_BATCH_SIZE = 8;
+            const totalBatches = Math.ceil(allPlayers.length / LIVE_BATCH_SIZE);
+
+            for (let batchIdx = 0; batchIdx < totalBatches; batchIdx++) {
+                const startIdx = batchIdx * LIVE_BATCH_SIZE;
+                const endIdx = Math.min(startIdx + LIVE_BATCH_SIZE, allPlayers.length);
+                const batch = allPlayers.slice(startIdx, endIdx);
+
+                // Fetch all in batch in parallel
+                const batchResults = await Promise.all(
+                    batch.map(async (player) => {
+                        const live = await fetchLivePoints(player.entry, currentGameweek);
+                        return { entry: player.entry, live };
+                    })
+                );
+
+                // Process results
+                batchResults.forEach(({ entry, live }) => {
+                    if (live) {
+                        newLivePoints[entry] = {
+                            points: live.points,
+                            netPoints: live.netPoints,
+                            transferCost: live.transferCost,
+                            totalPoints: live.totalPoints,
+                            chip: live.chip,
+                            isLive: true
+                        };
+                    }
+                });
 
                 // Update progress
-                if (refreshBtn && i % 5 === 0) {
-                    refreshBtn.textContent = `${Math.round((i / allPlayers.length) * 100)}%`;
+                if (refreshBtn) {
+                    refreshBtn.textContent = `${Math.round((endIdx / allPlayers.length) * 100)}%`;
                 }
 
-                await new Promise(r => setTimeout(r, 50)); // Faster delay for bulk fetch
+                // Brief delay between batches
+                if (batchIdx < totalBatches - 1) {
+                    await new Promise(r => setTimeout(r, 50));
+                }
             }
 
             livePoints = newLivePoints;
@@ -1219,6 +1238,9 @@
             }
         }
 
+        // Parallel batch loading for faster performance
+        const BATCH_SIZE = 5; // Load 5 players at a time
+
         async function fetchFreshData() {
             const fetchingLeagueId = LEAGUE_ID; // Capture current league at start
             try {
@@ -1230,50 +1252,67 @@
                 let loadedCount = 0;
                 const failedPlayers = [];
 
-                for (let i = 0; i < freshPlayers.length; i++) {
+                // Process players in parallel batches for faster loading
+                const totalBatches = Math.ceil(freshPlayers.length / BATCH_SIZE);
+                console.log(`Loading ${freshPlayers.length} players in ${totalBatches} batches of ${BATCH_SIZE}`);
+
+                for (let batchIdx = 0; batchIdx < totalBatches; batchIdx++) {
                     // Abort if league changed during loading
                     if (LEAGUE_ID !== fetchingLeagueId) {
                         console.log('League changed during load, aborting');
                         return;
                     }
-                    const player = freshPlayers[i];
-                    try {
-                        const history = await fetchPlayerHistory(player.entry);
-                        if (history && Array.isArray(history) && history.length > 0) {
-                            freshHistories[player.entry] = history;
-                            loadedCount++;
-                            console.log(`✓ ${player.player_name}: ${history.length} gameweeks`);
-                        } else {
+
+                    const startIdx = batchIdx * BATCH_SIZE;
+                    const endIdx = Math.min(startIdx + BATCH_SIZE, freshPlayers.length);
+                    const batch = freshPlayers.slice(startIdx, endIdx);
+
+                    // Fetch all players in this batch in parallel
+                    const batchPromises = batch.map(async (player) => {
+                        try {
+                            const history = await fetchPlayerHistory(player.entry);
+                            if (history && Array.isArray(history) && history.length > 0) {
+                                freshHistories[player.entry] = history;
+                                loadedCount++;
+                                return { success: true, player: player.player_name };
+                            } else {
+                                // Use cached history if available
+                                if (playerHistories[player.entry] && playerHistories[player.entry].length > 0) {
+                                    freshHistories[player.entry] = playerHistories[player.entry];
+                                    return { success: true, player: player.player_name, cached: true };
+                                } else {
+                                    freshHistories[player.entry] = [];
+                                    failedPlayers.push(player.player_name);
+                                    return { success: false, player: player.player_name };
+                                }
+                            }
+                        } catch (e) {
                             // Use cached history if available
                             if (playerHistories[player.entry] && playerHistories[player.entry].length > 0) {
                                 freshHistories[player.entry] = playerHistories[player.entry];
-                                console.log(`○ ${player.player_name}: using cached data`);
+                                return { success: true, player: player.player_name, cached: true };
                             } else {
-                                console.warn(`✗ Empty history for ${player.player_name} (entry: ${player.entry})`);
                                 freshHistories[player.entry] = [];
                                 failedPlayers.push(player.player_name);
+                                return { success: false, player: player.player_name, error: e.message };
                             }
                         }
-                    } catch (e) {
-                        // Use cached history if available
-                        if (playerHistories[player.entry] && playerHistories[player.entry].length > 0) {
-                            freshHistories[player.entry] = playerHistories[player.entry];
-                            console.log(`○ ${player.player_name}: using cached data (error)`);
-                        } else {
-                            console.error(`✗ Failed to load ${player.player_name}:`, e);
-                            freshHistories[player.entry] = [];
-                            failedPlayers.push(player.player_name);
-                        }
-                    }
+                    });
 
-                    const percent = Math.round(((i + 1) / freshPlayers.length) * 100);
+                    // Wait for all in batch to complete
+                    await Promise.all(batchPromises);
+
+                    // Update progress
+                    const percent = Math.round((endIdx / freshPlayers.length) * 100);
                     const loadingPercent = document.getElementById('loadingPercent');
                     const loadingText = document.getElementById('loadingText');
                     if (loadingPercent) loadingPercent.textContent = percent + '%';
-                    if (loadingText) loadingText.textContent = `Loading ${i + 1}/${freshPlayers.length}`;
+                    if (loadingText) loadingText.textContent = `Loading ${endIdx}/${freshPlayers.length}`;
 
-                    // Small delay to avoid rate limiting
-                    await new Promise(resolve => setTimeout(resolve, 150));
+                    // Brief delay between batches to avoid rate limiting
+                    if (batchIdx < totalBatches - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
                 }
 
                 console.log(`=== SUMMARY: Loaded ${loadedCount}/${freshPlayers.length} player histories ===`);
