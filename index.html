@@ -80,6 +80,123 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Mobile optimizations */
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            h1 {
+                font-size: 1.4rem;
+                margin-bottom: 5px;
+            }
+            .controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .control-group {
+                width: 100%;
+                padding: 12px;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                align-items: center;
+            }
+            .control-group label {
+                width: 100%;
+                margin-bottom: 5px;
+                font-size: 12px;
+            }
+            .view-btn {
+                padding: 12px 14px;
+                font-size: 11px;
+                flex: 1;
+                min-width: 80px;
+                text-align: center;
+            }
+            select {
+                padding: 12px 10px;
+                font-size: 14px;
+                flex: 1;
+                min-width: 70px;
+            }
+            .btn {
+                padding: 12px 16px;
+                font-size: 11px;
+                flex: 1;
+                min-width: 60px;
+            }
+            .chart-container {
+                padding: 10px;
+                min-height: 350px;
+            }
+            .sidebar {
+                max-height: 400px;
+                padding: 10px;
+            }
+            .sidebar h3 {
+                font-size: 12px;
+            }
+            .player-toggle {
+                padding: 12px 10px;
+                gap: 6px;
+            }
+            .player-toggle input {
+                width: 20px;
+                height: 20px;
+            }
+            .player-toggle .rank {
+                font-size: 12px;
+                min-width: 50px;
+            }
+            .player-toggle .player-name {
+                font-size: 14px;
+            }
+            .player-toggle .points {
+                font-size: 13px;
+            }
+            .player-toggle .color-dot {
+                width: 10px;
+                height: 10px;
+            }
+            #playerSearch {
+                padding: 12px;
+                font-size: 14px;
+            }
+            .btn-group {
+                gap: 8px;
+            }
+            .btn-group .btn {
+                flex: 1;
+                min-width: 70px;
+            }
+            #statusBar {
+                padding: 12px;
+                font-size: 14px;
+            }
+            .setup-box {
+                padding: 20px;
+                margin: 20px auto;
+            }
+            .setup-box h2 {
+                font-size: 1rem;
+            }
+            #teamIdInput {
+                width: 120px;
+                padding: 14px 12px;
+            }
+            .player-toggle .expand-icon {
+                font-size: 14px;
+                opacity: 1;
+            }
+            .player-details {
+                padding: 12px 15px;
+                font-size: 14px;
+            }
+            .detail-row {
+                padding: 6px 0;
+            }
+        }
         .chart-container {
             background: rgba(0,0,0,0.2);
             border-radius: 12px;
@@ -224,6 +341,31 @@
             color: #00ff85;
             font-size: 12px;
         }
+        .player-toggle .expand-icon {
+            font-size: 12px;
+            opacity: 0.6;
+            margin-left: 5px;
+        }
+        .player-wrapper {
+            margin-bottom: 3px;
+        }
+        .player-details {
+            background: rgba(0,0,0,0.3);
+            padding: 10px 12px;
+            margin: 0 0 5px 0;
+            border-radius: 0 0 6px 6px;
+            border-left: 4px solid #04f5ff;
+            font-size: 12px;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
         .loading {
             text-align: center;
             padding: 50px;
@@ -319,7 +461,6 @@
     <!-- Main App -->
     <div id="mainApp" class="container" style="display: none;">
         <h1>FPL League Tracker</h1>
-        <p class="subtitle">The 5lb League - Week by Week Analysis</p>
 
         <div class="controls">
             <div class="control-group">
@@ -341,6 +482,19 @@
                     <button class="view-btn" id="btn-rank" onclick="setChartType('rank')">Position</button>
                 </div>
             </div>
+            <div class="control-group">
+                <label>Weeks:</label>
+                <select id="weekStart" onchange="updateWeekRange()" style="padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(55,0,60,0.8); color: #fff; font-size: 13px; width: 70px;">
+                </select>
+                <span style="margin: 0 5px; color: #666;">to</span>
+                <select id="weekEnd" onchange="updateWeekRange()" style="padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(55,0,60,0.8); color: #fff; font-size: 13px; width: 70px;">
+                </select>
+                <button class="btn btn-top-10" onclick="resetWeekRange()" style="margin-left: 5px;">All</button>
+            </div>
+        </div>
+
+        <div id="statusBar" style="display: none; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+            <span id="statusText" style="color: #04f5ff;">Loading...</span>
         </div>
 
         <div class="main-content">
@@ -387,9 +541,48 @@
         let currentFilter = '';
         let userTeamId = null;
         let userLeagues = [];
+        let weekRangeStart = 1;
+        let weekRangeEnd = 38;
 
         // Default Team ID for development (Dominic Mackie)
-        const DEFAULT_TEAM_ID = 211542; // Auto-loads leagues on first visit
+        const DEFAULT_TEAM_ID = null; // Set to null for production - users enter their own Team ID
+
+        // CORS Proxy for FPL API requests - with fallbacks
+        const CORS_PROXIES = [
+            'https://api.codetabs.com/v1/proxy?quest=',
+            'https://api.allorigins.win/raw?url=',
+            'https://corsproxy.io/?'
+        ];
+        let currentProxyIndex = 0;
+        let CORS_PROXY = CORS_PROXIES[0];
+
+        let fetchRetryCount = 0;
+        const MAX_FETCH_RETRIES = 3;
+
+        async function fetchWithFallback(url, isRetry = false) {
+            for (let i = 0; i < CORS_PROXIES.length; i++) {
+                const proxyIndex = (currentProxyIndex + i) % CORS_PROXIES.length;
+                const proxy = CORS_PROXIES[proxyIndex];
+                try {
+                    // allorigins and corsproxy need encoded URL, codetabs does not
+                    const needsEncoding = proxy.includes('allorigins') || proxy.includes('corsproxy');
+                    const fullUrl = proxy + (needsEncoding ? encodeURIComponent(url) : url);
+                    console.log(`Trying proxy ${proxyIndex}: ${proxy.split('/')[2]}`);
+                    const response = await fetch(fullUrl);
+                    if (response.ok) {
+                        currentProxyIndex = proxyIndex; // Remember working proxy
+                        CORS_PROXY = proxy;
+                        console.log(`Proxy ${proxyIndex} succeeded`);
+                        fetchRetryCount = 0; // Reset retry count on success
+                        return response;
+                    }
+                    console.warn(`Proxy ${proxyIndex} returned ${response.status}`);
+                } catch (e) {
+                    console.warn(`Proxy ${proxyIndex} failed:`, e.message);
+                }
+            }
+            throw new Error('All proxies failed - FPL API may be temporarily unavailable');
+        }
 
         // Initialize app
         function initApp() {
@@ -437,8 +630,8 @@
             document.getElementById('leaguesList').style.display = 'none';
 
             try {
-                const url = encodeURIComponent(`https://fantasy.premierleague.com/api/entry/${teamId}/`);
-                const response = await fetch(CORS_PROXY + url);
+                const url = `https://fantasy.premierleague.com/api/entry/${teamId}/`;
+                const response = await fetchWithFallback(url);
                 if (!response.ok) {
                     throw new Error('Team not found');
                 }
@@ -466,9 +659,10 @@
                 localStorage.setItem('fpl_team_id', teamId);
                 localStorage.setItem('fpl_user_leagues', JSON.stringify(userLeagues));
 
-                // Show leagues list
+                // Go straight to first league
                 document.getElementById('setupLoading').style.display = 'none';
-                displayLeaguesList();
+                LEAGUE_ID = userLeagues[0].id;
+                showMainApp();
 
             } catch (e) {
                 console.error('Team lookup failed:', e);
@@ -495,6 +689,21 @@
                 </div>
             `).join('');
             document.getElementById('leaguesList').style.display = 'block';
+        }
+
+        function showStatus(message, isError = false) {
+            const bar = document.getElementById('statusBar');
+            const text = document.getElementById('statusText');
+            if (bar && text) {
+                text.textContent = message;
+                text.style.color = isError ? '#ff4757' : '#04f5ff';
+                bar.style.display = 'block';
+            }
+        }
+
+        function hideStatus() {
+            const bar = document.getElementById('statusBar');
+            if (bar) bar.style.display = 'none';
         }
 
         function selectSetupLeague(leagueId, leagueName) {
@@ -616,14 +825,19 @@
             resetAndLoad();
         }
 
+        let isLoading = false;
+        let loadingLeagueId = null;
+
         function resetAndLoad() {
             console.log('=== Switching to league:', LEAGUE_ID, '===');
+            loadingLeagueId = LEAGUE_ID; // Track which league we're loading
             allPlayers = [];
             playerHistories = {};
             selectedEntries = new Set();
             hoveredEntry = null;
             livePoints = {};
             livePositions = {};
+            livePlayerScores = null; // Reset live scores cache
             if (chart) chart.destroy();
             chart = null;
             document.getElementById('playerToggles').innerHTML = '<div class="loading"><div id="loadingText">Loading...</div><div style="margin-top: 10px;"><div id="loadingPercent" style="font-size: 20px; color: #00ff88;">0%</div></div></div>';
@@ -646,8 +860,6 @@
             '#10B981', // Emerald
         ];
 
-        const CORS_PROXY = 'https://corsproxy.io/?';
-
         async function fetchLeagueStandings() {
             console.log('fetchLeagueStandings for LEAGUE_ID:', LEAGUE_ID);
             const players = [];
@@ -655,15 +867,14 @@
             let hasNext = true;
 
             while (hasNext) {
-                const url = encodeURIComponent(`https://fantasy.premierleague.com/api/leagues-classic/${LEAGUE_ID}/standings/?page_standings=${page}`);
-                const response = await fetch(CORS_PROXY + url);
+                const url = `https://fantasy.premierleague.com/api/leagues-classic/${LEAGUE_ID}/standings/?page_standings=${page}`;
+                const response = await fetchWithFallback(url);
                 const data = await response.json();
 
                 // Get league name from first page
                 if (page === 1 && data.league) {
                     leagueName = data.league.name;
                     console.log('League name from API:', leagueName);
-                    document.querySelector('.subtitle').textContent = leagueName + ' - Week by Week Analysis';
                     document.title = 'FPL Tracker - ' + leagueName;
                 }
 
@@ -676,7 +887,7 @@
         }
 
         async function fetchPlayerHistory(entryId, retries = 2) {
-            const url = encodeURIComponent(`https://fantasy.premierleague.com/api/entry/${entryId}/history/`);
+            const url = `https://fantasy.premierleague.com/api/entry/${entryId}/history/`;
             for (let attempt = 0; attempt <= retries; attempt++) {
                 try {
                     const response = await fetch(CORS_PROXY + url);
@@ -709,7 +920,7 @@
 
         async function fetchBootstrapStatic() {
             try {
-                const url = encodeURIComponent('https://fantasy.premierleague.com/api/bootstrap-static/');
+                const url = 'https://fantasy.premierleague.com/api/bootstrap-static/';
                 const response = await fetch(CORS_PROXY + url);
                 const data = await response.json();
 
@@ -759,7 +970,7 @@
         async function fetchLivePlayerScores(gameweek) {
             if (livePlayerScores) return livePlayerScores;
             try {
-                const url = encodeURIComponent(`https://fantasy.premierleague.com/api/event/${gameweek}/live/`);
+                const url = `https://fantasy.premierleague.com/api/event/${gameweek}/live/`;
                 const response = await fetch(CORS_PROXY + url);
                 if (!response.ok) return null;
                 const data = await response.json();
@@ -779,7 +990,7 @@
         async function fetchLivePoints(entryId, gameweek) {
             try {
                 // Get manager's picks
-                const url = encodeURIComponent(`https://fantasy.premierleague.com/api/entry/${entryId}/event/${gameweek}/picks/`);
+                const url = `https://fantasy.premierleague.com/api/entry/${entryId}/event/${gameweek}/picks/`;
                 const response = await fetch(CORS_PROXY + url);
                 if (!response.ok) return null;
                 const data = await response.json();
@@ -866,19 +1077,48 @@
             livePoints = newLivePoints;
             console.log('Live data fetched for', Object.keys(newLivePoints).length, 'players');
 
+            // Calculate previous GW positions (before current GW started)
+            // We need to find the gameweek BEFORE the current one
+            const prevGwIndex = currentGameweek - 2; // e.g., if current is GW24, we want index 22 (GW23)
+
+            const prevGwRankings = allPlayers.map(p => {
+                const history = playerHistories[p.entry] || [];
+                // Get the total points at end of previous gameweek (not current)
+                const prevGwData = prevGwIndex >= 0 && history[prevGwIndex] ? history[prevGwIndex] : null;
+                const prevTotal = prevGwData ? prevGwData.total_points : 0;
+                return { entry: p.entry, prevTotal };
+            }).sort((a, b) => b.prevTotal - a.prevTotal);
+
+            const prevPositions = {};
+            prevGwRankings.forEach((item, idx) => {
+                prevPositions[item.entry] = idx + 1;
+            });
+
+            // Debug: show previous positions
+            const prevPosDebug = prevGwRankings.slice(0, 10).map((r, i) => {
+                const player = allPlayers.find(p => p.entry === r.entry);
+                return `#${i+1}: ${player ? player.player_name : r.entry} (${r.prevTotal} pts)`;
+            });
+            console.log('Previous GW positions (end of GW' + (currentGameweek - 1) + '):', prevPosDebug);
+
             // Calculate live positions using: previous total + current GW live points
             const liveRankings = allPlayers.map(p => {
                 const live = newLivePoints[p.entry];
                 const history = playerHistories[p.entry] || [];
-                // Get previous total (before current GW)
-                const lastCompleteGw = history[history.length - 1];
-                const previousTotal = lastCompleteGw ? lastCompleteGw.total_points : p.total;
+                // Get previous total (before current GW) - use prevGwIndex
+                const prevGwData = prevGwIndex >= 0 && history[prevGwIndex] ? history[prevGwIndex] : null;
+                const previousTotal = prevGwData ? prevGwData.total_points : 0;
                 // Add live GW points (net of hits)
                 const liveTotal = live ? previousTotal + live.netPoints : previousTotal;
-                return { entry: p.entry, total: liveTotal, oldRank: p.rank, liveGwPoints: live ? live.netPoints : 0 };
+                return { entry: p.entry, total: liveTotal, oldRank: prevPositions[p.entry] || p.rank, liveGwPoints: live ? live.netPoints : 0 };
             }).sort((a, b) => b.total - a.total);
 
-            console.log('Live rankings:', liveRankings.slice(0, 5).map(r => `${r.entry}: ${r.total} (old #${r.oldRank})`));
+            // Debug: show live rankings with names
+            const liveDebug = liveRankings.slice(0, 10).map((r, i) => {
+                const player = allPlayers.find(p => p.entry === r.entry);
+                return `#${i+1}: ${player ? player.player_name : r.entry} (${r.total} pts, was #${r.oldRank}, GW+${r.liveGwPoints})`;
+            });
+            console.log('Live rankings (GW' + currentGameweek + '):', liveDebug);
 
             livePositions = {};
             liveRankings.forEach((item, idx) => {
@@ -899,8 +1139,17 @@
         }
 
         async function loadAllData() {
+            const targetLeague = LEAGUE_ID;
+            isLoading = true;
             try {
+                showStatus('Loading league data...');
                 console.log('Loading data for league:', LEAGUE_ID);
+
+                // Abort if league changed
+                if (LEAGUE_ID !== targetLeague) {
+                    console.log('League changed, aborting load');
+                    return;
+                }
 
                 // Fetch current gameweek info
                 await fetchBootstrapStatic();
@@ -913,18 +1162,24 @@
                     playerHistories = cached.histories || {};
                     leagueName = cached.leagueName || 'FPL League';
                     console.log('Using cached league:', leagueName, 'with', allPlayers.length, 'players');
-                    document.querySelector('.subtitle').textContent = leagueName + ' - Week by Week Analysis';
                     document.title = 'FPL Tracker - ' + leagueName;
 
                     // Select top 10 by default
                     allPlayers.slice(0, 10).forEach(p => selectedEntries.add(p.entry));
+
+                    // Populate week range selectors
+                    weekRangeEnd = currentGameweek || 38;
+                    populateWeekSelectors();
+
                     renderPlayerToggles();
                     updateChart();
+                    hideStatus();
 
                     // Auto-fetch live data for current gameweek
                     if (currentGameweek) {
                         console.log('Auto-fetching live data for GW', currentGameweek, gameweekFinished ? '(finished)' : '(in progress)');
-                        refreshLiveData();
+                        showStatus('Fetching live scores...');
+                        refreshLiveData().then(hideStatus);
                     }
 
                     // Refresh in background
@@ -939,10 +1194,28 @@
 
             } catch (error) {
                 console.error('Error loading data:', error);
-                if (allPlayers.length === 0) {
-                    document.getElementById('playerToggles').innerHTML =
-                        '<div class="loading">Error loading. Refresh page.</div>';
+                fetchRetryCount++;
+
+                if (fetchRetryCount < MAX_FETCH_RETRIES) {
+                    const retryDelay = fetchRetryCount * 2000; // 2s, 4s, 6s
+                    showStatus(`Error loading. Retrying in ${retryDelay/1000}s... (attempt ${fetchRetryCount + 1}/${MAX_FETCH_RETRIES})`, true);
+                    console.log(`Auto-retry ${fetchRetryCount}/${MAX_FETCH_RETRIES} in ${retryDelay}ms`);
+
+                    setTimeout(() => {
+                        if (LEAGUE_ID === targetLeague) {
+                            loadAllData();
+                        }
+                    }, retryDelay);
+                } else {
+                    showStatus('Error loading league data. Please try again later.', true);
+                    fetchRetryCount = 0; // Reset for next manual attempt
+                    if (allPlayers.length === 0) {
+                        document.getElementById('playerToggles').innerHTML =
+                            '<div class="loading">Error loading after multiple attempts. <br><button class="btn btn-top-10" onclick="fetchRetryCount=0; resetAndLoad();" style="margin-top: 10px;">Try Again</button></div>';
+                    }
                 }
+            } finally {
+                isLoading = false;
             }
         }
 
@@ -958,6 +1231,11 @@
                 const failedPlayers = [];
 
                 for (let i = 0; i < freshPlayers.length; i++) {
+                    // Abort if league changed during loading
+                    if (LEAGUE_ID !== fetchingLeagueId) {
+                        console.log('League changed during load, aborting');
+                        return;
+                    }
                     const player = freshPlayers[i];
                     try {
                         const history = await fetchPlayerHistory(player.entry);
@@ -1029,18 +1307,25 @@
                     allPlayers.slice(0, 10).forEach(p => selectedEntries.add(p.entry));
                 }
 
+                // Populate week range selectors
+                weekRangeEnd = currentGameweek || 38;
+                populateWeekSelectors();
+
                 renderPlayerToggles();
                 if (currentFilter) filterPlayers(currentFilter);
                 updateChart();
+                hideStatus();
 
                 // Auto-fetch live data for current gameweek
                 if (currentGameweek) {
                     console.log('Auto-fetching live data after fresh load for GW', currentGameweek);
-                    refreshLiveData();
+                    showStatus('Fetching live scores...');
+                    refreshLiveData().then(hideStatus);
                 }
 
             } catch (error) {
                 console.error('Error fetching fresh data:', error);
+                showStatus('Error loading data. Using cached data if available.', true);
                 // If we have data (cached or partial), keep using it and render
                 if (allPlayers.length > 0) {
                     console.log('Keeping existing data due to error');
@@ -1061,9 +1346,19 @@
                 return;
             }
             console.log('Rendering', allPlayers.length, 'player toggles');
-            container.innerHTML = allPlayers.map((player, index) => {
+
+            // Sort players by live position if available, otherwise by API rank
+            const sortedPlayers = [...allPlayers].sort((a, b) => {
+                const posA = livePositions[a.entry] ? livePositions[a.entry].position : a.rank;
+                const posB = livePositions[b.entry] ? livePositions[b.entry].position : b.rank;
+                return posA - posB;
+            });
+
+            container.innerHTML = sortedPlayers.map((player) => {
                 const isSelected = selectedEntries.has(player.entry);
-                const color = colors[index % colors.length];
+                // Use original index for consistent colors
+                const originalIndex = allPlayers.findIndex(p => p.entry === player.entry);
+                const color = colors[originalIndex % colors.length];
                 const live = livePoints[player.entry];
                 const posData = livePositions[player.entry];
 
@@ -1071,6 +1366,9 @@
                 let pointsDisplay = player.total;
                 let liveIndicator = '';
                 let movementIndicator = '';
+
+                // Use live position if available, otherwise API rank
+                const displayRank = posData ? posData.position : player.rank;
 
                 if (live && live.isLive) {
                     // Calculate projected total
@@ -1119,21 +1417,55 @@
                     }
                 }
 
+                // Build expandable detail section for mobile
+                let detailSection = '';
+                if (live && live.isLive) {
+                    const projectedTotal = player.total + live.netPoints;
+                    const chipAbbrev = { 'bboost': 'Bench Boost', '3xc': 'Triple Captain', 'freehit': 'Free Hit', 'wildcard': 'Wildcard' };
+                    detailSection = `
+                    <div class="player-details" id="details-${player.entry}" style="display: none;">
+                        <div class="detail-row"><span>GW${currentGameweek} Points:</span><span style="color: #00ff85;">${live.points}</span></div>
+                        ${live.transferCost > 0 ? `<div class="detail-row"><span>Hit Taken:</span><span style="color: #ffaa00;">-${live.transferCost}</span></div>` : ''}
+                        <div class="detail-row"><span>Net GW Points:</span><span style="color: #04f5ff;">${live.netPoints}</span></div>
+                        ${live.chip ? `<div class="detail-row"><span>Chip:</span><span style="color: #04f5ff;">${chipAbbrev[live.chip] || live.chip}</span></div>` : ''}
+                        <div class="detail-row"><span>Projected Total:</span><span style="font-weight: bold;">${projectedTotal}</span></div>
+                    </div>`;
+                }
+
                 return `
-                <label class="player-toggle ${isSelected ? 'selected' : ''}" id="toggle-${player.entry}"
-                       onmouseenter="hoverPlayer(${player.entry})"
-                       onmouseleave="hoverPlayer(null)"
-                       style="border-left: 4px solid ${isSelected ? color : 'transparent'};">
-                    <input type="checkbox"
-                           data-entry="${player.entry}"
-                           ${isSelected ? 'checked' : ''}
-                           onchange="togglePlayer(${player.entry}, this.checked)">
-                    <span class="rank">#${player.rank} ${movementIndicator}</span>
-                    <span class="color-dot" style="background: ${color}; box-shadow: 0 0 4px ${color};"></span>
-                    <span class="player-name" title="${player.player_name} - ${player.entry_name}">${player.player_name}</span>
-                    <span class="points">${pointsDisplay}${liveIndicator}</span>
-                </label>
+                <div class="player-wrapper">
+                    <label class="player-toggle ${isSelected ? 'selected' : ''}" id="toggle-${player.entry}"
+                           onmouseenter="hoverPlayer(${player.entry})"
+                           onmouseleave="hoverPlayer(null)"
+                           onclick="toggleDetails(${player.entry}, event)"
+                           style="border-left: 4px solid ${isSelected ? color : 'transparent'};">
+                        <input type="checkbox"
+                               data-entry="${player.entry}"
+                               ${isSelected ? 'checked' : ''}
+                               onchange="togglePlayer(${player.entry}, this.checked)">
+                        <span class="rank">#${displayRank} ${movementIndicator}</span>
+                        <span class="color-dot" style="background: ${color}; box-shadow: 0 0 4px ${color};"></span>
+                        <span class="player-name" title="${player.player_name} - ${player.entry_name}">${player.player_name}</span>
+                        <span class="points">${pointsDisplay}${liveIndicator}</span>
+                        ${live && live.isLive ? '<span class="expand-icon">ℹ️</span>' : ''}
+                    </label>
+                    ${detailSection}
+                </div>
             `}).join('');
+        }
+
+        function toggleDetails(entryId, event) {
+            // Don't toggle if clicking the checkbox
+            if (event.target.type === 'checkbox') return;
+
+            const details = document.getElementById(`details-${entryId}`);
+            if (details) {
+                const isVisible = details.style.display !== 'none';
+                // Hide all other details
+                document.querySelectorAll('.player-details').forEach(d => d.style.display = 'none');
+                // Toggle this one
+                details.style.display = isVisible ? 'none' : 'block';
+            }
         }
 
         function hoverPlayer(entryId) {
@@ -1188,14 +1520,18 @@
                 maxGameweeks = currentGameweek;
             }
 
-            const labels = Array.from({length: maxGameweeks}, (_, i) => {
-                const gwNum = i + 1;
-                // Mark live gameweek
+            // Apply week range filter
+            const rangeStart = weekRangeStart;
+            const rangeEnd = Math.min(weekRangeEnd, maxGameweeks);
+
+            const labels = [];
+            for (let gwNum = rangeStart; gwNum <= rangeEnd; gwNum++) {
                 if (hasAnyLiveData && gwNum === currentGameweek) {
-                    return `GW${gwNum} ⚡`;
+                    labels.push(`GW${gwNum} ⚡`);
+                } else {
+                    labels.push(`GW${gwNum}`);
                 }
-                return `GW${gwNum}`;
-            });
+            }
 
             // Pre-calculate all positions for rank mode (need all players, not just selected)
             const allPositions = {};
@@ -1258,9 +1594,22 @@
 
                 if (chartType === 'total') {
                     data = history.map(gw => gw ? gw.total_points : null);
-                    // Add live total if available
-                    if (hasLiveData && data.length < currentGameweek) {
-                        data.push(live.totalPoints);
+                    // For live gameweek, calculate projected total: previous GW total + live net points
+                    if (hasLiveData && currentGameweek) {
+                        // Get previous GW total (last entry in history, or second-to-last if history includes current GW)
+                        const prevGwIdx = currentGameweek - 2; // e.g., GW23 when current is GW24
+                        const prevTotal = prevGwIdx >= 0 && history[prevGwIdx] ? history[prevGwIdx].total_points : (data.length > 0 ? data[data.length - 1] : 0);
+                        const projectedTotal = prevTotal + live.netPoints;
+
+                        // Replace or add the projected total for current GW
+                        if (data.length >= currentGameweek) {
+                            data[currentGameweek - 1] = projectedTotal;
+                        } else {
+                            while (data.length < currentGameweek - 1) {
+                                data.push(data.length > 0 ? data[data.length - 1] : null);
+                            }
+                            data.push(projectedTotal);
+                        }
                     }
                 } else if (chartType === 'weekly') {
                     data = history.map(gw => gw ? gw.points : null);
@@ -1279,10 +1628,20 @@
                     }
                 } else if (chartType === 'rank') {
                     // Use pre-calculated positions
-                    data = allPositions[player.entry] || [];
-                    // Add live position if available
+                    data = allPositions[player.entry] ? [...allPositions[player.entry]] : [];
+                    // For live gameweek, replace or add the live position
                     if (hasLiveData && livePositions[player.entry]) {
-                        data.push(livePositions[player.entry].position);
+                        const livePos = livePositions[player.entry].position;
+                        // If data already has current GW, replace it; otherwise add it
+                        if (data.length >= currentGameweek) {
+                            data[currentGameweek - 1] = livePos;
+                        } else {
+                            // Pad if needed and add live position
+                            while (data.length < currentGameweek - 1) {
+                                data.push(data.length > 0 ? data[data.length - 1] : null);
+                            }
+                            data.push(livePos);
+                        }
                     }
                 }
 
@@ -1290,6 +1649,9 @@
                 while (data.length < maxGameweeks) {
                     data.push(data.length > 0 ? data[data.length - 1] : null);
                 }
+
+                // Slice data to week range (0-indexed: rangeStart-1 to rangeEnd)
+                data = data.slice(rangeStart - 1, rangeEnd);
 
                 const isHovered = hoveredEntry === player.entry;
                 const isDimmed = hoveredEntry !== null && !isHovered;
@@ -1543,6 +1905,46 @@
             });
             renderPlayerToggles();
             filterPlayers(currentFilter); // Re-apply filter after render
+            updateChart();
+        }
+
+        function populateWeekSelectors() {
+            const maxGw = currentGameweek || 38;
+            const startSelect = document.getElementById('weekStart');
+            const endSelect = document.getElementById('weekEnd');
+
+            startSelect.innerHTML = '';
+            endSelect.innerHTML = '';
+
+            for (let i = 1; i <= maxGw; i++) {
+                startSelect.innerHTML += `<option value="${i}">GW${i}</option>`;
+                endSelect.innerHTML += `<option value="${i}">GW${i}</option>`;
+            }
+
+            startSelect.value = weekRangeStart;
+            endSelect.value = Math.min(weekRangeEnd, maxGw);
+            weekRangeEnd = Math.min(weekRangeEnd, maxGw);
+        }
+
+        function updateWeekRange() {
+            const start = parseInt(document.getElementById('weekStart').value);
+            const end = parseInt(document.getElementById('weekEnd').value);
+
+            if (start > end) {
+                document.getElementById('weekEnd').value = start;
+                weekRangeEnd = start;
+            } else {
+                weekRangeEnd = end;
+            }
+            weekRangeStart = start;
+            updateChart();
+        }
+
+        function resetWeekRange() {
+            weekRangeStart = 1;
+            weekRangeEnd = currentGameweek || 38;
+            document.getElementById('weekStart').value = 1;
+            document.getElementById('weekEnd').value = weekRangeEnd;
             updateChart();
         }
 
