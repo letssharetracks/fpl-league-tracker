@@ -1714,9 +1714,12 @@
             const url = `https://fantasy.premierleague.com/api/entry/${entryId}/history/`;
             for (let attempt = 0; attempt <= retries; attempt++) {
                 try {
-                    const fetchUrl = isNetlify ?
-                        NETLIFY_FUNCTION + encodeURIComponent(`/api/entry/${entryId}/history/`) :
-                        CORS_PROXY + url;
+                    let fetchUrl;
+                    if (useCloudflareWorker && !workerFailed) {
+                        fetchUrl = CLOUDFLARE_WORKER + encodeURIComponent(`entry/${entryId}/history/`);
+                    } else {
+                        fetchUrl = CORS_PROXY + encodeURIComponent(url);
+                    }
                     const response = await throttledFetch(fetchUrl, { timeout: 10000 });
                     if (!response.ok) {
                         console.error(`HTTP error for entry ${entryId}: ${response.status}`);
@@ -1972,9 +1975,12 @@
             try {
                 // Get manager's picks using throttled fetch for better concurrency
                 const apiPath = `/api/entry/${entryId}/event/${gameweek}/picks/`;
-                const fetchUrl = isNetlify ?
-                    NETLIFY_FUNCTION + encodeURIComponent(apiPath) :
-                    CORS_PROXY + 'https://fantasy.premierleague.com' + apiPath;
+                let fetchUrl;
+                if (useCloudflareWorker && !workerFailed) {
+                    fetchUrl = CLOUDFLARE_WORKER + encodeURIComponent(`entry/${entryId}/event/${gameweek}/picks/`);
+                } else {
+                    fetchUrl = CORS_PROXY + encodeURIComponent('https://fantasy.premierleague.com' + apiPath);
+                }
                 const response = await throttledFetch(fetchUrl, { timeout: 10000 });
                 if (!response.ok) return null;
                 const data = await response.json();
