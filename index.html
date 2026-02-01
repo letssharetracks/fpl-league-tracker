@@ -2623,11 +2623,12 @@
                     }
                 });
 
-                // Calculate live bonus for in-progress fixtures
+                // Calculate live bonus for in-progress AND bonus-pending fixtures
                 const liveBonusMap = {};
                 fixtures.forEach(f => {
-                    // Only calculate live bonus for started but not finished fixtures
-                    if (f.started && !f.finished && !f.finished_provisional) {
+                    // Calculate provisional bonus for started fixtures that aren't fully confirmed
+                    // This includes both live matches AND finished_provisional (bonus pending)
+                    if (f.started && !f.finished) {
                         // Get all players from both teams in this fixture
                         const fixturePlayers = [];
                         if (players && livePlayerData) {
@@ -2881,6 +2882,12 @@
                 const vcInfo = viceCaptain && players ? players[viceCaptain.element] : null;
                 const vcName = vcInfo ? vcInfo.name : null;
 
+                // Sort BPS players by bonus (highest first)
+                bpsPlayers.sort((a, b) => b.bonus - a.bonus);
+
+                // Add provisional bonus to predicted points for live updates
+                const predictedWithBonus = predictedPoints + liveBonus;
+
                 return {
                     points: points,
                     netPoints: netPoints,
@@ -2891,7 +2898,7 @@
                     chip: activeChip,
                     playersYetToPlay: playersYetToPlay,
                     playersPlaying: playersPlaying,
-                    predictedPoints: predictedPoints - transferCost,
+                    predictedPoints: predictedWithBonus - transferCost,
                     autoSubs: autoSubs,
                     vcActivated: vcActivated,
                     vcName: vcName,
