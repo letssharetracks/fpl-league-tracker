@@ -2061,10 +2061,9 @@
                         });
                     }
                     if (live.bpsPlayers && live.bpsPlayers.length > 0) {
-                        const firstBps = live.bpsPlayers[0];
-                        const hasMultipleBps = live.bpsPlayers.length > 1;
-                        mobileDetailsHtml += `<div class="detail-item${hasMultipleBps ? ' has-sub-items' : ''}"><span class="detail-label">BPS:</span><span><span class="bps-player">${firstBps.name}</span> <span class="bps-bonus">(+${firstBps.bonus})</span></span></div>`;
-                        live.bpsPlayers.slice(1).forEach((p, idx, arr) => {
+                        // Show total BPS first, then list each player
+                        mobileDetailsHtml += `<div class="detail-item has-sub-items"><span class="detail-label">BPS:</span><span class="bps-bonus">+${live.liveBonus}</span></div>`;
+                        live.bpsPlayers.forEach((p, idx, arr) => {
                             const isLast = idx === arr.length - 1;
                             mobileDetailsHtml += `<div class="detail-sub-item${isLast ? ' last-sub-item' : ''}"><span class="detail-label"></span><span><span class="bps-player">${p.name}</span> <span class="bps-bonus">(+${p.bonus})</span></span></div>`;
                         });
@@ -3488,16 +3487,14 @@
                         vcHtml = `<div class="detail-row"><span style="color: #888;">VC Active:</span><span style="color: #04f5ff;">${live.vcName} (C)</span></div>`;
                     }
 
-                    // Provisional bonus display (only for in-progress matches)
+                    // Provisional bonus display - show total then each player
                     let bonusHtml = '';
                     const bpsPlayers = live.bpsPlayers || [];
-                    if (bpsPlayers.length === 1) {
-                        bonusHtml = `<div class="detail-row"><span style="color: #888;">BPS:</span><span style="color: #ffaa00;">${bpsPlayers[0].name} (+${bpsPlayers[0].bonus})</span></div>`;
-                    } else if (bpsPlayers.length > 1) {
+                    if (bpsPlayers.length > 0) {
                         const bpsList = bpsPlayers.map(p =>
                             `<div class="detail-row sub-row"><span></span><span style="color: #ffaa00;">${p.name} (+${p.bonus})</span></div>`
                         ).join('');
-                        bonusHtml = `<div class="detail-row"><span style="color: #888;">BPS (${bpsPlayers.length}):</span><span style="color: #ffaa00;">+${live.liveBonus}</span></div>${bpsList}`;
+                        bonusHtml = `<div class="detail-row"><span style="color: #888;">BPS:</span><span style="color: #ffaa00;">+${live.liveBonus}</span></div>${bpsList}`;
                     }
 
                     // DEFCON points display (similar to auto-subs)
