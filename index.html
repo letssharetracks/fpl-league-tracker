@@ -2581,8 +2581,13 @@
                         const goals = cachedGoalScorers[homeNorm] || cachedGoalScorers[awayNorm] || [];
                         if (goals.length > 0) {
                             goalScorers = goals
-                                .map(g => `⚽ ${g.player?.name || '?'} ${g.time?.elapsed}'`)
-                                .join(' ');
+                                .map(g => {
+                                    const scorer = g.player?.name || '?';
+                                    const time = g.time?.elapsed || '?';
+                                    const assist = g.assist?.name ? ` (${g.assist.name})` : '';
+                                    return `⚽ ${scorer} ${time}'${assist}`;
+                                })
+                                .join(' │ ');
                         }
                     } else {
                         // Format kickoff time
