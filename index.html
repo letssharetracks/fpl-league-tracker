@@ -187,8 +187,12 @@
             color: #ff6b6b;
         }
         .league-table .col-captain {
-            min-width: 140px;
-            font-size: 12px;
+            min-width: 100px;
+            max-width: 120px;
+            font-size: 11px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .league-table .col-status {
             width: 90px;
@@ -203,8 +207,8 @@
             min-width: 140px;
             font-size: 11px;
         }
-        .league-table .col-bonus {
-            width: 50px;
+        .league-table .col-bps {
+            width: 35px;
             text-align: center;
             font-size: 11px;
         }
@@ -320,7 +324,7 @@
             .league-table .col-captain { max-width: 60px; overflow: hidden; text-overflow: ellipsis; }
             .league-table .col-chip { width: 22px; }
             .league-table .col-autosub { max-width: 55px; overflow: hidden; text-overflow: ellipsis; }
-            .league-table .col-bonus { width: 28px; }
+            .league-table .col-bps { width: 28px; }
             .league-table .col-defcon { max-width: 60px; overflow: hidden; text-overflow: ellipsis; }
             .league-table .col-status { width: 45px; }
             .league-table .col-or { width: 50px; }
@@ -941,10 +945,10 @@
                         <th class="col-gw">GW</th>
                         <th class="col-total">Total</th>
                         <th class="col-gap">Gap</th>
-                        <th class="col-captain">Captain</th>
+                        <th class="col-captain">Cpt</th>
                         <th class="col-chip">Chip</th>
                         <th class="col-autosub">Auto-Sub</th>
-                        <th class="col-bonus">Bonus</th>
+                        <th class="col-bps">BPS</th>
                         <th class="col-defcon">DEFCON</th>
                         <th class="col-status">Status</th>
                         <th class="col-or">OR</th>
@@ -1602,7 +1606,7 @@
                         <td class="col-captain">${captainHtml}</td>
                         <td class="col-chip">${chipHtml}</td>
                         <td class="col-autosub">${autoSubHtml}</td>
-                        <td class="col-bonus">${bonusHtml}</td>
+                        <td class="col-bps">${bonusHtml}</td>
                         <td class="col-defcon">${defconHtml}</td>
                         <td class="col-status">${statusHtml}</td>
                         <td class="col-or">${orHtml}</td>
