@@ -1688,7 +1688,7 @@
                 const prevGwData = prevGwIndex >= 0 && history[prevGwIndex] ? history[prevGwIndex] : null;
                 const prevGwTotal = prevGwData ? prevGwData.total_points : 0;
 
-                if (live && live.isLive) {
+                if (live) {
                     const hasAutoSubs = live.autoSubs && live.autoSubs.length > 0;
                     const gwPoints = hasAutoSubs ? live.predictedPoints : live.netPoints;
                     return prevGwTotal + gwPoints;
@@ -1726,10 +1726,8 @@
                     if (live.transferCost > 0) {
                         hitDisplay = `<span class="hit">(-${live.transferCost})</span>`;
                     }
-                    // Calculate live total same as sidebar
-                    if (live.isLive) {
-                        totalDisplay = prevGwTotal + gwPoints;
-                    }
+                    // Calculate live total same as sidebar (always update when we have live data)
+                    totalDisplay = prevGwTotal + gwPoints;
                 }
 
                 // Movement indicator
