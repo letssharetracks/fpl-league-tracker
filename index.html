@@ -886,7 +886,7 @@
                     <button class="view-btn" id="btn-chart-view" onclick="setDisplayMode('chart')">📈 Charts</button>
                 </div>
             </div>
-            <div class="control-group chart-controls" id="chartTypeControls">
+            <div class="control-group chart-controls" id="chartTypeControls" style="display: none;">
                 <label>Chart:</label>
                 <div class="view-btns">
                     <button class="view-btn active" id="btn-total" onclick="setChartType('total')">Total</button>
@@ -894,7 +894,7 @@
                     <button class="view-btn" id="btn-rank" onclick="setChartType('rank')">Position</button>
                 </div>
             </div>
-            <div class="control-group chart-controls" id="weekControls">
+            <div class="control-group chart-controls" id="weekControls" style="display: none;">
                 <label>Weeks:</label>
                 <select id="weekStart" onchange="updateWeekRange()" class="week-select">
                 </select>
