@@ -773,6 +773,54 @@
             border-color: #00ff85;
             font-weight: 700;
         }
+        .auto-sub-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            background: rgba(55, 0, 60, 0.6);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            font-size: 11px;
+            color: #b8b8b8;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .auto-sub-toggle:hover {
+            border-color: #00ff85;
+        }
+        .auto-sub-toggle.active {
+            background: rgba(0, 255, 133, 0.15);
+            border-color: #00ff85;
+            color: #00ff85;
+        }
+        .toggle-switch {
+            width: 32px;
+            height: 18px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 9px;
+            position: relative;
+            transition: all 0.2s;
+        }
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: #888;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: all 0.2s;
+        }
+        .auto-sub-toggle.active .toggle-switch {
+            background: #00ff85;
+        }
+        .auto-sub-toggle.active .toggle-switch::after {
+            left: 16px;
+            background: #37003c;
+        }
         .player-list {
             display: flex;
             flex-direction: column;
@@ -1078,6 +1126,10 @@
                 <div class="view-btns">
                     <button class="view-btn active" id="btn-table-view" onclick="setDisplayMode('table')"><span class="btn-icon">📊</span><span>Live</span></button>
                     <button class="view-btn" id="btn-chart-view" onclick="setDisplayMode('chart')"><span class="btn-icon">📈</span><span>Charts</span></button>
+                    <button class="auto-sub-toggle active" id="autoSubToggle" onclick="toggleAutoSubs()" title="Include predicted auto-subs in points">
+                        <span class="toggle-switch"></span>
+                        <span>Auto-Subs</span>
+                    </button>
                 </div>
             </div>
             <div class="control-group chart-controls" id="chartTypeControls" style="display: none;">
@@ -1199,6 +1251,7 @@
         let gameweekFinished = true;
         let livePoints = {};
         let livePositions = {};
+        let autoSubsEnabled = true; // Toggle for predicted auto-subs
         let currentFilter = '';
         let userTeamId = null;
         let userLeagues = [];
@@ -1650,6 +1703,19 @@
             }
         }
 
+        function toggleAutoSubs() {
+            autoSubsEnabled = !autoSubsEnabled;
+            const toggle = document.getElementById('autoSubToggle');
+            toggle.classList.toggle('active', autoSubsEnabled);
+
+            // Recalculate positions and update views
+            if (Object.keys(livePoints).length > 0) {
+                calculateLivePositions(livePoints);
+                updateTableView();
+                renderPlayerToggles();
+            }
+        }
+
         // Toggle inline row details (for mobile tap)
         function toggleRowDetails(entryId) {
             // Only work on mobile
@@ -1689,7 +1755,7 @@
                 const prevGwTotal = prevGwData ? prevGwData.total_points : 0;
 
                 if (live) {
-                    const hasAutoSubs = live.autoSubs && live.autoSubs.length > 0;
+                    const hasAutoSubs = autoSubsEnabled && live.autoSubs && live.autoSubs.length > 0;
                     const gwPoints = hasAutoSubs ? live.predictedPoints : live.netPoints;
                     return prevGwTotal + gwPoints;
                 }
@@ -1720,8 +1786,8 @@
                 }
 
                 if (live) {
-                    // Use predicted points if auto-subs (same calculation as sidebar)
-                    const hasAutoSubs = live.autoSubs && live.autoSubs.length > 0;
+                    // Use predicted points if auto-subs enabled and present
+                    const hasAutoSubs = autoSubsEnabled && live.autoSubs && live.autoSubs.length > 0;
                     gwPoints = hasAutoSubs ? live.predictedPoints : live.netPoints;
                     if (live.transferCost > 0) {
                         hitDisplay = `<span class="hit">(-${live.transferCost})</span>`;
@@ -2687,8 +2753,8 @@
                 let gwPoints;
 
                 if (live) {
-                    // Use predicted points (includes auto-subs) when available
-                    const hasAutoSubs = live.autoSubs && live.autoSubs.length > 0;
+                    // Use predicted points (includes auto-subs) when enabled
+                    const hasAutoSubs = autoSubsEnabled && live.autoSubs && live.autoSubs.length > 0;
                     gwPoints = hasAutoSubs ? live.predictedPoints : live.netPoints;
                     currentTotal = prevTotal + gwPoints;
                 } else {
@@ -3021,8 +3087,8 @@
 
                 // If matches are live, use live calculated points instead
                 if (live && live.isLive && matchesInProgress) {
-                    // Use predictedPoints if auto-subs occurred (includes confirmed auto-sub points)
-                    const hasAutoSubs = live.autoSubs && live.autoSubs.length > 0;
+                    // Use predictedPoints if auto-subs enabled and present
+                    const hasAutoSubs = autoSubsEnabled && live.autoSubs && live.autoSubs.length > 0;
                     gwPoints = hasAutoSubs ? live.predictedPoints : live.netPoints;
                     // When live, total = prevGwTotal + live points
                     pointsDisplay = prevGwTotal + gwPoints;
