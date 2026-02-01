@@ -434,6 +434,12 @@
         .defcon-points {
             color: #e056fd;
         }
+        .bps-player {
+            color: #ffaa00;
+        }
+        .bps-bonus {
+            color: #ffaa00;
+        }
         .rank-value {
             color: #888;
         }
@@ -2054,7 +2060,15 @@
                             mobileDetailsHtml += `<div class="detail-sub-item${isLast ? ' last-sub-item' : ''}"><span class="detail-label"></span><span><span class="defcon-player">${p.name}</span> <span class="defcon-points">(+${p.points})</span></span></div>`;
                         });
                     }
-                    if (live.liveBonus > 0) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">BPS:</span> <span class="points-gained">+${live.liveBonus}</span></div>`;
+                    if (live.bpsPlayers && live.bpsPlayers.length > 0) {
+                        const firstBps = live.bpsPlayers[0];
+                        const hasMultipleBps = live.bpsPlayers.length > 1;
+                        mobileDetailsHtml += `<div class="detail-item${hasMultipleBps ? ' has-sub-items' : ''}"><span class="detail-label">BPS:</span><span><span class="bps-player">${firstBps.name}</span> <span class="bps-bonus">(+${firstBps.bonus})</span></span></div>`;
+                        live.bpsPlayers.slice(1).forEach((p, idx, arr) => {
+                            const isLast = idx === arr.length - 1;
+                            mobileDetailsHtml += `<div class="detail-sub-item${isLast ? ' last-sub-item' : ''}"><span class="detail-label"></span><span><span class="bps-player">${p.name}</span> <span class="bps-bonus">(+${p.bonus})</span></span></div>`;
+                        });
+                    }
                     mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Status:</span><span>${statusHtml}</span></div>`;
                     if (live.overallRank) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Overall Rank:</span> <span class="rank-value">${live.overallRank.toLocaleString()}</span></div>`;
                     if (live.gwRank) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">GW Rank:</span> <span class="rank-value">${live.gwRank.toLocaleString()}</span></div>`;
@@ -2357,9 +2371,9 @@
         async function fetchAndUpdateTicker(gameweek) {
             try {
                 const response = await fplApiFetch(`/api/fixtures/?event=${gameweek}`);
-                const fixtures = await response.json();
+                const allFixtures = await response.json();
 
-                if (!fixtures || fixtures.length === 0) {
+                if (!allFixtures || allFixtures.length === 0) {
                     document.getElementById('fixtureTicker').style.display = 'none';
                     return;
                 }
@@ -2371,6 +2385,23 @@
                     11: 'LEI', 12: 'LIV', 13: 'MCI', 14: 'MUN', 15: 'NEW',
                     16: 'NFO', 17: 'SOU', 18: 'TOT', 19: 'WHU', 20: 'WOL'
                 };
+
+                // Check for today's fixtures and if any are live/upcoming today
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const tomorrow = new Date(today);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+
+                const todaysFixtures = allFixtures.filter(f => {
+                    const kickoff = new Date(f.kickoff_time);
+                    return kickoff >= today && kickoff < tomorrow;
+                });
+
+                const hasLiveOrUpcomingToday = todaysFixtures.some(f => !f.finished);
+
+                // Show only today's games when there are live/upcoming matches today
+                // Show all fixtures when today's games are finished or no games today
+                const fixtures = hasLiveOrUpcomingToday && todaysFixtures.length > 0 ? todaysFixtures : allFixtures;
 
                 const fixtureHtml = fixtures.map(f => {
                     const home = teamAbbr[f.team_h] || 'TBC';
@@ -2802,10 +2833,20 @@
                 let liveBonus = 0;
                 let totalDefcon = 0;
                 const defconPlayers = []; // Track which players earned DEFCON
+                const bpsPlayers = []; // Track which players are earning BPS bonus
                 const activePlayers = isBenchBoost ? data.picks : data.picks.filter(p => p.position <= 11);
                 activePlayers.forEach(pick => {
                     // Only count provisional bonus from liveBonusMap (in-progress fixtures only)
                     const provisionalBonus = liveBonusMap[pick.element] || 0;
+                    if (provisionalBonus > 0) {
+                        const playerInfo = players ? players[pick.element] : null;
+                        const playerLiveData = livePlayerData ? livePlayerData[pick.element] : null;
+                        bpsPlayers.push({
+                            name: playerInfo?.name || 'Unknown',
+                            bonus: provisionalBonus,
+                            bps: playerLiveData?.bps || 0
+                        });
+                    }
                     liveBonus += provisionalBonus;
 
                     // Sum DEFCON points for active players
@@ -2855,6 +2896,7 @@
                     vcActivated: vcActivated,
                     vcName: vcName,
                     liveBonus: liveBonus,
+                    bpsPlayers: bpsPlayers,
                     defconPoints: totalDefcon,
                     defconPlayers: defconPlayers,
                     captainName: captainName,
@@ -2950,6 +2992,7 @@
                             vcActivated: live.vcActivated,
                             vcName: live.vcName,
                             liveBonus: live.liveBonus,
+                            bpsPlayers: live.bpsPlayers,
                             defconPoints: live.defconPoints,
                             defconPlayers: live.defconPlayers,
                             overallRank: live.overallRank,          // Overall FPL rank in the world
@@ -3440,8 +3483,14 @@
 
                     // Provisional bonus display (only for in-progress matches)
                     let bonusHtml = '';
-                    if (live.liveBonus > 0) {
-                        bonusHtml = `<div class="detail-row"><span style="color: #888;">Bonus (live):</span><span style="color: #ffaa00;">+${live.liveBonus}</span></div>`;
+                    const bpsPlayers = live.bpsPlayers || [];
+                    if (bpsPlayers.length === 1) {
+                        bonusHtml = `<div class="detail-row"><span style="color: #888;">BPS:</span><span style="color: #ffaa00;">${bpsPlayers[0].name} (+${bpsPlayers[0].bonus})</span></div>`;
+                    } else if (bpsPlayers.length > 1) {
+                        const bpsList = bpsPlayers.map(p =>
+                            `<div class="detail-row sub-row"><span></span><span style="color: #ffaa00;">${p.name} (+${p.bonus})</span></div>`
+                        ).join('');
+                        bonusHtml = `<div class="detail-row"><span style="color: #888;">BPS (${bpsPlayers.length}):</span><span style="color: #ffaa00;">+${live.liveBonus}</span></div>${bpsList}`;
                     }
 
                     // DEFCON points display (similar to auto-subs)
