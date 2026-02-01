@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FPL League Tracker - The 5lb League</title>
+    <title>FPL League Tracker</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%2337003c' width='100' height='100' rx='15'/><path d='M20 70 L35 45 L50 55 L65 30 L80 40' stroke='%2300ff85' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/><circle cx='80' cy='40' r='6' fill='%2304f5ff'/></svg>">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <style>
@@ -52,6 +53,10 @@
             padding: 15px 20px;
             border-radius: 8px;
             border: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
         }
         .control-group label {
             margin-right: 10px;
@@ -70,14 +75,322 @@
         select:hover {
             border-color: #00ff85;
         }
+        .separator {
+            color: #666;
+            margin: 0 5px;
+        }
+        .league-id-input {
+            width: 80px;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(55,0,60,0.8);
+            color: #fff;
+            font-size: 13px;
+        }
+        .week-select {
+            width: 70px;
+        }
+        .view-btns {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        .control-group-league {
+            flex: 1 1 100%;
+        }
+        @media (min-width: 1200px) {
+            .control-group-league {
+                flex: 1 1 auto;
+            }
+        }
         .main-content {
             display: grid;
-            grid-template-columns: 1fr 280px;
+            grid-template-columns: 1fr 320px;
             gap: 20px;
         }
         @media (max-width: 900px) {
             .main-content {
                 grid-template-columns: 1fr;
+            }
+            .sidebar {
+                max-height: 450px;
+            }
+        }
+
+        /* Table View styles */
+        .table-view {
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            max-width: 100%;
+        }
+        .league-table {
+            width: 100%;
+            min-width: 800px;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .league-table th {
+            text-align: left;
+            padding: 12px 10px;
+            border-bottom: 2px solid rgba(0,255,133,0.3);
+            color: #00ff85;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+        .league-table td {
+            padding: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            vertical-align: middle;
+        }
+        .league-table tbody tr:hover {
+            background: rgba(255,255,255,0.05);
+        }
+        .league-table tbody tr.my-team {
+            background: rgba(0,255,133,0.1);
+        }
+        .league-table .col-rank {
+            width: 40px;
+            text-align: center;
+            font-weight: 600;
+            color: #04f5ff;
+        }
+        .league-table .col-move {
+            width: 30px;
+            text-align: center;
+            font-size: 11px;
+        }
+        .league-table .col-name {
+            min-width: 150px;
+        }
+        .league-table .col-gw {
+            width: 80px;
+            text-align: right;
+            font-weight: 600;
+        }
+        .league-table .col-total {
+            width: 80px;
+            text-align: right;
+            font-weight: 700;
+            color: #fff;
+        }
+        .league-table .col-captain {
+            min-width: 140px;
+            font-size: 12px;
+        }
+        .league-table .col-status {
+            width: 90px;
+            font-size: 11px;
+        }
+        .league-table .col-chip {
+            width: 60px;
+            text-align: center;
+            font-size: 11px;
+        }
+        .league-table .col-autosub {
+            min-width: 140px;
+            font-size: 11px;
+        }
+        .league-table .col-bonus {
+            width: 50px;
+            text-align: center;
+            font-size: 11px;
+        }
+        .league-table .col-or {
+            width: 80px;
+            text-align: right;
+            font-size: 11px;
+            color: #888;
+        }
+        .league-table .chip-badge {
+            background: rgba(0,255,133,0.2);
+            color: #00ff85;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        .league-table .autosub-info {
+            color: #04f5ff;
+        }
+        .league-table .bonus-live {
+            color: #ffaa00;
+        }
+        .league-table .col-defcon {
+            min-width: 130px;
+            font-size: 11px;
+        }
+        .league-table .defcon-pts {
+            color: #e056fd;
+            font-weight: 500;
+        }
+        .league-table .manager-name {
+            font-weight: 500;
+            color: #fff;
+        }
+        .league-table .team-name {
+            font-size: 11px;
+            color: #888;
+        }
+        .league-table .hit {
+            color: #ffaa00;
+            font-size: 11px;
+        }
+        .league-table .captain-pts {
+            color: #00ff85;
+            font-size: 11px;
+        }
+        .league-table .vc-active {
+            color: #04f5ff;
+            font-size: 10px;
+        }
+        .league-table .status-playing {
+            color: #ff4757;
+        }
+        .league-table .status-toplay {
+            color: #888;
+        }
+        .league-table .status-done {
+            color: #00ff85;
+        }
+        .league-table .move-up {
+            color: #00ff85;
+        }
+        .league-table .move-down {
+            color: #ff4757;
+        }
+        /* Mobile: All columns visible, table scrolls horizontally */
+        @media (max-width: 768px) {
+            .league-table {
+                font-size: 11px;
+            }
+            .league-table th, .league-table td {
+                padding: 6px 5px;
+                white-space: nowrap;
+            }
+            .table-view {
+                padding: 8px;
+                margin: 0 -10px;
+            }
+        }
+        @media (max-width: 600px) {
+            .league-table {
+                font-size: 10px;
+            }
+            .league-table th, .league-table td {
+                padding: 5px 4px;
+            }
+            .league-table .col-name {
+                min-width: 80px;
+            }
+            .league-table .team-name {
+                display: none;
+            }
+        }
+
+        /* Footer styles */
+        .site-footer {
+            margin-top: 40px;
+            padding: 30px 0 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            background: rgba(55, 0, 60, 0.3);
+        }
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+            margin-bottom: 25px;
+        }
+        .footer-section h4 {
+            color: #00ff85;
+            margin-bottom: 12px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .footer-section p {
+            color: #888;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .footer-section ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .footer-section ul li {
+            color: #888;
+            font-size: 12px;
+            padding: 4px 0;
+        }
+        .footer-section ul li::before {
+            content: "✓ ";
+            color: #00ff85;
+        }
+        .coffee-btn {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #ffdd00, #ffaa00);
+            color: #1a1a2e;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .coffee-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(255, 221, 0, 0.3);
+        }
+        .footer-bottom {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+        .footer-bottom p {
+            color: #666;
+            font-size: 12px;
+            margin: 0;
+        }
+
+        /* Tablet optimizations */
+        @media (max-width: 768px) {
+            .controls {
+                gap: 10px;
+            }
+            .control-group {
+                padding: 12px 15px;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                align-items: center;
+            }
+            .control-group:first-child {
+                width: 100%;
+            }
+            .control-group:first-child > * {
+                flex-shrink: 0;
+            }
+            .control-group:first-child .btn {
+                padding: 8px 12px;
+                font-size: 11px;
+            }
+            #leagueSelect {
+                max-width: 150px;
+            }
+            .view-btn {
+                padding: 8px 12px;
+                font-size: 11px;
+            }
+            h1 {
+                font-size: 1.6rem;
             }
         }
 
@@ -150,10 +463,13 @@
                 min-width: 50px;
             }
             .player-toggle .player-name {
-                font-size: 14px;
+                font-size: 13px;
+                min-width: 70px;
+                flex: 1 1 70px;
             }
             .player-toggle .points {
-                font-size: 13px;
+                font-size: 11px;
+                flex: 0 0 auto;
             }
             .player-toggle .color-dot {
                 width: 10px;
@@ -190,11 +506,25 @@
                 opacity: 1;
             }
             .player-details {
-                padding: 12px 15px;
-                font-size: 14px;
+                padding: 10px 12px;
+                font-size: 12px;
             }
             .detail-row {
-                padding: 6px 0;
+                padding: 4px 0;
+            }
+            .detail-row.sub-row {
+                font-size: 11px;
+            }
+            .footer-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            .footer-section {
+                text-align: center;
+            }
+            .coffee-btn {
+                width: 100%;
+                text-align: center;
             }
         }
         .chart-container {
@@ -261,6 +591,22 @@
             background: linear-gradient(135deg, #04f5ff, #00d4e6);
             color: #37003c;
         }
+        .btn-star {
+            background: transparent;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0 5px;
+            color: #888;
+            transition: all 0.2s;
+        }
+        .btn-star:hover {
+            color: #ffcc00;
+            transform: scale(1.2);
+        }
+        .btn-star.active {
+            color: #ffcc00;
+        }
         .view-btn {
             padding: 10px 18px;
             border: 1px solid rgba(255,255,255,0.2);
@@ -293,13 +639,14 @@
         .player-toggle {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             padding: 8px 10px;
             background: rgba(255,255,255,0.03);
             border-radius: 6px;
             cursor: pointer;
             transition: all 0.15s ease;
             border-left: 4px solid transparent;
+            flex-wrap: wrap;
         }
         .player-toggle:hover {
             background: rgba(0,255,133,0.1);
@@ -309,22 +656,24 @@
             background: rgba(0,255,133,0.08);
         }
         .player-toggle input {
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
             cursor: pointer;
             accent-color: #00ff85;
+            flex-shrink: 0;
         }
         .player-toggle .color-dot {
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
             flex-shrink: 0;
             border: 2px solid rgba(255,255,255,0.3);
         }
         .player-toggle .rank {
-            font-size: 11px;
+            font-size: 10px;
             color: #888;
-            min-width: 40px;
+            min-width: 35px;
+            max-width: 50px;
             white-space: nowrap;
             font-weight: 600;
         }
@@ -335,11 +684,13 @@
             overflow: hidden;
             text-overflow: ellipsis;
             font-weight: 500;
+            min-width: 80px;
         }
         .player-toggle .points {
             font-weight: 700;
             color: #00ff85;
-            font-size: 12px;
+            font-size: 11px;
+            white-space: nowrap;
         }
         .player-toggle .expand-icon {
             font-size: 12px;
@@ -351,20 +702,24 @@
         }
         .player-details {
             background: rgba(0,0,0,0.3);
-            padding: 10px 12px;
+            padding: 8px 10px;
             margin: 0 0 5px 0;
             border-radius: 0 0 6px 6px;
             border-left: 4px solid #04f5ff;
-            font-size: 12px;
+            font-size: 11px;
         }
         .detail-row {
             display: flex;
             justify-content: space-between;
-            padding: 4px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
         }
         .detail-row:last-child {
             border-bottom: none;
+        }
+        .detail-row.sub-row {
+            font-size: 10px;
+            padding: 2px 0;
         }
         .loading {
             text-align: center;
@@ -421,6 +776,11 @@
         .sidebar::-webkit-scrollbar-thumb:hover {
             background: #00d970;
         }
+        /* Pulse animation for live badge */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
     </style>
 </head>
 <body>
@@ -463,33 +823,41 @@
         <h1>FPL League Tracker</h1>
 
         <div class="controls">
-            <div class="control-group">
+            <div class="control-group control-group-league">
                 <label>League:</label>
-                <select id="leagueSelect" onchange="selectLeague()" style="padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(55,0,60,0.8); color: #fff; font-size: 13px; max-width: 200px; cursor: pointer;">
+                <select id="leagueSelect" onchange="selectLeague()">
                 </select>
-                <span style="margin: 0 10px; color: #666;">or</span>
-                <input type="text" id="leagueId" placeholder="League ID" style="width: 80px; padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(55,0,60,0.8); color: #fff; font-size: 13px;">
-                <button class="btn btn-top-10" onclick="loadNewLeague()" style="margin-left: 5px;">Load</button>
-                <button class="btn btn-clear-all" onclick="clearAllCaches()" style="margin-left: 10px;" title="Clear all cached data">Reset All</button>
-                <button class="btn btn-select-all" id="refreshLiveBtn" onclick="refreshLiveData()" style="margin-left: 10px;" title="Refresh live gameweek data">Refresh Live</button>
-                <button class="btn btn-clear-all" onclick="changeTeam()" style="margin-left: 10px;" title="Change Team ID">Change Team</button>
+                <button class="btn-star" id="defaultLeagueBtn" onclick="toggleDefaultLeague()" title="Set as default league">☆</button>
+                <span class="separator">or</span>
+                <input type="text" id="leagueId" placeholder="League ID" class="league-id-input">
+                <button class="btn btn-top-10" onclick="loadNewLeague()">Load</button>
+                <button class="btn btn-clear-all" onclick="clearAllCaches()" title="Clear all cached data">Reset</button>
+                <button class="btn btn-select-all" id="refreshLiveBtn" onclick="refreshLiveData()" title="Refresh live gameweek data">Refresh</button>
+                <button class="btn btn-clear-all" onclick="changeTeam()" title="Change Team ID">Change</button>
             </div>
             <div class="control-group">
-                <label>View:</label>
-                <div style="display: inline-flex; gap: 5px;">
-                    <button class="view-btn active" id="btn-total" onclick="setChartType('total')">Total Points</button>
+                <label>Mode:</label>
+                <div class="view-btns">
+                    <button class="view-btn" id="btn-table-view" onclick="setDisplayMode('table')">📊 Live</button>
+                    <button class="view-btn active" id="btn-chart-view" onclick="setDisplayMode('chart')">📈 Charts</button>
+                </div>
+            </div>
+            <div class="control-group chart-controls" id="chartTypeControls">
+                <label>Chart:</label>
+                <div class="view-btns">
+                    <button class="view-btn active" id="btn-total" onclick="setChartType('total')">Total</button>
                     <button class="view-btn" id="btn-weekly" onclick="setChartType('weekly')">Weekly</button>
                     <button class="view-btn" id="btn-rank" onclick="setChartType('rank')">Position</button>
                 </div>
             </div>
-            <div class="control-group">
+            <div class="control-group chart-controls" id="weekControls">
                 <label>Weeks:</label>
-                <select id="weekStart" onchange="updateWeekRange()" style="padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(55,0,60,0.8); color: #fff; font-size: 13px; width: 70px;">
+                <select id="weekStart" onchange="updateWeekRange()" class="week-select">
                 </select>
-                <span style="margin: 0 5px; color: #666;">to</span>
-                <select id="weekEnd" onchange="updateWeekRange()" style="padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(55,0,60,0.8); color: #fff; font-size: 13px; width: 70px;">
+                <span class="separator">to</span>
+                <select id="weekEnd" onchange="updateWeekRange()" class="week-select">
                 </select>
-                <button class="btn btn-top-10" onclick="resetWeekRange()" style="margin-left: 5px;">All</button>
+                <button class="btn btn-top-10" onclick="resetWeekRange()">All</button>
             </div>
         </div>
 
@@ -523,6 +891,59 @@
                 </div>
             </div>
         </div>
+
+        <!-- Table View (hidden by default) -->
+        <div id="tableView" class="table-view" style="display: none;">
+            <table class="league-table">
+                <thead>
+                    <tr>
+                        <th class="col-rank">#</th>
+                        <th class="col-move"></th>
+                        <th class="col-name">Manager</th>
+                        <th class="col-gw">GW</th>
+                        <th class="col-total">Total</th>
+                        <th class="col-captain">Captain</th>
+                        <th class="col-chip">Chip</th>
+                        <th class="col-autosub">Auto-Sub</th>
+                        <th class="col-bonus">Bonus</th>
+                        <th class="col-defcon">DEFCON</th>
+                        <th class="col-status">Status</th>
+                        <th class="col-or">OR</th>
+                    </tr>
+                </thead>
+                <tbody id="leagueTableBody">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Footer -->
+        <footer class="site-footer">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>FPL League Tracker</h4>
+                    <p>Track your Fantasy Premier League mini-leagues with live scores, interactive charts, and smart predictions.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Features</h4>
+                    <ul>
+                        <li>Live points with auto-subs & vice captain</li>
+                        <li>Interactive charts (Total / Weekly / Position)</li>
+                        <li>Predicted scores & players yet to play</li>
+                        <li>Live bonus tracking during matches</li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Support</h4>
+                    <p>If you find this useful, consider buying me a coffee!</p>
+                    <a href="https://www.buymeacoffee.com/fplleaguetracker" target="_blank" class="coffee-btn">
+                        ☕ Buy Me a Coffee
+                    </a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>Made for FPL managers who want more than just a table.</p>
+            </div>
+        </footer>
     </div>
 
     <script>
@@ -533,6 +954,7 @@
         let selectedEntries = new Set();
         let leagueName = '';
         let currentChartType = 'total';
+        let currentDisplayMode = 'chart';
         let hoveredEntry = null;
         let currentGameweek = null;
         let gameweekFinished = true;
@@ -544,41 +966,146 @@
         let weekRangeStart = 1;
         let weekRangeEnd = 38;
 
+        // Match status tracking
+        let matchesInProgress = false;  // Are any matches currently live?
+        let bonusPending = false;       // Are bonus points being calculated?
+        let gwDataConfirmed = false;    // Has API fully updated for GW?
+
         // Default Team ID for development (Dominic Mackie)
         const DEFAULT_TEAM_ID = null; // Set to null for production - users enter their own Team ID
 
-        // CORS Proxy for FPL API requests - with fallbacks
+        // Check if running on Netlify (use serverless function) or locally (use CORS proxy)
+        const isNetlify = window.location.hostname.includes('netlify.app') ||
+                          window.location.hostname.includes('fpl-league-tracker');
+        const NETLIFY_FUNCTION = '/.netlify/functions/fpl-proxy?path=';
+        console.log('Environment:', isNetlify ? 'Netlify (fast)' : 'Local (CORS proxy)');
+
+        // Fallback CORS Proxies for local development only
         const CORS_PROXIES = [
-            'https://api.codetabs.com/v1/proxy?quest=',
             'https://api.allorigins.win/raw?url=',
-            'https://corsproxy.io/?'
+            'https://corsproxy.io/?',
+            'https://api.codetabs.com/v1/proxy?quest='
         ];
         let currentProxyIndex = 0;
         let CORS_PROXY = CORS_PROXIES[0];
+        let lastSuccessfulProxy = null;
 
         let fetchRetryCount = 0;
         const MAX_FETCH_RETRIES = 3;
 
+        // Concurrent request limiter - lower on mobile for better reliability
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const MAX_CONCURRENT_REQUESTS = isMobile ? 8 : 20;
+        let activeRequests = 0;
+        const requestQueue = [];
+        console.log('Device:', isMobile ? 'Mobile' : 'Desktop', '| Max concurrent:', MAX_CONCURRENT_REQUESTS);
+
+        async function throttledFetch(url, options = {}) {
+            return new Promise((resolve, reject) => {
+                const executeRequest = async () => {
+                    activeRequests++;
+                    try {
+                        const controller = new AbortController();
+                        // Shorter timeout on mobile for faster failover
+                        const timeout = isMobile ? 8000 : (options.timeout || 12000);
+                        const timeoutId = setTimeout(() => controller.abort(), timeout);
+                        const response = await fetch(url, {
+                            ...options,
+                            signal: controller.signal,
+                            keepalive: true
+                        });
+                        clearTimeout(timeoutId);
+                        resolve(response);
+                    } catch (e) {
+                        reject(e);
+                    } finally {
+                        activeRequests--;
+                        processQueue();
+                    }
+                };
+
+                if (activeRequests < MAX_CONCURRENT_REQUESTS) {
+                    executeRequest();
+                } else {
+                    requestQueue.push(executeRequest);
+                }
+            });
+        }
+
+        function processQueue() {
+            while (requestQueue.length > 0 && activeRequests < MAX_CONCURRENT_REQUESTS) {
+                const nextRequest = requestQueue.shift();
+                nextRequest();
+            }
+        }
+
+        // Simple FPL API fetch - uses Netlify function or CORS proxy
+        async function fplApiFetch(apiPath) {
+            if (isNetlify) {
+                const response = await fetch(NETLIFY_FUNCTION + encodeURIComponent(apiPath));
+                if (response.ok) return response;
+                console.warn('Netlify function failed, trying CORS proxy');
+            }
+            // Fallback to CORS proxy
+            const url = 'https://fantasy.premierleague.com' + apiPath;
+            return fetch(CORS_PROXY + encodeURIComponent(url));
+        }
+
         async function fetchWithFallback(url, isRetry = false) {
+            // Extract API path from full URL
+            const apiPath = url.replace('https://fantasy.premierleague.com', '');
+
+            // Use Netlify function if available (much faster!)
+            if (isNetlify) {
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 10000);
+                    const response = await fetch(NETLIFY_FUNCTION + encodeURIComponent(apiPath), {
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+                    if (response.ok) {
+                        return response;
+                    }
+                    console.warn('Netlify function returned', response.status);
+                } catch (e) {
+                    console.warn('Netlify function failed:', e.message);
+                }
+                // Fall through to CORS proxy if Netlify fails
+            }
+
+            // Fallback: CORS proxy (for local dev or if Netlify fails)
+            const startIndex = lastSuccessfulProxy !== null ?
+                CORS_PROXIES.indexOf(lastSuccessfulProxy) : currentProxyIndex;
+
             for (let i = 0; i < CORS_PROXIES.length; i++) {
-                const proxyIndex = (currentProxyIndex + i) % CORS_PROXIES.length;
+                const proxyIndex = (startIndex + i) % CORS_PROXIES.length;
                 const proxy = CORS_PROXIES[proxyIndex];
                 try {
-                    // allorigins and corsproxy need encoded URL, codetabs does not
                     const needsEncoding = proxy.includes('allorigins') || proxy.includes('corsproxy');
                     const fullUrl = proxy + (needsEncoding ? encodeURIComponent(url) : url);
                     console.log(`Trying proxy ${proxyIndex}: ${proxy.split('/')[2]}`);
-                    const response = await fetch(fullUrl);
+
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), isMobile ? 10000 : 15000);
+
+                    const response = await fetch(fullUrl, { signal: controller.signal });
+                    clearTimeout(timeoutId);
+
                     if (response.ok) {
-                        currentProxyIndex = proxyIndex; // Remember working proxy
+                        currentProxyIndex = proxyIndex;
                         CORS_PROXY = proxy;
+                        lastSuccessfulProxy = proxy;
                         console.log(`Proxy ${proxyIndex} succeeded`);
-                        fetchRetryCount = 0; // Reset retry count on success
+                        fetchRetryCount = 0;
                         return response;
                     }
                     console.warn(`Proxy ${proxyIndex} returned ${response.status}`);
                 } catch (e) {
                     console.warn(`Proxy ${proxyIndex} failed:`, e.message);
+                    if (i < CORS_PROXIES.length - 1) {
+                        await new Promise(r => setTimeout(r, 500));
+                    }
                 }
             }
             throw new Error('All proxies failed - FPL API may be temporarily unavailable');
@@ -716,8 +1243,61 @@
             select.innerHTML = userLeagues.map(league =>
                 `<option value="${league.id}">${league.name}</option>`
             ).join('');
-            if (LEAGUE_ID) {
+
+            // Check for default league first, then fall back to LEAGUE_ID
+            const defaultLeagueId = getDefaultLeague();
+            if (defaultLeagueId && userLeagues.some(l => l.id === defaultLeagueId)) {
+                select.value = defaultLeagueId;
+                LEAGUE_ID = defaultLeagueId;
+            } else if (LEAGUE_ID) {
                 select.value = LEAGUE_ID;
+            }
+            updateDefaultLeagueButton();
+        }
+
+        function getDefaultLeague() {
+            return localStorage.getItem('fpl_default_league');
+        }
+
+        function setDefaultLeague(leagueId) {
+            if (leagueId) {
+                localStorage.setItem('fpl_default_league', leagueId);
+            } else {
+                localStorage.removeItem('fpl_default_league');
+            }
+            updateDefaultLeagueButton();
+        }
+
+        function toggleDefaultLeague() {
+            const select = document.getElementById('leagueSelect');
+            const currentLeagueId = select.value;
+            const defaultLeagueId = getDefaultLeague();
+
+            if (defaultLeagueId === currentLeagueId) {
+                // Unset default
+                setDefaultLeague(null);
+            } else {
+                // Set as default
+                setDefaultLeague(currentLeagueId);
+            }
+        }
+
+        function updateDefaultLeagueButton() {
+            const btn = document.getElementById('defaultLeagueBtn');
+            if (!btn) return;
+
+            const select = document.getElementById('leagueSelect');
+            const currentLeagueId = select.value;
+            const defaultLeagueId = getDefaultLeague();
+
+            if (currentLeagueId && defaultLeagueId === currentLeagueId) {
+                btn.textContent = '★';
+                btn.classList.add('active');
+                btn.title = 'Remove as default league';
+            } else {
+                btn.textContent = '☆';
+                btn.classList.remove('active');
+                btn.title = 'Set as default league';
             }
         }
 
@@ -783,16 +1363,182 @@
 
         function setChartType(type) {
             currentChartType = type;
-            // Update button states
-            document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+            // Update button states for chart type only
+            ['btn-total', 'btn-weekly', 'btn-rank'].forEach(id => {
+                document.getElementById(id).classList.remove('active');
+            });
             document.getElementById('btn-' + type).classList.add('active');
             updateChart();
+        }
+
+        function setDisplayMode(mode) {
+            currentDisplayMode = mode;
+            // Update button states
+            document.getElementById('btn-chart-view').classList.toggle('active', mode === 'chart');
+            document.getElementById('btn-table-view').classList.toggle('active', mode === 'table');
+
+            // Toggle visibility of main content areas
+            const mainContent = document.querySelector('.main-content');
+            const tableView = document.getElementById('tableView');
+
+            // Toggle chart-specific controls visibility
+            const chartControls = document.querySelectorAll('.chart-controls');
+            chartControls.forEach(el => {
+                el.style.display = mode === 'chart' ? 'flex' : 'none';
+            });
+
+            if (mode === 'chart') {
+                mainContent.style.display = 'grid';
+                tableView.style.display = 'none';
+            } else {
+                mainContent.style.display = 'none';
+                tableView.style.display = 'block';
+                updateTableView();
+            }
+        }
+
+        function updateTableView() {
+            const tbody = document.getElementById('leagueTableBody');
+            if (!tbody || allPlayers.length === 0) return;
+
+            // Sort players by current position
+            const sortedPlayers = [...allPlayers].sort((a, b) => {
+                const posA = livePositions[a.entry]?.position || a.rank;
+                const posB = livePositions[b.entry]?.position || b.rank;
+                return posA - posB;
+            });
+
+            tbody.innerHTML = sortedPlayers.map((player, idx) => {
+                const live = livePoints[player.entry];
+                const posData = livePositions[player.entry];
+                const position = posData?.position || player.rank;
+                const movement = posData?.movement || 0;
+
+                // Calculate GW points
+                const history = playerHistories[player.entry] || [];
+                const prevGwIndex = currentGameweek - 2;
+                const prevGwData = prevGwIndex >= 0 && history[prevGwIndex] ? history[prevGwIndex] : null;
+                const prevGwTotal = prevGwData ? prevGwData.total_points : 0;
+
+                let gwPoints = player.total - prevGwTotal;
+                let hitDisplay = '';
+                let totalDisplay = player.total;
+
+                if (live) {
+                    // Use predicted points if auto-subs (same calculation as sidebar)
+                    const hasAutoSubs = live.autoSubs && live.autoSubs.length > 0;
+                    gwPoints = hasAutoSubs ? live.predictedPoints : live.netPoints;
+                    if (live.transferCost > 0) {
+                        hitDisplay = `<span class="hit">(-${live.transferCost})</span>`;
+                    }
+                    // Calculate live total same as sidebar
+                    if (live.isLive) {
+                        totalDisplay = prevGwTotal + gwPoints;
+                    }
+                }
+
+                // Movement indicator
+                let moveHtml = '';
+                if (movement > 0) {
+                    moveHtml = `<span class="move-up">▲${movement}</span>`;
+                } else if (movement < 0) {
+                    moveHtml = `<span class="move-down">▼${Math.abs(movement)}</span>`;
+                }
+
+                // Captain display - simplified, no multiplier shown
+                let captainHtml = '-';
+                if (live && live.captainName) {
+                    captainHtml = live.captainName;
+                    if (live.vcActivated) {
+                        captainHtml += ` <span class="vc-active">(VC)</span>`;
+                    }
+                }
+
+                // Chip display
+                let chipHtml = '';
+                if (live && live.chip) {
+                    const chipNames = {
+                        'bboost': 'BB',
+                        '3xc': 'TC',
+                        'freehit': 'FH',
+                        'wildcard': 'WC'
+                    };
+                    chipHtml = `<span class="chip-badge">${chipNames[live.chip] || live.chip}</span>`;
+                }
+
+                // Auto-sub display with points gained
+                let autoSubHtml = '';
+                if (live && live.autoSubs && live.autoSubs.length > 0) {
+                    autoSubHtml = live.autoSubs.map(sub =>
+                        `<span class="autosub-info">${sub.inName} <span style="color:#ffaa00;">(+${sub.pointsGained})</span></span>`
+                    ).join('<br>');
+                }
+
+                // Bonus display (live bonus during matches)
+                let bonusHtml = '';
+                if (live && live.liveBonus > 0) {
+                    bonusHtml = `<span class="bonus-live">+${live.liveBonus}</span>`;
+                }
+
+                // Status display
+                let statusHtml = '';
+                if (live) {
+                    const playing = live.playersPlaying || 0;
+                    const toPlay = live.playersYetToPlay || 0;
+                    if (playing > 0) {
+                        statusHtml = `<span class="status-playing">${playing} playing</span>`;
+                    } else if (toPlay > 0) {
+                        statusHtml = `<span class="status-toplay">${toPlay} to play</span>`;
+                    } else {
+                        statusHtml = `<span class="status-done">Done</span>`;
+                    }
+                }
+
+                // Overall Rank
+                let orHtml = '-';
+                if (live && live.overallRank) {
+                    orHtml = live.overallRank.toLocaleString();
+                }
+
+                // DEFCON points with player names and individual scores
+                let defconHtml = '';
+                if (live && live.defconPlayers && live.defconPlayers.length > 0) {
+                    defconHtml = live.defconPlayers.map(p =>
+                        `<span class="defcon-pts">${p.name} (+${p.points})</span>`
+                    ).join('<br>');
+                }
+
+                // Highlight user's team
+                const isMyTeam = player.entry === userTeamId;
+                const rowClass = isMyTeam ? 'my-team' : '';
+
+                return `
+                    <tr class="${rowClass}">
+                        <td class="col-rank">${position}</td>
+                        <td class="col-move">${moveHtml}</td>
+                        <td class="col-name">
+                            <div class="manager-name">${player.player_name}</div>
+                            <div class="team-name">${player.entry_name}</div>
+                        </td>
+                        <td class="col-gw">${gwPoints} ${hitDisplay}</td>
+                        <td class="col-total">${totalDisplay.toLocaleString()}</td>
+                        <td class="col-captain">${captainHtml}</td>
+                        <td class="col-chip">${chipHtml}</td>
+                        <td class="col-autosub">${autoSubHtml}</td>
+                        <td class="col-bonus">${bonusHtml}</td>
+                        <td class="col-defcon">${defconHtml}</td>
+                        <td class="col-status">${statusHtml}</td>
+                        <td class="col-or">${orHtml}</td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         function loadNewLeague() {
             const newId = document.getElementById('leagueId').value.trim();
             if (newId && !isNaN(newId)) {
                 LEAGUE_ID = parseInt(newId);
+                updateDefaultLeagueButton();
                 resetAndLoad();
             }
         }
@@ -802,6 +1548,7 @@
             const newLeagueId = parseInt(select.value);
             console.log('Selected league from dropdown:', newLeagueId, select.options[select.selectedIndex].text);
             LEAGUE_ID = newLeagueId;
+            updateDefaultLeagueButton();
             resetAndLoad();
         }
 
@@ -890,11 +1637,14 @@
             const url = `https://fantasy.premierleague.com/api/entry/${entryId}/history/`;
             for (let attempt = 0; attempt <= retries; attempt++) {
                 try {
-                    const response = await fetch(CORS_PROXY + url);
+                    const fetchUrl = isNetlify ?
+                        NETLIFY_FUNCTION + encodeURIComponent(`/api/entry/${entryId}/history/`) :
+                        CORS_PROXY + url;
+                    const response = await throttledFetch(fetchUrl, { timeout: 10000 });
                     if (!response.ok) {
                         console.error(`HTTP error for entry ${entryId}: ${response.status}`);
                         if (attempt < retries) {
-                            await new Promise(r => setTimeout(r, 500));
+                            await new Promise(r => setTimeout(r, 300));
                             continue;
                         }
                         return null;
@@ -920,12 +1670,11 @@
 
         async function fetchBootstrapStatic() {
             try {
-                const url = 'https://fantasy.premierleague.com/api/bootstrap-static/';
-                const response = await fetch(CORS_PROXY + url);
+                const response = await fplApiFetch('/api/bootstrap-static/');
                 const data = await response.json();
 
                 // Log all gameweeks for debugging
-                const gws = data.events.map(e => ({ id: e.id, is_current: e.is_current, is_next: e.is_next, finished: e.finished, deadline: e.deadline_time }));
+                const gws = data.events.map(e => ({ id: e.id, is_current: e.is_current, is_next: e.is_next, finished: e.finished, data_checked: e.data_checked, deadline: e.deadline_time }));
                 console.log('Gameweeks:', gws.filter(g => g.is_current || g.is_next));
 
                 // Find current gameweek
@@ -940,22 +1689,25 @@
                         // Next GW deadline has passed, so it's actually the active one
                         currentGameweek = nextGw.id;
                         gameweekFinished = nextGw.finished;
-                        console.log('Using NEXT gameweek (deadline passed):', currentGameweek, gameweekFinished ? '(finished)' : '(in progress)');
-                        return { gameweek: nextGw.id, finished: nextGw.finished, isNext: true };
+                        gwDataConfirmed = nextGw.data_checked || false;
+                        console.log('Using NEXT gameweek (deadline passed):', currentGameweek, gameweekFinished ? '(finished)' : '(in progress)', gwDataConfirmed ? '(data confirmed)' : '');
+                        return { gameweek: nextGw.id, finished: nextGw.finished, dataChecked: nextGw.data_checked, isNext: true };
                     }
                 }
 
                 if (currentGw) {
                     currentGameweek = currentGw.id;
                     gameweekFinished = currentGw.finished;
-                    console.log('Current gameweek:', currentGameweek, gameweekFinished ? '(finished)' : '(in progress)');
-                    return { gameweek: currentGw.id, finished: currentGw.finished, isNext: false };
+                    gwDataConfirmed = currentGw.data_checked || false;
+                    console.log('Current gameweek:', currentGameweek, gameweekFinished ? '(finished)' : '(in progress)', gwDataConfirmed ? '(data confirmed)' : '');
+                    return { gameweek: currentGw.id, finished: currentGw.finished, dataChecked: currentGw.data_checked, isNext: false };
                 }
 
                 // Fallback to next - 1
                 if (nextGw) {
                     currentGameweek = nextGw.id - 1;
-                    return { gameweek: nextGw.id - 1, finished: true, isNext: true };
+                    gwDataConfirmed = true;
+                    return { gameweek: nextGw.id - 1, finished: true, dataChecked: true, isNext: true };
                 }
                 return null;
             } catch (e) {
@@ -964,20 +1716,123 @@
             }
         }
 
+        // Fetch fixture status to detect if matches are currently in progress
+        async function fetchFixtureStatus(gameweek) {
+            try {
+                const response = await fplApiFetch(`/api/fixtures/?event=${gameweek}`);
+                const fixtures = await response.json();
+
+                // Count fixture statuses
+                let liveCount = 0;
+                let finishedProvisional = 0;
+                let finishedConfirmed = 0;
+                let notStarted = 0;
+
+                fixtures.forEach(f => {
+                    if (f.started && !f.finished) {
+                        liveCount++;
+                    } else if (f.finished_provisional && !f.finished) {
+                        finishedProvisional++;
+                    } else if (f.finished) {
+                        finishedConfirmed++;
+                    } else {
+                        notStarted++;
+                    }
+                });
+
+                matchesInProgress = liveCount > 0;
+                bonusPending = finishedProvisional > 0;
+
+                console.log(`Fixture status GW${gameweek}: ${liveCount} live, ${finishedProvisional} bonus pending, ${finishedConfirmed} confirmed, ${notStarted} not started`);
+
+                return {
+                    matchesLive: liveCount > 0,
+                    bonusPending: finishedProvisional > 0,
+                    allConfirmed: finishedConfirmed === fixtures.length,
+                    fixtures: fixtures.length,
+                    liveCount,
+                    notStarted
+                };
+            } catch (e) {
+                console.error('Failed to fetch fixture status:', e);
+                return { matchesLive: false, bonusPending: false, allConfirmed: true };
+            }
+        }
+
         // Cache for live player scores (fetched once per refresh)
         let livePlayerScores = null;
+        let livePlayerData = null; // Full player data including minutes
+        let bootstrapPlayers = null; // Player metadata (team, position)
+        let gwFixtures = null; // Fixtures for current GW
+
+        async function fetchBootstrapPlayers() {
+            if (bootstrapPlayers) return bootstrapPlayers;
+            try {
+                const response = await fplApiFetch('/api/bootstrap-static/');
+                const data = await response.json();
+                bootstrapPlayers = {};
+                data.elements.forEach(p => {
+                    bootstrapPlayers[p.id] = {
+                        team: p.team,
+                        position: p.element_type, // 1=GK, 2=DEF, 3=MID, 4=FWD
+                        name: p.web_name
+                    };
+                });
+                return bootstrapPlayers;
+            } catch (e) {
+                console.error('Failed to fetch bootstrap players:', e);
+                return null;
+            }
+        }
+
+        async function fetchGwFixtures(gameweek) {
+            if (gwFixtures) return gwFixtures;
+            try {
+                const response = await fplApiFetch(`/api/fixtures/?event=${gameweek}`);
+                gwFixtures = await response.json();
+                return gwFixtures;
+            } catch (e) {
+                console.error('Failed to fetch GW fixtures:', e);
+                return [];
+            }
+        }
 
         async function fetchLivePlayerScores(gameweek) {
             if (livePlayerScores) return livePlayerScores;
             try {
-                const url = `https://fantasy.premierleague.com/api/event/${gameweek}/live/`;
-                const response = await fetch(CORS_PROXY + url);
+                const response = await fplApiFetch(`/api/event/${gameweek}/live/`);
                 if (!response.ok) return null;
                 const data = await response.json();
-                // Build map of element_id -> total_points
+                // Build map of element_id -> { points, minutes, bonus, bps, defcon }
                 livePlayerScores = {};
+                livePlayerData = {};
                 data.elements.forEach(el => {
                     livePlayerScores[el.id] = el.stats.total_points;
+
+                    // Extract DEFCON points from explain array
+                    let defconPoints = 0;
+                    if (el.explain && Array.isArray(el.explain)) {
+                        el.explain.forEach(fixture => {
+                            if (fixture.stats && Array.isArray(fixture.stats)) {
+                                fixture.stats.forEach(stat => {
+                                    // Check for defensive contribution identifiers
+                                    if (stat.identifier === 'defcon' ||
+                                        stat.identifier === 'defensive_contribution' ||
+                                        stat.identifier === 'defensive_contributions') {
+                                        defconPoints += stat.points || 0;
+                                    }
+                                });
+                            }
+                        });
+                    }
+
+                    livePlayerData[el.id] = {
+                        points: el.stats.total_points,
+                        minutes: el.stats.minutes,
+                        bonus: el.stats.bonus || 0,
+                        bps: el.stats.bps || 0,  // Live BPS score for calculating provisional bonus
+                        defcon: defconPoints
+                    };
                 });
                 console.log('Fetched live scores for', Object.keys(livePlayerScores).length, 'players');
                 return livePlayerScores;
@@ -987,27 +1842,282 @@
             }
         }
 
-        async function fetchLivePoints(entryId, gameweek) {
+        // Calculate live bonus points for a fixture based on BPS
+        function calculateLiveBonus(fixturePlayersBps) {
+            // Sort by BPS descending
+            const sorted = [...fixturePlayersBps].sort((a, b) => b.bps - a.bps);
+            const bonusMap = {};
+
+            if (sorted.length === 0) return bonusMap;
+
+            // Handle ties according to FPL rules
+            let bonusLeft = 3;
+            let i = 0;
+
+            while (bonusLeft > 0 && i < sorted.length) {
+                const currentBps = sorted[i].bps;
+                if (currentBps === 0) break; // No bonus for 0 BPS
+
+                // Find all players with same BPS
+                const tiedPlayers = [];
+                while (i < sorted.length && sorted[i].bps === currentBps) {
+                    tiedPlayers.push(sorted[i].element);
+                    i++;
+                }
+
+                // All tied players get the same bonus
+                const bonusToAward = bonusLeft;
+                tiedPlayers.forEach(el => {
+                    bonusMap[el] = bonusToAward;
+                });
+
+                // Reduce bonus available
+                bonusLeft -= tiedPlayers.length;
+                if (bonusLeft < 0) bonusLeft = 0;
+            }
+
+            return bonusMap;
+        }
+
+        // Pre-fetch shared data for all players (call once before batch processing)
+        async function prefetchSharedData(gameweek) {
+            console.log('Pre-fetching shared data...');
+            const [playerScores, players, fixtures] = await Promise.all([
+                fetchLivePlayerScores(gameweek),
+                fetchBootstrapPlayers(),
+                fetchGwFixtures(gameweek)
+            ]);
+            console.log('Shared data pre-fetched');
+            return { playerScores, players, fixtures };
+        }
+
+        async function fetchLivePoints(entryId, gameweek, sharedData = null) {
             try {
-                // Get manager's picks
-                const url = `https://fantasy.premierleague.com/api/entry/${entryId}/event/${gameweek}/picks/`;
-                const response = await fetch(CORS_PROXY + url);
+                // Get manager's picks using throttled fetch for better concurrency
+                const apiPath = `/api/entry/${entryId}/event/${gameweek}/picks/`;
+                const fetchUrl = isNetlify ?
+                    NETLIFY_FUNCTION + encodeURIComponent(apiPath) :
+                    CORS_PROXY + 'https://fantasy.premierleague.com' + apiPath;
+                const response = await throttledFetch(fetchUrl, { timeout: 10000 });
                 if (!response.ok) return null;
                 const data = await response.json();
                 const h = data.entry_history;
 
-                // Get live player scores
-                const playerScores = await fetchLivePlayerScores(gameweek);
+                // Use pre-fetched shared data if available, otherwise fetch (fallback)
+                const playerScores = sharedData?.playerScores || await fetchLivePlayerScores(gameweek);
+                const players = sharedData?.players || await fetchBootstrapPlayers();
+                const fixtures = sharedData?.fixtures || await fetchGwFixtures(gameweek);
 
-                // Calculate live points from picks
-                let calculatedPoints = 0;
-                if (playerScores && data.picks) {
-                    for (const pick of data.picks) {
-                        // Only count players in starting 11 (position 1-11)
-                        if (pick.position <= 11) {
-                            const playerPoints = playerScores[pick.element] || 0;
-                            calculatedPoints += playerPoints * pick.multiplier;
+                // Build set of teams that have finished playing
+                const teamsFinished = new Set();
+                const teamsPlaying = new Set();
+                const teamsYetToPlay = new Set();
+                fixtures.forEach(f => {
+                    if (f.finished || f.finished_provisional) {
+                        teamsFinished.add(f.team_h);
+                        teamsFinished.add(f.team_a);
+                    } else if (f.started) {
+                        teamsPlaying.add(f.team_h);
+                        teamsPlaying.add(f.team_a);
+                    } else {
+                        teamsYetToPlay.add(f.team_h);
+                        teamsYetToPlay.add(f.team_a);
+                    }
+                });
+
+                // Calculate live bonus for in-progress fixtures
+                const liveBonusMap = {};
+                fixtures.forEach(f => {
+                    // Only calculate live bonus for started but not finished fixtures
+                    if (f.started && !f.finished && !f.finished_provisional) {
+                        // Get all players from both teams in this fixture
+                        const fixturePlayers = [];
+                        if (players && livePlayerData) {
+                            Object.entries(players).forEach(([playerId, playerInfo]) => {
+                                if (playerInfo.team === f.team_h || playerInfo.team === f.team_a) {
+                                    const pData = livePlayerData[playerId];
+                                    if (pData && pData.minutes > 0) {
+                                        fixturePlayers.push({
+                                            element: parseInt(playerId),
+                                            bps: pData.bps || 0
+                                        });
+                                    }
+                                }
+                            });
                         }
+                        // Calculate bonus for this fixture
+                        const fixtureBonus = calculateLiveBonus(fixturePlayers);
+                        Object.assign(liveBonusMap, fixtureBonus);
+                    }
+                });
+
+                // Separate starting 11 and bench
+                const starting = data.picks.filter(p => p.position <= 11);
+                const bench = data.picks.filter(p => p.position > 11).sort((a, b) => a.position - b.position);
+
+                // Vice Captain Logic: Check if captain didn't play
+                const captain = data.picks.find(p => p.is_captain);
+                const viceCaptain = data.picks.find(p => p.is_vice_captain);
+                let vcActivated = false;
+                let effectiveMultipliers = {}; // Track adjusted multipliers
+
+                // Initialize multipliers from picks
+                data.picks.forEach(p => {
+                    effectiveMultipliers[p.element] = p.multiplier;
+                });
+
+                if (captain && viceCaptain) {
+                    const captainInfo = players ? players[captain.element] : null;
+                    const captainData = livePlayerData ? livePlayerData[captain.element] : null;
+                    const captainTeam = captainInfo ? captainInfo.team : 0;
+                    const captainMins = captainData ? captainData.minutes : 0;
+
+                    // If captain's fixture is finished and they played 0 minutes
+                    if (teamsFinished.has(captainTeam) && captainMins === 0) {
+                        // Transfer captain multiplier to vice captain
+                        effectiveMultipliers[captain.element] = 1; // Captain loses multiplier
+                        effectiveMultipliers[viceCaptain.element] = captain.multiplier; // VC gets it
+                        vcActivated = true;
+                    }
+                }
+
+                // Calculate current points and identify players needing auto-sub
+                let calculatedPoints = 0;
+                let playersYetToPlay = 0;
+                let playersPlaying = 0;
+                const needsAutoSub = []; // Starting players with 0 mins and fixture finished
+
+                for (const pick of starting) {
+                    const playerInfo = players ? players[pick.element] : null;
+                    const playerData = livePlayerData ? livePlayerData[pick.element] : null;
+                    const playerPoints = playerScores ? (playerScores[pick.element] || 0) : 0;
+                    const minutes = playerData ? playerData.minutes : 0;
+                    const team = playerInfo ? playerInfo.team : 0;
+                    const multiplier = effectiveMultipliers[pick.element] || 1;
+
+                    calculatedPoints += playerPoints * multiplier;
+
+                    // Check if player yet to play
+                    if (teamsYetToPlay.has(team)) {
+                        playersYetToPlay++;
+                    } else if (teamsPlaying.has(team)) {
+                        playersPlaying++;
+                    } else if (teamsFinished.has(team) && minutes === 0) {
+                        // Player didn't play and fixture is done - needs auto-sub
+                        needsAutoSub.push(pick);
+                    }
+                }
+
+                // Get active chip (bboost, 3xc, freehit, wildcard)
+                const activeChip = data.active_chip || null;
+                const isBenchBoost = activeChip === 'bboost';
+
+                // Only count bench players if Bench Boost is active
+                if (isBenchBoost) {
+                    for (const pick of bench) {
+                        const playerInfo = players ? players[pick.element] : null;
+                        const playerPoints = playerScores ? (playerScores[pick.element] || 0) : 0;
+                        const team = playerInfo ? playerInfo.team : 0;
+
+                        // Add bench points to calculated total (Bench Boost scores all 15)
+                        calculatedPoints += playerPoints;
+
+                        if (teamsYetToPlay.has(team)) {
+                            playersYetToPlay++;
+                        } else if (teamsPlaying.has(team)) {
+                            playersPlaying++;
+                        }
+                    }
+                }
+
+                // Calculate predicted points with auto-subs (proper FPL rules)
+                let predictedPoints = calculatedPoints;
+                const autoSubs = [];
+
+                // Count current formation (after removing players who didn't play)
+                const getFormation = (activePicks) => {
+                    const formation = { 1: 0, 2: 0, 3: 0, 4: 0 }; // GK, DEF, MID, FWD
+                    activePicks.forEach(pick => {
+                        const info = players ? players[pick.element] : null;
+                        if (info) formation[info.position]++;
+                    });
+                    return formation;
+                };
+
+                // Check if a substitution is valid (maintains valid formation)
+                // Official FPL rules: min 1 GK, min 3 DEF, min 2 MID, min 1 FWD
+                const isValidSub = (outPos, inPos, currentFormation) => {
+                    // GK can only be replaced by GK
+                    if (outPos === 1) return inPos === 1;
+                    if (inPos === 1) return false; // Can't sub GK in for outfield
+
+                    // Simulate the substitution
+                    const newFormation = { ...currentFormation };
+                    newFormation[outPos]--;
+                    newFormation[inPos]++;
+
+                    // Check official FPL formation requirements
+                    if (newFormation[1] < 1) return false; // Need at least 1 GK
+                    if (newFormation[2] < 3) return false; // Need at least 3 DEF
+                    if (newFormation[3] < 2) return false; // Need at least 2 MID
+                    if (newFormation[4] < 1) return false; // Need at least 1 FWD
+
+                    return true;
+                };
+
+                // Track which players are "active" (starting + already subbed in)
+                let activePicks = starting.filter(p => !needsAutoSub.includes(p));
+                const usedBench = new Set();
+
+                // Process auto-subs in order
+                for (const outPlayer of needsAutoSub) {
+                    const outInfo = players ? players[outPlayer.element] : null;
+                    const outPos = outInfo ? outInfo.position : 0;
+                    const currentFormation = getFormation(activePicks);
+
+                    // Find first valid bench player (in bench order: 12, 13, 14, 15)
+                    for (const benchPlayer of bench) {
+                        if (usedBench.has(benchPlayer.element)) continue;
+
+                        const benchInfo = players ? players[benchPlayer.element] : null;
+                        const benchPos = benchInfo ? benchInfo.position : 0;
+                        const benchData = livePlayerData ? livePlayerData[benchPlayer.element] : null;
+                        const benchMins = benchData ? benchData.minutes : 0;
+                        const benchTeam = benchInfo ? benchInfo.team : 0;
+
+                        // Check if bench player played (or hasn't played yet)
+                        const benchFixtureFinished = teamsFinished.has(benchTeam);
+                        if (benchFixtureFinished && benchMins === 0) continue; // Didn't play
+
+                        // Check if substitution is valid for formation
+                        if (!isValidSub(outPos, benchPos, currentFormation)) continue;
+
+                        // Valid sub found!
+                        usedBench.add(benchPlayer.element);
+                        activePicks.push(benchPlayer);
+
+                        const benchPoints = playerScores ? (playerScores[benchPlayer.element] || 0) : 0;
+                        const outPoints = playerScores ? (playerScores[outPlayer.element] || 0) : 0;
+                        const outMultiplier = effectiveMultipliers[outPlayer.element] || 1;
+
+                        // Add the difference (use effective multiplier for VC scenarios)
+                        predictedPoints += (benchPoints - outPoints) * outMultiplier;
+
+                        // Count if this auto-subbed player is yet to play or playing
+                        if (teamsYetToPlay.has(benchTeam)) {
+                            playersYetToPlay++;
+                        } else if (teamsPlaying.has(benchTeam)) {
+                            playersPlaying++;
+                        }
+
+                        autoSubs.push({
+                            out: outPlayer.element,
+                            in: benchPlayer.element,
+                            outName: outInfo?.name || '?',
+                            inName: benchInfo?.name || '?',
+                            pointsGained: benchPoints
+                        });
+                        break;
                     }
                 }
 
@@ -1016,16 +2126,69 @@
                 const transferCost = h.event_transfers_cost || 0;
                 const netPoints = points - transferCost;
 
-                // Get active chip (bboost, 3xc, freehit, wildcard)
-                const activeChip = data.active_chip || null;
+                // Calculate provisional bonus for in-progress fixtures only
+                // (confirmed bonus is already included in total_points)
+                let liveBonus = 0;
+                let totalDefcon = 0;
+                const defconPlayers = []; // Track which players earned DEFCON
+                const activePlayers = isBenchBoost ? data.picks : data.picks.filter(p => p.position <= 11);
+                activePlayers.forEach(pick => {
+                    // Only count provisional bonus from liveBonusMap (in-progress fixtures only)
+                    const provisionalBonus = liveBonusMap[pick.element] || 0;
+                    liveBonus += provisionalBonus;
+
+                    // Sum DEFCON points for active players
+                    const playerLiveData = livePlayerData ? livePlayerData[pick.element] : null;
+                    if (playerLiveData && playerLiveData.defcon) {
+                        totalDefcon += playerLiveData.defcon;
+                        const playerInfo = players ? players[pick.element] : null;
+                        defconPlayers.push({
+                            name: playerInfo?.name || 'Unknown',
+                            points: playerLiveData.defcon
+                        });
+                    }
+                });
+
+                // Also count DEFCON for auto-subbed players
+                autoSubs.forEach(sub => {
+                    const playerLiveData = livePlayerData ? livePlayerData[sub.in] : null;
+                    if (playerLiveData && playerLiveData.defcon) {
+                        totalDefcon += playerLiveData.defcon;
+                        const playerInfo = players ? players[sub.in] : null;
+                        defconPlayers.push({
+                            name: playerInfo?.name || 'Unknown',
+                            points: playerLiveData.defcon
+                        });
+                    }
+                });
+
+                // Get captain and vice captain names for display
+                const captainInfo = captain && players ? players[captain.element] : null;
+                const captainName = captainInfo ? captainInfo.name : null;
+                const captainPoints = captain && playerScores ? (playerScores[captain.element] || 0) : 0;
+                const vcInfo = viceCaptain && players ? players[viceCaptain.element] : null;
+                const vcName = vcInfo ? vcInfo.name : null;
 
                 return {
                     points: points,
                     netPoints: netPoints,
                     transferCost: transferCost,
                     totalPoints: h.total_points,
-                    rank: h.rank,
-                    chip: activeChip
+                    overallRank: h.overall_rank,
+                    gwRank: h.rank,
+                    chip: activeChip,
+                    playersYetToPlay: playersYetToPlay,
+                    playersPlaying: playersPlaying,
+                    predictedPoints: predictedPoints - transferCost,
+                    autoSubs: autoSubs,
+                    vcActivated: vcActivated,
+                    vcName: vcName,
+                    liveBonus: liveBonus,
+                    defconPoints: totalDefcon,
+                    defconPlayers: defconPlayers,
+                    captainName: captainName,
+                    captainPoints: captainPoints,
+                    isTripleCaptain: activeChip === '3xc'
                 };
             } catch (e) {
                 console.error(`Failed to fetch live points for ${entryId}:`, e);
@@ -1047,38 +2210,82 @@
             }
 
             try {
-            // Clear cached player scores to get fresh data
+            // Clear cached data to get fresh data
             livePlayerScores = null;
+            livePlayerData = null;
+            gwFixtures = null;
+            bootstrapPlayers = null;
+
+            // Pre-fetch ALL shared data in parallel ONCE before processing players
+            console.log('Pre-fetching shared data and fixture status...');
+            const [fixtureStatus, sharedData] = await Promise.all([
+                fetchFixtureStatus(currentGameweek),
+                prefetchSharedData(currentGameweek)
+            ]);
+            console.log('Fixture status:', fixtureStatus);
 
             const newLivePoints = {};
 
-            // Fetch live data in parallel batches for speed
-            const LIVE_BATCH_SIZE = 15; // Increased for faster loading
-            const totalBatches = Math.ceil(allPlayers.length / LIVE_BATCH_SIZE);
+            // Prioritize selected players first, then top 20, then rest
+            const selectedArray = allPlayers.filter(p => selectedEntries.has(p.entry));
+            const top20 = allPlayers.slice(0, 20).filter(p => !selectedEntries.has(p.entry));
+            const rest = allPlayers.slice(20).filter(p => !selectedEntries.has(p.entry));
+            const prioritizedPlayers = [...selectedArray, ...top20, ...rest];
+
+            // Aggressive batch size for maximum throughput
+            const LIVE_BATCH_SIZE = Math.min(100, Math.max(50, prioritizedPlayers.length));
+            const totalBatches = Math.ceil(prioritizedPlayers.length / LIVE_BATCH_SIZE);
+            console.log(`Processing ${prioritizedPlayers.length} players in ${totalBatches} batches of ${LIVE_BATCH_SIZE}`);
 
             for (let batchIdx = 0; batchIdx < totalBatches; batchIdx++) {
                 const startIdx = batchIdx * LIVE_BATCH_SIZE;
-                const endIdx = Math.min(startIdx + LIVE_BATCH_SIZE, allPlayers.length);
-                const batch = allPlayers.slice(startIdx, endIdx);
+                const endIdx = Math.min(startIdx + LIVE_BATCH_SIZE, prioritizedPlayers.length);
+                const batch = prioritizedPlayers.slice(startIdx, endIdx);
 
-                // Fetch all in batch in parallel
+                // Fetch all in batch in parallel, passing shared data to avoid redundant fetches
                 const batchResults = await Promise.all(
                     batch.map(async (player) => {
-                        const live = await fetchLivePoints(player.entry, currentGameweek);
-                        return { entry: player.entry, live };
+                        const live = await fetchLivePoints(player.entry, currentGameweek, sharedData);
+                        return { entry: player.entry, live, apiTotal: player.total };
                     })
                 );
 
                 // Process results
-                batchResults.forEach(({ entry, live }) => {
+                batchResults.forEach(({ entry, live, apiTotal }) => {
                     if (live) {
+                        // Get previous GW total from history
+                        const history = playerHistories[entry] || [];
+                        const prevGwIndex = currentGameweek - 2;
+                        const prevGwData = prevGwIndex >= 0 && history[prevGwIndex] ? history[prevGwIndex] : null;
+                        const prevGwTotal = prevGwData ? prevGwData.total_points : 0;
+
+                        // Calculate GW points from API total (doesn't double-count)
+                        const gwPointsFromApi = apiTotal - prevGwTotal;
+
                         newLivePoints[entry] = {
-                            points: live.points,
-                            netPoints: live.netPoints,
+                            points: live.points,                    // Raw GW points (before hits)
+                            netPoints: live.netPoints,              // GW points minus hits
                             transferCost: live.transferCost,
                             totalPoints: live.totalPoints,
                             chip: live.chip,
-                            isLive: true
+                            isLive: fixtureStatus.matchesLive,      // Only true if matches in progress
+                            isBonusPending: fixtureStatus.bonusPending,
+                            gwPointsFromApi: gwPointsFromApi,       // GW points calculated from API total
+                            apiTotal: apiTotal,                     // The API's total (source of truth)
+                            playersYetToPlay: live.playersYetToPlay,
+                            playersPlaying: live.playersPlaying,
+                            predictedPoints: live.predictedPoints,
+                            autoSubs: live.autoSubs,
+                            vcActivated: live.vcActivated,
+                            vcName: live.vcName,
+                            liveBonus: live.liveBonus,
+                            defconPoints: live.defconPoints,
+                            defconPlayers: live.defconPlayers,
+                            overallRank: live.overallRank,          // Overall FPL rank in the world
+                            gwRank: live.gwRank,                     // Gameweek rank
+                            captainName: live.captainName,
+                            captainPoints: live.captainPoints,
+                            isTripleCaptain: live.isTripleCaptain
                         };
                     }
                 });
@@ -1087,23 +2294,18 @@
                 if (refreshBtn) {
                     refreshBtn.textContent = `${Math.round((endIdx / allPlayers.length) * 100)}%`;
                 }
-
-                // Brief delay between batches (minimal for speed)
-                if (batchIdx < totalBatches - 1) {
-                    await new Promise(r => setTimeout(r, 20));
-                }
+                // No delay - maximize throughput
             }
 
             livePoints = newLivePoints;
             console.log('Live data fetched for', Object.keys(newLivePoints).length, 'players');
+            console.log('Matches in progress:', fixtureStatus.matchesLive, '| Bonus pending:', fixtureStatus.bonusPending);
 
             // Calculate previous GW positions (before current GW started)
-            // We need to find the gameweek BEFORE the current one
-            const prevGwIndex = currentGameweek - 2; // e.g., if current is GW24, we want index 22 (GW23)
+            const prevGwIndex = currentGameweek - 2;
 
             const prevGwRankings = allPlayers.map(p => {
                 const history = playerHistories[p.entry] || [];
-                // Get the total points at end of previous gameweek (not current)
                 const prevGwData = prevGwIndex >= 0 && history[prevGwIndex] ? history[prevGwIndex] : null;
                 const prevTotal = prevGwData ? prevGwData.total_points : 0;
                 return { entry: p.entry, prevTotal };
@@ -1121,34 +2323,68 @@
             });
             console.log('Previous GW positions (end of GW' + (currentGameweek - 1) + '):', prevPosDebug);
 
-            // Calculate live positions using: previous total + current GW live points
-            const liveRankings = allPlayers.map(p => {
+            // Calculate current positions using API total as source of truth
+            // If matches are live, we may need to add live delta on top
+            const currentRankings = allPlayers.map(p => {
                 const live = newLivePoints[p.entry];
                 const history = playerHistories[p.entry] || [];
-                // Get previous total (before current GW) - use prevGwIndex
                 const prevGwData = prevGwIndex >= 0 && history[prevGwIndex] ? history[prevGwIndex] : null;
-                const previousTotal = prevGwData ? prevGwData.total_points : 0;
-                // Add live GW points (net of hits)
-                const liveTotal = live ? previousTotal + live.netPoints : previousTotal;
-                return { entry: p.entry, total: liveTotal, oldRank: prevPositions[p.entry] || p.rank, liveGwPoints: live ? live.netPoints : 0 };
+                const prevTotal = prevGwData ? prevGwData.total_points : 0;
+
+                let currentTotal;
+                let gwPoints;
+
+                if (fixtureStatus.matchesLive && live) {
+                    // Matches in progress: use previous total + live calculated points
+                    // This handles the case where API hasn't updated yet
+                    currentTotal = prevTotal + live.netPoints;
+                    gwPoints = live.netPoints;
+                } else {
+                    // No matches live: use API total directly (already includes all confirmed points)
+                    currentTotal = p.total;
+                    gwPoints = p.total - prevTotal;
+                }
+
+                return {
+                    entry: p.entry,
+                    total: currentTotal,
+                    oldRank: prevPositions[p.entry] || p.rank,
+                    gwPoints: gwPoints,
+                    transferCost: live ? live.transferCost : 0
+                };
             }).sort((a, b) => b.total - a.total);
 
-            // Debug: show live rankings with names
-            const liveDebug = liveRankings.slice(0, 10).map((r, i) => {
+            // Debug: show current rankings
+            const rankDebug = currentRankings.slice(0, 10).map((r, i) => {
                 const player = allPlayers.find(p => p.entry === r.entry);
-                return `#${i+1}: ${player ? player.player_name : r.entry} (${r.total} pts, was #${r.oldRank}, GW+${r.liveGwPoints})`;
+                return `#${i+1}: ${player ? player.player_name : r.entry} (${r.total} pts, was #${r.oldRank}, GW+${r.gwPoints})`;
             });
-            console.log('Live rankings (GW' + currentGameweek + '):', liveDebug);
+            console.log('Current rankings (GW' + currentGameweek + '):', rankDebug);
 
             livePositions = {};
-            liveRankings.forEach((item, idx) => {
+            currentRankings.forEach((item, idx) => {
                 const newRank = idx + 1;
-                const movement = item.oldRank - newRank; // positive = moved up
-                livePositions[item.entry] = { position: newRank, movement };
+                const movement = item.oldRank - newRank;
+                livePositions[item.entry] = {
+                    position: newRank,
+                    movement: movement,
+                    currentTotal: item.total,
+                    gwPoints: item.gwPoints
+                };
             });
 
+            // Update button text based on status
             if (refreshBtn) {
-                refreshBtn.textContent = 'Refresh Live';
+                if (fixtureStatus.matchesLive) {
+                    refreshBtn.textContent = 'Refresh Live';
+                    refreshBtn.style.background = '#ff4757'; // Red for live
+                } else if (fixtureStatus.bonusPending) {
+                    refreshBtn.textContent = 'Bonus Pending';
+                    refreshBtn.style.background = '#ffaa00'; // Orange for pending
+                } else {
+                    refreshBtn.textContent = 'Refresh';
+                    refreshBtn.style.background = ''; // Default
+                }
                 refreshBtn.disabled = false;
             }
 
@@ -1248,11 +2484,15 @@
             }
         }
 
-        // Parallel batch loading for faster performance
-        const BATCH_SIZE = 10; // Load 10 players at a time for speed
+        // Aggressive batch sizing for maximum throughput (throttledFetch handles concurrency)
+        function getOptimalBatchSize(playerCount) {
+            if (playerCount <= 30) return playerCount;  // Small league: all at once
+            if (playerCount <= 100) return 100;         // Medium league: 1-2 batches
+            return 150;                                  // Large league: aggressive batching
+        }
 
         async function fetchFreshData() {
-            const fetchingLeagueId = LEAGUE_ID; // Capture current league at start
+            const fetchingLeagueId = LEAGUE_ID;
             try {
                 console.log('Fetching fresh data for league:', fetchingLeagueId);
                 const freshPlayers = await fetchLeagueStandings();
@@ -1262,7 +2502,8 @@
                 let loadedCount = 0;
                 const failedPlayers = [];
 
-                // Process players in parallel batches for faster loading
+                // Dynamic batch size based on league size
+                const BATCH_SIZE = getOptimalBatchSize(freshPlayers.length);
                 const totalBatches = Math.ceil(freshPlayers.length / BATCH_SIZE);
                 console.log(`Loading ${freshPlayers.length} players in ${totalBatches} batches of ${BATCH_SIZE}`);
 
@@ -1319,10 +2560,16 @@
                     if (loadingPercent) loadingPercent.textContent = percent + '%';
                     if (loadingText) loadingText.textContent = `Loading ${endIdx}/${freshPlayers.length}`;
 
-                    // Brief delay between batches (reduced for speed)
-                    if (batchIdx < totalBatches - 1) {
-                        await new Promise(resolve => setTimeout(resolve, 30));
+                    // Progressive update: show chart after first batch completes
+                    if (batchIdx === 0 && selectedEntries.size === 0) {
+                        // Select top 10 immediately so user sees something
+                        freshPlayers.slice(0, Math.min(10, endIdx)).forEach(p => selectedEntries.add(p.entry));
+                        allPlayers = freshPlayers.slice(0, endIdx);
+                        playerHistories = { ...freshHistories };
+                        renderPlayerToggles();
+                        updateChart();
                     }
+                    // No delay between batches - maximize throughput
                 }
 
                 console.log(`=== SUMMARY: Loaded ${loadedCount}/${freshPlayers.length} player histories ===`);
@@ -1405,34 +2652,47 @@
 
             container.innerHTML = sortedPlayers.map((player) => {
                 const isSelected = selectedEntries.has(player.entry);
-                // Use original index for consistent colors
                 const originalIndex = allPlayers.findIndex(p => p.entry === player.entry);
                 const color = colors[originalIndex % colors.length];
                 const live = livePoints[player.entry];
                 const posData = livePositions[player.entry];
 
-                // Calculate display values
-                let pointsDisplay = player.total;
-                let liveIndicator = '';
-                let movementIndicator = '';
+                // Get previous GW total for calculating GW points
+                const history = playerHistories[player.entry] || [];
+                const prevGwIndex = currentGameweek - 2;
+                const prevGwData = prevGwIndex >= 0 && history[prevGwIndex] ? history[prevGwIndex] : null;
+                const prevGwTotal = prevGwData ? prevGwData.total_points : 0;
 
-                // Use live position if available, otherwise API rank
+                // Use API total as source of truth, calculate GW points from it
+                let pointsDisplay = player.total;  // Always use API total
+                let gwPoints = player.total - prevGwTotal;  // GW points = current - previous
+
+                // If matches are live, use live calculated points instead
+                if (live && live.isLive && matchesInProgress) {
+                    // Use predictedPoints if auto-subs occurred (includes confirmed auto-sub points)
+                    const hasAutoSubs = live.autoSubs && live.autoSubs.length > 0;
+                    gwPoints = hasAutoSubs ? live.predictedPoints : live.netPoints;
+                    // When live, total = prevGwTotal + live points
+                    pointsDisplay = prevGwTotal + gwPoints;
+                }
+
+                // Use position from livePositions if available (correctly calculated)
                 const displayRank = posData ? posData.position : player.rank;
 
-                if (live && live.isLive) {
-                    // Calculate projected total
-                    const projectedTotal = player.total + live.netPoints;
+                // Build GW indicator
+                let liveIndicator = '';
+                let movementIndicator = '';
+                const chipAbbrev = { 'bboost': 'BB', '3xc': 'TC', 'freehit': 'FH', 'wildcard': 'WC' };
 
-                    // Build detailed tooltip
-                    const chipAbbrev = { 'bboost': 'BB', '3xc': 'TC', 'freehit': 'FH', 'wildcard': 'WC' };
+                if (live) {
+                    // Build tooltip
                     let tooltipParts = [
                         `GW${currentGameweek} Points: ${live.points}`,
                         `Hit Taken: ${live.transferCost > 0 ? '-' + live.transferCost : '0'}`,
-                        `Net GW Points: ${live.netPoints}`,
+                        `Net GW Points: ${gwPoints}`,
                         `Chip Used: ${live.chip ? chipAbbrev[live.chip] || live.chip : 'None'}`,
                         `---`,
-                        `Base Total: ${player.total}`,
-                        `Projected Total: ${projectedTotal}`
+                        `Total: ${pointsDisplay}`
                     ];
                     const tooltip = tooltipParts.join('\n');
 
@@ -1441,23 +2701,31 @@
                     if (live.transferCost > 0) pointStyle = 'color: #ffaa00;';
                     if (live.chip) pointStyle = 'color: #04f5ff;';
 
-                    // Chip badge (chipAbbrev already defined above)
+                    // Chip badge
                     let chipBadge = '';
                     if (live.chip) {
                         chipBadge = `<span style="background: #04f5ff; color: #37003c; font-size: 8px; padding: 1px 3px; border-radius: 3px; margin-left: 3px; font-weight: bold;">${chipAbbrev[live.chip] || live.chip}</span>`;
                     }
 
-                    // Hit indicator badge (show if hit taken)
+                    // Hit badge
                     let hitBadge = '';
                     if (live.transferCost > 0) {
                         hitBadge = `<span style="background: #ffaa00; color: #37003c; font-size: 8px; padding: 1px 3px; border-radius: 3px; margin-left: 3px; font-weight: bold;">-${live.transferCost}</span>`;
                     }
 
-                    // Show: base total (GW pts) -> use projected as main display
-                    pointsDisplay = projectedTotal;
-                    liveIndicator = `<span style="${pointStyle} font-size: 10px; margin-left: 4px; cursor: help;" title="${tooltip}">(GW +${live.netPoints})</span>${hitBadge}${chipBadge}`;
+                    // Live badge (only when matches in progress)
+                    let liveBadge = '';
+                    if (live.isLive && matchesInProgress) {
+                        liveBadge = `<span style="background: #ff4757; color: white; font-size: 7px; padding: 1px 3px; border-radius: 3px; margin-left: 3px; font-weight: bold; animation: pulse 1s infinite;">LIVE</span>`;
+                    } else if (live.isBonusPending) {
+                        liveBadge = `<span style="background: #ffaa00; color: #37003c; font-size: 7px; padding: 1px 3px; border-radius: 3px; margin-left: 3px; font-weight: bold;">BPS</span>`;
+                    }
+
+                    // Show GW points (compact format)
+                    liveIndicator = `<span style="${pointStyle} font-size: 9px; margin-left: 3px; cursor: help;" title="${tooltip}">(${gwPoints >= 0 ? '+' : ''}${gwPoints})</span>${hitBadge}${chipBadge}${liveBadge}`;
                 }
 
+                // Movement indicator
                 if (posData && posData.movement !== 0) {
                     if (posData.movement > 0) {
                         movementIndicator = `<span style="color: #00ff88; font-size: 10px;">▲${posData.movement}</span>`;
@@ -1466,18 +2734,87 @@
                     }
                 }
 
-                // Build expandable detail section for mobile
+                // Build expandable detail section
                 let detailSection = '';
-                if (live && live.isLive) {
-                    const projectedTotal = player.total + live.netPoints;
-                    const chipAbbrev = { 'bboost': 'Bench Boost', '3xc': 'Triple Captain', 'freehit': 'Free Hit', 'wildcard': 'Wildcard' };
+                if (live) {
+                    const chipAbbrevFull = { 'bboost': 'Bench Boost', '3xc': 'Triple Captain', 'freehit': 'Free Hit', 'wildcard': 'Wildcard' };
+                    const yetToPlay = live.playersYetToPlay || 0;
+                    const playing = live.playersPlaying || 0;
+                    const predicted = live.predictedPoints || gwPoints;
+                    const autoSubs = live.autoSubs || [];
+
+                    // Build auto-sub display
+                    let autoSubHtml = '';
+                    if (autoSubs.length === 1) {
+                        // Single auto-sub on one line
+                        const sub = autoSubs[0];
+                        autoSubHtml = `<div class="detail-row"><span style="color: #888;">Auto-sub:</span><span style="color: #ffaa00;">${sub.outName} → ${sub.inName} (+${sub.pointsGained})</span></div>`;
+                    } else if (autoSubs.length > 1) {
+                        // Multiple auto-subs: header + list
+                        const subsList = autoSubs.map(sub =>
+                            `<div class="detail-row sub-row"><span></span><span style="color: #ffaa00;">${sub.outName} → ${sub.inName} (+${sub.pointsGained})</span></div>`
+                        ).join('');
+                        autoSubHtml = `<div class="detail-row"><span style="color: #888;">Auto-subs (${autoSubs.length}):</span><span></span></div>${subsList}`;
+                    }
+
+                    // Vice captain activation display
+                    let vcHtml = '';
+                    if (live.vcActivated && live.vcName) {
+                        vcHtml = `<div class="detail-row"><span style="color: #888;">VC Active:</span><span style="color: #04f5ff;">${live.vcName} (C)</span></div>`;
+                    }
+
+                    // Provisional bonus display (only for in-progress matches)
+                    let bonusHtml = '';
+                    if (live.liveBonus > 0) {
+                        bonusHtml = `<div class="detail-row"><span style="color: #888;">Bonus (live):</span><span style="color: #ffaa00;">+${live.liveBonus}</span></div>`;
+                    }
+
+                    // DEFCON points display (similar to auto-subs)
+                    let defconHtml = '';
+                    const defconPlayers = live.defconPlayers || [];
+                    if (defconPlayers.length === 1) {
+                        // Single player: show on one line
+                        defconHtml = `<div class="detail-row"><span style="color: #888;">DEFCON:</span><span style="color: #e056fd;">${defconPlayers[0].name} (+${defconPlayers[0].points})</span></div>`;
+                    } else if (defconPlayers.length > 1) {
+                        // Multiple players: header + list
+                        const defconList = defconPlayers.map(p =>
+                            `<div class="detail-row sub-row"><span></span><span style="color: #e056fd;">${p.name} (+${p.points})</span></div>`
+                        ).join('');
+                        defconHtml = `<div class="detail-row"><span style="color: #888;">DEFCON (${defconPlayers.length}):</span><span style="color: #e056fd;">+${live.defconPoints}</span></div>${defconList}`;
+                    }
+
+                    // Players status text
+                    let playersStatusHtml = '';
+                    if (yetToPlay > 0 || playing > 0) {
+                        const parts = [];
+                        if (playing > 0) parts.push(`<span style="color: #ff4757;">${playing} playing</span>`);
+                        if (yetToPlay > 0) parts.push(`<span style="color: #888;">${yetToPlay} to play</span>`);
+                        playersStatusHtml = `<div class="detail-row"><span>Players:</span><span>${parts.join(', ')}</span></div>`;
+                    }
+
+                    // Predicted line removed - auto-sub points now included in main GW Points
+
+                    // Captain display
+                    const capLabel = live.isTripleCaptain ? 'Triple Cap:' : 'Captain:';
+                    const capMultiplier = live.isTripleCaptain ? 3 : 2;
+                    const capHtml = live.captainName ?
+                        `<div class="detail-row"><span style="color: #888;">${capLabel}</span><span>${live.captainName} <span style="color: #00ff85;">(${live.captainPoints} × ${capMultiplier})</span></span></div>` : '';
+
                     detailSection = `
                     <div class="player-details" id="details-${player.entry}" style="display: none;">
                         <div class="detail-row"><span>GW${currentGameweek} Points:</span><span style="color: #00ff85;">${live.points}</span></div>
+                        ${capHtml}
                         ${live.transferCost > 0 ? `<div class="detail-row"><span>Hit Taken:</span><span style="color: #ffaa00;">-${live.transferCost}</span></div>` : ''}
-                        <div class="detail-row"><span>Net GW Points:</span><span style="color: #04f5ff;">${live.netPoints}</span></div>
-                        ${live.chip ? `<div class="detail-row"><span>Chip:</span><span style="color: #04f5ff;">${chipAbbrev[live.chip] || live.chip}</span></div>` : ''}
-                        <div class="detail-row"><span>Projected Total:</span><span style="font-weight: bold;">${projectedTotal}</span></div>
+                        <div class="detail-row"><span>Net GW Points:</span><span style="color: #04f5ff;">${gwPoints}</span></div>
+                        ${bonusHtml}
+                        ${defconHtml}
+                        ${vcHtml}
+                        ${autoSubHtml}
+                        ${playersStatusHtml}
+                        ${live.chip ? `<div class="detail-row"><span>Chip:</span><span style="color: #04f5ff;">${chipAbbrevFull[live.chip] || live.chip}</span></div>` : ''}
+                        <div class="detail-row" style="border-top: 1px solid rgba(255,255,255,0.2); margin-top: 5px; padding-top: 8px;"><span>Total:</span><span style="font-weight: bold;">${pointsDisplay}</span></div>
+                        ${live.overallRank ? `<div class="detail-row"><span>Overall Rank:</span><span style="color: #888;">${live.overallRank.toLocaleString()}</span></div>` : ''}
+                        ${live.gwRank ? `<div class="detail-row"><span>GW${currentGameweek} Rank:</span><span style="color: #888;">${live.gwRank.toLocaleString()}</span></div>` : ''}
                     </div>`;
                 }
 
@@ -1496,16 +2833,25 @@
                         <span class="color-dot" style="background: ${color}; box-shadow: 0 0 4px ${color};"></span>
                         <span class="player-name" title="${player.player_name} - ${player.entry_name}">${player.player_name}</span>
                         <span class="points">${pointsDisplay}${liveIndicator}</span>
-                        ${live && live.isLive ? '<span class="expand-icon">ℹ️</span>' : ''}
+                        ${live ? '<span class="expand-icon">ℹ️</span>' : ''}
                     </label>
                     ${detailSection}
                 </div>
             `}).join('');
+
+            // Also update table view if in table mode
+            if (currentDisplayMode === 'table') {
+                updateTableView();
+            }
         }
 
         function toggleDetails(entryId, event) {
-            // Don't toggle if clicking the checkbox
+            // If clicking the checkbox directly, let it handle selection
             if (event.target.type === 'checkbox') return;
+
+            // Prevent the label from toggling the checkbox
+            event.preventDefault();
+            event.stopPropagation();
 
             const details = document.getElementById(`details-${entryId}`);
             if (details) {
@@ -1520,8 +2866,50 @@
         function hoverPlayer(entryId) {
             if (hoveredEntry !== entryId) {
                 hoveredEntry = entryId;
-                updateChart();
+                // Only update styles, don't rebuild entire chart
+                if (chart && chart.data && chart.data.datasets) {
+                    updateChartHoverStyles();
+                } else {
+                    updateChart();
+                }
             }
+        }
+
+        // Update only the hover styling without rebuilding chart
+        function updateChartHoverStyles() {
+            if (!chart) return;
+
+            const selectedPlayers = allPlayers.filter(p => selectedEntries.has(p.entry));
+
+            chart.data.datasets.forEach((dataset, i) => {
+                const player = selectedPlayers[i];
+                if (!player) return;
+
+                const playerIndex = allPlayers.findIndex(p => p.entry === player.entry);
+                const baseColor = colors[playerIndex % colors.length];
+                const isHovered = hoveredEntry === player.entry;
+                const isDimmed = hoveredEntry !== null && !isHovered;
+
+                // Update line styles
+                dataset.borderColor = isDimmed ? baseColor + '40' : baseColor;
+                dataset.borderWidth = isHovered ? 4 : (isDimmed ? 1 : 2.5);
+
+                // Update point styles (except last point which has special styling)
+                const pointCount = dataset.data.length;
+                const live = livePoints[player.entry];
+                const hasLiveData = live && currentGameweek;
+
+                for (let j = 0; j < pointCount; j++) {
+                    const isLastPoint = j === pointCount - 1 && hasLiveData;
+                    if (!isLastPoint) {
+                        dataset.pointRadius[j] = isHovered ? 5 : (isDimmed ? 2 : 3);
+                        dataset.pointBackgroundColor[j] = isDimmed ? baseColor + '40' : baseColor;
+                        dataset.pointBorderColor[j] = isDimmed ? baseColor + '40' : baseColor;
+                    }
+                }
+            });
+
+            chart.update('none'); // 'none' mode skips animations for instant update
         }
 
         function togglePlayer(entryId, isChecked) {
@@ -1576,7 +2964,13 @@
             const labels = [];
             for (let gwNum = rangeStart; gwNum <= rangeEnd; gwNum++) {
                 if (hasAnyLiveData && gwNum === currentGameweek) {
-                    labels.push(`GW${gwNum} ⚡`);
+                    if (matchesInProgress) {
+                        labels.push(`GW${gwNum} 🔴`);  // Red dot when live
+                    } else if (bonusPending) {
+                        labels.push(`GW${gwNum} 🟡`);  // Yellow when bonus pending
+                    } else {
+                        labels.push(`GW${gwNum} ✓`);   // Checkmark when confirmed
+                    }
                 } else {
                     labels.push(`GW${gwNum}`);
                 }
@@ -1639,57 +3033,75 @@
 
                 // Check for live data
                 const live = livePoints[player.entry];
-                const hasLiveData = live && live.isLive && currentGameweek;
+                const posData = livePositions[player.entry];
+                const hasLiveData = live && currentGameweek;
+
+                // Get previous GW total for calculations
+                const prevGwIdx = currentGameweek - 2;
+                const prevGwData = prevGwIdx >= 0 && history[prevGwIdx] ? history[prevGwIdx] : null;
+                const prevTotal = prevGwData ? prevGwData.total_points : 0;
 
                 if (chartType === 'total') {
                     data = history.map(gw => gw ? gw.total_points : null);
-                    // For live gameweek, calculate projected total: previous GW total + live net points
-                    if (hasLiveData && currentGameweek) {
-                        // Get previous GW total (last entry in history, or second-to-last if history includes current GW)
-                        const prevGwIdx = currentGameweek - 2; // e.g., GW23 when current is GW24
-                        const prevTotal = prevGwIdx >= 0 && history[prevGwIdx] ? history[prevGwIdx].total_points : (data.length > 0 ? data[data.length - 1] : 0);
-                        const projectedTotal = prevTotal + live.netPoints;
 
-                        // Replace or add the projected total for current GW
+                    // For current gameweek, use correct total
+                    if (hasLiveData && currentGameweek) {
+                        let currentTotal;
+                        if (matchesInProgress) {
+                            // Matches live: use prev + live points
+                            currentTotal = prevTotal + live.netPoints;
+                        } else {
+                            // No matches live: use API total (already updated)
+                            currentTotal = player.total;
+                        }
+
+                        // Replace or add for current GW
                         if (data.length >= currentGameweek) {
-                            data[currentGameweek - 1] = projectedTotal;
+                            data[currentGameweek - 1] = currentTotal;
                         } else {
                             while (data.length < currentGameweek - 1) {
                                 data.push(data.length > 0 ? data[data.length - 1] : null);
                             }
-                            data.push(projectedTotal);
+                            data.push(currentTotal);
                         }
                     }
                 } else if (chartType === 'weekly') {
                     data = history.map(gw => gw ? gw.points : null);
-                    // For current live gameweek, use our calculated netPoints (includes hits)
+
+                    // For current gameweek, calculate GW points correctly
                     if (hasLiveData && currentGameweek) {
-                        // If history includes current GW with 0/wrong value, replace it
-                        if (data.length >= currentGameweek) {
-                            data[currentGameweek - 1] = live.netPoints;
+                        let gwPoints;
+                        if (matchesInProgress) {
+                            // Matches live: use live calculated points
+                            gwPoints = live.netPoints;
                         } else {
-                            // Add live netPoints for current GW
+                            // No matches: calculate from API total - prev total
+                            gwPoints = player.total - prevTotal;
+                        }
+
+                        if (data.length >= currentGameweek) {
+                            data[currentGameweek - 1] = gwPoints;
+                        } else {
                             while (data.length < currentGameweek - 1) {
                                 data.push(null);
                             }
-                            data.push(live.netPoints);
+                            data.push(gwPoints);
                         }
                     }
                 } else if (chartType === 'rank') {
                     // Use pre-calculated positions
                     data = allPositions[player.entry] ? [...allPositions[player.entry]] : [];
-                    // For live gameweek, replace or add the live position
-                    if (hasLiveData && livePositions[player.entry]) {
-                        const livePos = livePositions[player.entry].position;
-                        // If data already has current GW, replace it; otherwise add it
+
+                    // For current GW, use calculated position from livePositions
+                    if (posData && currentGameweek) {
+                        const currentPos = posData.position;
                         if (data.length >= currentGameweek) {
-                            data[currentGameweek - 1] = livePos;
+                            data[currentGameweek - 1] = currentPos;
                         } else {
-                            // Pad if needed and add live position
                             while (data.length < currentGameweek - 1) {
                                 data.push(data.length > 0 ? data[data.length - 1] : null);
                             }
-                            data.push(livePos);
+                            data.push(currentPos);
                         }
                     }
                 }
@@ -1706,31 +3118,32 @@
                 const isDimmed = hoveredEntry !== null && !isHovered;
                 const baseColor = colors[playerIndex % colors.length];
 
-                // Create point styles array - last point is live if we have live data
+                // Create point styles - highlight current GW point
+                const isCurrentGwPoint = hasLiveData && currentGameweek;
                 const pointRadii = data.map((_, idx) => {
-                    if (hasLiveData && idx === data.length - 1) {
-                        return 8; // Larger for live point
+                    if (isCurrentGwPoint && idx === data.length - 1) {
+                        return matchesInProgress ? 10 : 7; // Larger when live
                     }
                     return isHovered ? 5 : (isDimmed ? 2 : 3);
                 });
 
                 const pointBgColors = data.map((_, idx) => {
-                    if (hasLiveData && idx === data.length - 1) {
-                        return '#00ff88'; // Green for live point
+                    if (isCurrentGwPoint && idx === data.length - 1) {
+                        return matchesInProgress ? '#ff4757' : '#00ff88'; // Red when live, green when settled
                     }
                     return isDimmed ? baseColor + '40' : baseColor;
                 });
 
                 const pointBorderColors = data.map((_, idx) => {
-                    if (hasLiveData && idx === data.length - 1) {
-                        return '#ffffff'; // White border for live point
+                    if (isCurrentGwPoint && idx === data.length - 1) {
+                        return '#ffffff';
                     }
                     return isDimmed ? baseColor + '40' : baseColor;
                 });
 
                 const pointBorderWidths = data.map((_, idx) => {
-                    if (hasLiveData && idx === data.length - 1) {
-                        return 2; // Thicker border for live point
+                    if (isCurrentGwPoint && idx === data.length - 1) {
+                        return 2;
                     }
                     return 1;
                 });
@@ -1996,6 +3409,17 @@
             document.getElementById('weekEnd').value = weekRangeEnd;
             updateChart();
         }
+
+        // Handle window resize - debounced chart update
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if (chart) {
+                    chart.resize();
+                }
+            }, 150);
+        });
 
         // Start app
         initApp();
