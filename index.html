@@ -3801,6 +3801,11 @@
                 endSelect.innerHTML += `<option value="${i}">GW${i}</option>`;
             }
 
+            // Default to last 5 gameweeks for better chart readability
+            if (weekRangeStart === 1 && maxGw > 5) {
+                weekRangeStart = Math.max(1, maxGw - 4);
+            }
+
             startSelect.value = weekRangeStart;
             endSelect.value = Math.min(weekRangeEnd, maxGw);
             weekRangeEnd = Math.min(weekRangeEnd, maxGw);
