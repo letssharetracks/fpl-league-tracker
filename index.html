@@ -2410,11 +2410,56 @@
                 tickerContent.innerHTML = fixtureHtml + fixtureHtml;
                 document.getElementById('fixtureTicker').style.display = 'block';
 
+                // Check if any matches are live and manage auto-refresh
+                const liveMatches = fixtures.some(f => f.started && !f.finished);
+                hasLiveMatches = liveMatches;
+
+                if (liveMatches) {
+                    startTickerAutoRefresh();
+                } else {
+                    stopTickerAutoRefresh();
+                }
+
             } catch (e) {
                 console.error('Failed to fetch fixtures for ticker:', e);
                 document.getElementById('fixtureTicker').style.display = 'none';
             }
         }
+
+        // Auto-refresh ticker when matches are live
+        let tickerRefreshInterval = null;
+        let hasLiveMatches = false;
+
+        function startTickerAutoRefresh() {
+            if (tickerRefreshInterval) return; // Already running
+
+            tickerRefreshInterval = setInterval(async () => {
+                if (!currentGameweek || document.hidden) return; // Skip if tab hidden
+
+                console.log('Auto-refreshing ticker...');
+                await fetchAndUpdateTicker(currentGameweek);
+            }, 60000); // Every 60 seconds
+
+            console.log('Ticker auto-refresh started (60s interval)');
+        }
+
+        function stopTickerAutoRefresh() {
+            if (tickerRefreshInterval) {
+                clearInterval(tickerRefreshInterval);
+                tickerRefreshInterval = null;
+                console.log('Ticker auto-refresh stopped');
+            }
+        }
+
+        // Pause/resume based on tab visibility
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                console.log('Tab hidden - pausing ticker refresh');
+            } else if (hasLiveMatches && currentGameweek) {
+                console.log('Tab visible - refreshing ticker');
+                fetchAndUpdateTicker(currentGameweek);
+            }
+        });
 
         async function fetchLivePlayerScores(gameweek) {
             if (livePlayerScores) return livePlayerScores;
