@@ -317,6 +317,10 @@
             color: #e056fd;
             font-weight: 500;
         }
+        .league-table .bps-pts {
+            color: #ffaa00;
+            font-weight: 500;
+        }
         .league-table .manager-name {
             font-weight: 500;
             color: #fff;
@@ -1980,10 +1984,12 @@
                     ).join('<br>');
                 }
 
-                // Bonus display (live bonus during matches)
+                // Bonus display (live bonus during matches) - show player names like DEFCON
                 let bonusHtml = '';
-                if (live && live.liveBonus > 0) {
-                    bonusHtml = `<span class="bonus-live">+${live.liveBonus}</span>`;
+                if (live && live.bpsPlayers && live.bpsPlayers.length > 0) {
+                    bonusHtml = live.bpsPlayers.map(p =>
+                        `<span class="bps-pts">${p.name} (+${p.bonus})</span>`
+                    ).join('<br>');
                 }
 
                 // Status display
