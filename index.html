@@ -327,13 +327,37 @@
             color: #888;
             margin-right: 8px;
         }
+        .detail-sub-item {
+            padding: 2px 0 2px 15px;
+        }
+        .chip-active {
+            color: #04f5ff;
+        }
+        .autosub-in {
+            color: #04f5ff;
+        }
+        .points-gained {
+            color: #ffaa00;
+        }
+        .defcon-player {
+            color: #ff6b6b;
+        }
+        .defcon-points {
+            color: #ff6b6b;
+        }
+        .rank-value {
+            color: #888;
+        }
 
         /* Mobile narrow screens - show key columns only, tap for details */
         @media (max-width: 480px) {
             .league-table {
                 min-width: unset !important;
                 width: 100% !important;
-                table-layout: fixed;
+            }
+            .league-table th, .league-table td {
+                padding: 6px 4px !important;
+                font-size: 11px;
             }
             .league-table .col-chip,
             .league-table .col-autosub,
@@ -343,13 +367,13 @@
             .league-table .col-or {
                 display: none !important;
             }
-            .league-table .col-rank { width: 22px !important; display: table-cell !important; }
-            .league-table .col-move { width: 28px !important; display: table-cell !important; }
-            .league-table .col-name { width: auto !important; display: table-cell !important; }
-            .league-table .col-gw { width: 32px !important; display: table-cell !important; }
-            .league-table .col-total { width: 42px !important; display: table-cell !important; }
-            .league-table .col-gap { width: 32px !important; display: table-cell !important; }
-            .league-table .col-captain { width: 55px !important; display: table-cell !important; overflow: hidden; text-overflow: ellipsis; }
+            .league-table .col-rank { width: 8% !important; }
+            .league-table .col-move { width: 10% !important; }
+            .league-table .col-name { width: 28% !important; }
+            .league-table .col-gw { width: 12% !important; }
+            .league-table .col-total { width: 14% !important; }
+            .league-table .col-gap { width: 10% !important; }
+            .league-table .col-captain { width: 18% !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
             .league-table tr {
                 cursor: pointer;
             }
@@ -1779,22 +1803,28 @@
                     gwRank: live?.gwRank || null
                 }).replace(/'/g, "\\'");
 
-                // Build expandable details for mobile
+                // Build expandable details for mobile (same style as toggle players sidebar)
                 const chipFullNames = { 'bboost': 'Bench Boost', '3xc': 'Triple Captain', 'freehit': 'Free Hit', 'wildcard': 'Wildcard' };
                 let mobileDetailsHtml = '';
                 if (live) {
                     mobileDetailsHtml = '<div class="row-details-content">';
-                    if (live.chip) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Chip:</span> <span style="color:#04f5ff;">${chipFullNames[live.chip] || live.chip}</span></div>`;
+                    if (live.chip) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Chip:</span> <span class="chip-active">${chipFullNames[live.chip] || live.chip}</span></div>`;
                     if (live.autoSubs && live.autoSubs.length > 0) {
-                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Auto-Sub:</span> ${live.autoSubs.map(s => `<span style="color:#04f5ff;">${s.inName}</span> <span style="color:#ffaa00;">(+${s.pointsGained})</span>`).join(', ')}</div>`;
+                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Auto-Sub:</span></div>`;
+                        live.autoSubs.forEach(s => {
+                            mobileDetailsHtml += `<div class="detail-sub-item"><span class="autosub-in">${s.inName}</span> <span class="points-gained">(+${s.pointsGained})</span></div>`;
+                        });
                     }
                     if (live.defconPlayers && live.defconPlayers.length > 0) {
-                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">DEFCON:</span> ${live.defconPlayers.map(p => `<span style="color:#ff6b6b;">${p.name} (+${p.points})</span>`).join(', ')}</div>`;
+                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">DEFCON:</span></div>`;
+                        live.defconPlayers.forEach(p => {
+                            mobileDetailsHtml += `<div class="detail-sub-item"><span class="defcon-player">${p.name}</span> <span class="defcon-points">(+${p.points})</span></div>`;
+                        });
                     }
-                    if (live.liveBonus > 0) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">BPS:</span> <span style="color:#ffaa00;">+${live.liveBonus}</span></div>`;
+                    if (live.liveBonus > 0) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">BPS:</span> <span class="points-gained">+${live.liveBonus}</span></div>`;
                     mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Status:</span> ${statusHtml}</div>`;
-                    if (live.overallRank) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Overall Rank:</span> <span style="color:#888;">${live.overallRank.toLocaleString()}</span></div>`;
-                    if (live.gwRank) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">GW Rank:</span> <span style="color:#888;">${live.gwRank.toLocaleString()}</span></div>`;
+                    if (live.overallRank) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Overall Rank:</span> <span class="rank-value">${live.overallRank.toLocaleString()}</span></div>`;
+                    if (live.gwRank) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">GW Rank:</span> <span class="rank-value">${live.gwRank.toLocaleString()}</span></div>`;
                     mobileDetailsHtml += '</div>';
                 }
 
