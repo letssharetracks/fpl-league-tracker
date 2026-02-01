@@ -2338,7 +2338,25 @@
         let livePlayerScores = null;
         let livePlayerData = null; // Full player data including minutes
         let bootstrapPlayers = null; // Player metadata (team, position)
+        let bootstrapTeams = null; // Team ID to abbreviation mapping
         let gwFixtures = null; // Fixtures for current GW
+
+        async function fetchBootstrapTeams() {
+            if (bootstrapTeams) return bootstrapTeams;
+            try {
+                const response = await fplApiFetch('/api/bootstrap-static/');
+                const data = await response.json();
+                bootstrapTeams = {};
+                data.teams.forEach(t => {
+                    bootstrapTeams[t.id] = t.short_name; // e.g., 14 -> 'MUN'
+                });
+                console.log('Loaded teams from API:', bootstrapTeams);
+                return bootstrapTeams;
+            } catch (e) {
+                console.error('Failed to fetch bootstrap teams:', e);
+                return null;
+            }
+        }
 
         async function fetchBootstrapPlayers() {
             if (bootstrapPlayers) return bootstrapPlayers;
@@ -2353,6 +2371,13 @@
                         name: p.web_name
                     };
                 });
+                // Also cache teams if not already done
+                if (!bootstrapTeams) {
+                    bootstrapTeams = {};
+                    data.teams.forEach(t => {
+                        bootstrapTeams[t.id] = t.short_name;
+                    });
+                }
                 return bootstrapPlayers;
             } catch (e) {
                 console.error('Failed to fetch bootstrap players:', e);
@@ -2375,6 +2400,9 @@
         // Fixture ticker
         async function fetchAndUpdateTicker(gameweek) {
             try {
+                // Fetch teams data dynamically (handles season changes/promotion/relegation)
+                const teamAbbr = await fetchBootstrapTeams() || {};
+
                 const response = await fplApiFetch(`/api/fixtures/?event=${gameweek}`);
                 const allFixtures = await response.json();
                 console.log(`Ticker: Fetched ${allFixtures?.length || 0} fixtures for GW${gameweek}`, allFixtures);
@@ -2383,14 +2411,6 @@
                     document.getElementById('fixtureTicker').style.display = 'none';
                     return;
                 }
-
-                // Team ID to abbreviation mapping
-                const teamAbbr = {
-                    1: 'ARS', 2: 'AVL', 3: 'BOU', 4: 'BRE', 5: 'BHA',
-                    6: 'CHE', 7: 'CRY', 8: 'EVE', 9: 'FUL', 10: 'IPS',
-                    11: 'LEI', 12: 'LIV', 13: 'MCI', 14: 'MUN', 15: 'NEW',
-                    16: 'NFO', 17: 'SOU', 18: 'TOT', 19: 'WHU', 20: 'WOL'
-                };
 
                 // Check for today's fixtures and if any are live/upcoming today
                 const today = new Date();
@@ -2965,6 +2985,7 @@
             livePlayerData = null;
             gwFixtures = null;
             bootstrapPlayers = null;
+            bootstrapTeams = null;
 
             // Pre-fetch ALL shared data in parallel ONCE before processing players
             console.log('Pre-fetching shared data and fixture status...');
