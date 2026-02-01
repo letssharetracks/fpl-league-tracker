@@ -1937,10 +1937,9 @@
                 }
 
                 if (live) {
-                    // Add liveBonus explicitly to ensure BPS is included in total
-                    const bonusToAdd = live.liveBonus || 0;
-                    gwPoints = live.predictedPoints + bonusToAdd;
-                    console.log(`Display [${player.entry}]: predictedPoints=${live.predictedPoints}, liveBonus=${bonusToAdd}, gwPoints=${gwPoints}`);
+                    // Sum bonus directly from bpsPlayers (the same data shown in BPS column)
+                    const bpsTotal = live.bpsPlayers ? live.bpsPlayers.reduce((sum, p) => sum + p.bonus, 0) : 0;
+                    gwPoints = live.predictedPoints + bpsTotal;
                     if (live.transferCost > 0) {
                         hitDisplay = `<span class="hit">(-${live.transferCost})</span>`;
                     }
