@@ -305,11 +305,12 @@
             }
         }
 
-        /* Mobile portrait - show key columns, tap row for more details */
-        @media (max-width: 600px) and (orientation: portrait) {
+        /* Mobile narrow screens - show key columns only, tap for details */
+        @media (max-width: 480px) {
             .league-table {
-                min-width: unset;
-                width: 100%;
+                min-width: unset !important;
+                width: 100% !important;
+                table-layout: fixed;
             }
             .league-table .col-chip,
             .league-table .col-autosub,
@@ -317,15 +318,15 @@
             .league-table .col-defcon,
             .league-table .col-status,
             .league-table .col-or {
-                display: none;
+                display: none !important;
             }
-            .league-table .col-rank { width: 25px; }
-            .league-table .col-move { width: 30px; }
-            .league-table .col-name { min-width: 70px; max-width: 90px; }
-            .league-table .col-gw { width: 35px; }
-            .league-table .col-total { width: 45px; }
-            .league-table .col-gap { width: 35px; }
-            .league-table .col-captain { width: 60px; max-width: 70px; overflow: hidden; text-overflow: ellipsis; }
+            .league-table .col-rank { width: 22px !important; display: table-cell !important; }
+            .league-table .col-move { width: 28px !important; display: table-cell !important; }
+            .league-table .col-name { width: auto !important; display: table-cell !important; }
+            .league-table .col-gw { width: 32px !important; display: table-cell !important; }
+            .league-table .col-total { width: 42px !important; display: table-cell !important; }
+            .league-table .col-gap { width: 32px !important; display: table-cell !important; }
+            .league-table .col-captain { width: 55px !important; display: table-cell !important; overflow: hidden; text-overflow: ellipsis; }
             .league-table tr {
                 cursor: pointer;
             }
@@ -1582,10 +1583,8 @@
 
         // Mobile detail modal functions
         function showMobileDetail(dataStr) {
-            // Only show modal on mobile portrait (when columns are hidden)
-            const isPortrait = window.matchMedia("(orientation: portrait)").matches;
-            const isMobile = window.innerWidth <= 600;
-            if (!isMobile || !isPortrait) return;
+            // Only show modal on narrow mobile screens (when columns are hidden)
+            if (window.innerWidth > 480) return;
 
             try {
                 const data = JSON.parse(dataStr.replace(/&quot;/g, '"'));
