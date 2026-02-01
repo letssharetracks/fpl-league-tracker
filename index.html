@@ -2833,10 +2833,10 @@
                 let liveBonus = 0;
                 let totalDefcon = 0;
                 const defconPlayers = []; // Track which players earned DEFCON
-                const bpsPlayers = []; // Track which players are earning BPS bonus
+                const bpsPlayers = []; // Track players in bonus positions
                 const activePlayers = isBenchBoost ? data.picks : data.picks.filter(p => p.position <= 11);
                 activePlayers.forEach(pick => {
-                    // Only count provisional bonus from liveBonusMap (in-progress fixtures only)
+                    // Only count provisional bonus from liveBonusMap
                     const provisionalBonus = liveBonusMap[pick.element] || 0;
                     if (provisionalBonus > 0) {
                         const playerInfo = players ? players[pick.element] : null;
@@ -2850,7 +2850,6 @@
                     liveBonus += provisionalBonus;
 
                     // Sum DEFCON points for active players
-                    const playerLiveData = livePlayerData ? livePlayerData[pick.element] : null;
                     if (playerLiveData && playerLiveData.defcon) {
                         totalDefcon += playerLiveData.defcon;
                         const playerInfo = players ? players[pick.element] : null;
