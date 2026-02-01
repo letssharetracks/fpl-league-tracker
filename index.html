@@ -2066,8 +2066,8 @@
                         <td class="col-rank">${position}</td>
                         <td class="col-move">${moveHtml}</td>
                         <td class="col-name" title="${player.player_name} - ${player.entry_name}">
-                            <div class="manager-name">${player.player_name.length > 20 ? player.player_name.substring(0, 20) + '...' : player.player_name}</div>
-                            <div class="team-name">${player.entry_name.length > 25 ? player.entry_name.substring(0, 25) + '...' : player.entry_name}</div>
+                            <div class="manager-name">${player.player_name.length > 12 ? player.player_name.substring(0, 12) + '...' : player.player_name}</div>
+                            <div class="team-name">${player.entry_name.length > 15 ? player.entry_name.substring(0, 15) + '...' : player.entry_name}</div>
                         </td>
                         <td class="col-gw">${gwPoints} ${hitDisplay}</td>
                         <td class="col-total">${totalDisplay.toLocaleString()}</td>
