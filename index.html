@@ -2890,8 +2890,12 @@
                 // Sort BPS players by bonus (highest first)
                 bpsPlayers.sort((a, b) => b.bonus - a.bonus);
 
+                // Debug: log bonus calculation
+                if (liveBonus > 0) {
+                    console.log(`BPS Debug [${entryId}]: liveBonus=${liveBonus}, bpsPlayers=`, bpsPlayers.map(p => `${p.name}(+${p.bonus})`));
+                }
+
                 // Add provisional bonus to predicted points for live updates
-                // Also add directly to calculatedPoints to ensure it's included everywhere
                 calculatedPoints += liveBonus;
                 predictedPoints += liveBonus;
                 const predictedWithBonus = predictedPoints;
