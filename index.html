@@ -305,6 +305,35 @@
             }
         }
 
+        /* Portrait mobile - condensed view, tap for details */
+        @media (max-width: 600px) and (orientation: portrait) {
+            .league-table .col-chip,
+            .league-table .col-autosub,
+            .league-table .col-bps,
+            .league-table .col-defcon,
+            .league-table .col-status,
+            .league-table .col-or {
+                display: none;
+            }
+            .league-table .col-captain {
+                max-width: 70px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .league-table .col-name {
+                cursor: pointer;
+            }
+            .league-table .col-name:after {
+                content: ' ›';
+                color: #00ff85;
+                font-size: 12px;
+            }
+            .league-table .manager-name {
+                text-decoration: underline;
+                text-decoration-color: rgba(0,255,133,0.3);
+            }
+        }
+
         /* Landscape mobile - fit all columns without scroll */
         @media (max-height: 500px) and (orientation: landscape) {
             .league-table {
