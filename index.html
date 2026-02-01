@@ -1369,42 +1369,11 @@
         const CLOUDFLARE_WORKER = 'https://fpl-proxy.dom-mackie.workers.dev/?path=';
         console.log('Using Cloudflare Worker for fast API calls');
 
-        // API-Football for live goal/assist data (100 requests/day free)
-        const API_FOOTBALL_KEY = 'cf0bff11890d2b352abe3e100cf5c800';
-        const API_FOOTBALL_BASE = 'https://v3.football.api-sports.io';
-        const API_FOOTBALL_DAILY_LIMIT = 90; // Keep 10 buffer from 100 limit
-        let matchEventsCache = {}; // Cache events by fixture ID
+        // API-Football via Cloudflare Worker (caches globally - all users share same cache)
+        // Worker caches responses for 60 seconds, so 100 users = still ~1 API call/min
+        const API_FOOTBALL_WORKER = 'https://api-football-proxy.dom-mackie.workers.dev';
         let previousScores = {}; // Track scores to detect goals
         let cachedGoalScorers = {}; // Cache goal scorer data per fixture
-
-        // Track API-Football usage to stay within free tier
-        function getApiFootballUsage() {
-            const stored = localStorage.getItem('apiFootballUsage');
-            if (stored) {
-                const data = JSON.parse(stored);
-                const today = new Date().toDateString();
-                if (data.date === today) {
-                    return data.count;
-                }
-            }
-            return 0;
-        }
-
-        function incrementApiFootballUsage() {
-            const today = new Date().toDateString();
-            const current = getApiFootballUsage();
-            localStorage.setItem('apiFootballUsage', JSON.stringify({ date: today, count: current + 1 }));
-            return current + 1;
-        }
-
-        function canUseApiFootball() {
-            const usage = getApiFootballUsage();
-            const canUse = usage < API_FOOTBALL_DAILY_LIMIT;
-            if (!canUse) {
-                console.warn(`API-Football daily limit reached (${usage}/${API_FOOTBALL_DAILY_LIMIT})`);
-            }
-            return canUse;
-        }
 
         // Fallback CORS Proxies for local development only
         const CORS_PROXIES = [
@@ -2440,38 +2409,26 @@
             }
         }
 
-        // Fetch live Premier League fixtures from API-Football
+        // Fetch live Premier League fixtures via Cloudflare Worker (cached globally)
         async function fetchLiveFootballMatches() {
-            if (!canUseApiFootball()) return [];
             try {
-                incrementApiFootballUsage();
-                const response = await fetch(`${API_FOOTBALL_BASE}/fixtures?live=all&league=39`, {
-                    headers: { 'x-apisports-key': API_FOOTBALL_KEY }
-                });
+                const response = await fetch(`${API_FOOTBALL_WORKER}?endpoint=fixtures?live=all%26league=39`);
                 const data = await response.json();
-                console.log(`API-Football request (${getApiFootballUsage()}/${API_FOOTBALL_DAILY_LIMIT} today)`);
+                const cacheStatus = response.headers.get('X-Cache') || 'UNKNOWN';
+                console.log(`API-Football via worker (cache: ${cacheStatus})`);
                 return data.response || [];
             } catch (e) {
-                console.error('API-Football live fixtures error:', e);
+                console.error('API-Football worker error:', e);
                 return [];
             }
         }
 
-        // Fetch match events (goals, assists) from API-Football
+        // Fetch match events (goals, assists) via Cloudflare Worker
         async function fetchMatchEvents(fixtureId) {
-            // Check cache first (refresh every 60 seconds)
-            const cached = matchEventsCache[fixtureId];
-            if (cached && Date.now() - cached.time < 60000) {
-                return cached.events;
-            }
             try {
-                const response = await fetch(`${API_FOOTBALL_BASE}/fixtures/events?fixture=${fixtureId}`, {
-                    headers: { 'x-apisports-key': API_FOOTBALL_KEY }
-                });
+                const response = await fetch(`${API_FOOTBALL_WORKER}?endpoint=fixtures/events?fixture=${fixtureId}`);
                 const data = await response.json();
-                const events = data.response || [];
-                matchEventsCache[fixtureId] = { events, time: Date.now() };
-                return events;
+                return data.response || [];
             } catch (e) {
                 console.error('API-Football events error:', e);
                 return [];
