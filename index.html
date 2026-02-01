@@ -440,13 +440,21 @@
 
         /* Mobile narrow screens - show key columns only, tap for details */
         @media (max-width: 480px) {
+            .table-view {
+                overflow-x: hidden !important;
+                padding: 10px !important;
+            }
             .league-table {
                 min-width: unset !important;
                 width: 100% !important;
+                table-layout: fixed !important;
             }
             .league-table th, .league-table td {
-                padding: 6px 4px !important;
+                padding: 6px 3px !important;
                 font-size: 11px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
             }
             .league-table .col-chip,
             .league-table .col-autosub,
@@ -456,13 +464,13 @@
             .league-table .col-or {
                 display: none !important;
             }
-            .league-table .col-rank { width: 8% !important; }
-            .league-table .col-move { width: 10% !important; }
-            .league-table .col-name { width: 28% !important; }
+            .league-table .col-rank { width: 6% !important; }
+            .league-table .col-move { width: 8% !important; }
+            .league-table .col-name { width: 30% !important; overflow: hidden; text-overflow: ellipsis; }
             .league-table .col-gw { width: 12% !important; }
-            .league-table .col-total { width: 14% !important; }
-            .league-table .col-gap { width: 10% !important; display: table-cell !important; }
-            .league-table .col-captain { width: 18% !important; display: table-cell !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .league-table .col-total { width: 16% !important; }
+            .league-table .col-gap { width: 12% !important; display: table-cell !important; }
+            .league-table .col-captain { width: 16% !important; display: table-cell !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
             .league-table tr {
                 cursor: pointer;
             }
