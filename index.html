@@ -2630,10 +2630,12 @@
 
                 // Calculate live bonus for in-progress AND bonus-pending fixtures
                 const liveBonusMap = {};
+                let liveFixtureCount = 0;
                 fixtures.forEach(f => {
                     // Calculate provisional bonus for started fixtures that aren't fully confirmed
                     // This includes both live matches AND finished_provisional (bonus pending)
                     if (f.started && !f.finished) {
+                        liveFixtureCount++;
                         // Get all players from both teams in this fixture
                         const fixturePlayers = [];
                         if (players && livePlayerData) {
@@ -2651,9 +2653,15 @@
                         }
                         // Calculate bonus for this fixture
                         const fixtureBonus = calculateLiveBonus(fixturePlayers);
+                        if (Object.keys(fixtureBonus).length > 0) {
+                            console.log(`Fixture ${f.team_h}v${f.team_a}: ${fixturePlayers.length} players, bonus=`, fixtureBonus);
+                        }
                         Object.assign(liveBonusMap, fixtureBonus);
                     }
                 });
+                if (liveFixtureCount > 0 && Object.keys(liveBonusMap).length > 0) {
+                    console.log(`Live fixtures: ${liveFixtureCount}, Total bonus map entries: ${Object.keys(liveBonusMap).length}`);
+                }
 
                 // Separate starting 11 and bench
                 const starting = data.picks.filter(p => p.position <= 11);
