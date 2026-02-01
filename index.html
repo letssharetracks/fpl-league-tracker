@@ -317,6 +317,9 @@
             font-size: 12px;
         }
         .detail-item {
+            display: grid;
+            grid-template-columns: 10ch 1fr;
+            gap: 0.6em;
             padding: 4px 0;
             border-bottom: 1px solid rgba(255,255,255,0.1);
         }
@@ -325,10 +328,12 @@
         }
         .detail-label {
             color: #888;
-            margin-right: 8px;
         }
         .detail-sub-item {
-            padding: 2px 0 2px 15px;
+            display: grid;
+            grid-template-columns: 10ch 1fr;
+            gap: 0.6em;
+            padding: 2px 0;
         }
         .chip-active {
             color: #04f5ff;
@@ -694,6 +699,7 @@
             transition: all 0.2s;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            white-space: nowrap;
         }
         .btn:hover {
             transform: translateY(-2px);
@@ -739,11 +745,19 @@
             transition: all 0.2s;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
         .view-btn:hover {
             background: rgba(55, 0, 60, 0.9);
             color: #fff;
             border-color: #00ff85;
+        }
+        .view-btn .btn-icon {
+            font-size: 14px;
+            line-height: 1;
         }
         .view-btn.active {
             background: linear-gradient(135deg, #00ff85, #00d970);
@@ -1054,8 +1068,8 @@
             <div class="control-group">
                 <label>Mode:</label>
                 <div class="view-btns">
-                    <button class="view-btn active" id="btn-table-view" onclick="setDisplayMode('table')">📊 Live</button>
-                    <button class="view-btn" id="btn-chart-view" onclick="setDisplayMode('chart')">📈 Charts</button>
+                    <button class="view-btn active" id="btn-table-view" onclick="setDisplayMode('table')"><span class="btn-icon">📊</span><span>Live</span></button>
+                    <button class="view-btn" id="btn-chart-view" onclick="setDisplayMode('chart')"><span class="btn-icon">📈</span><span>Charts</span></button>
                 </div>
             </div>
             <div class="control-group chart-controls" id="chartTypeControls" style="display: none;">
@@ -1811,20 +1825,20 @@
                     if (live.chip) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Chip:</span> <span class="chip-active">${chipFullNames[live.chip] || live.chip}</span></div>`;
                     if (live.autoSubs && live.autoSubs.length > 0) {
                         const firstSub = live.autoSubs[0];
-                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Auto-Sub:</span> <span class="autosub-in">${firstSub.inName}</span> <span class="points-gained">(+${firstSub.pointsGained})</span></div>`;
+                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Auto-Sub:</span><span><span class="autosub-in">${firstSub.inName}</span> <span class="points-gained">(+${firstSub.pointsGained})</span></span></div>`;
                         live.autoSubs.slice(1).forEach(s => {
-                            mobileDetailsHtml += `<div class="detail-sub-item"><span class="autosub-in">${s.inName}</span> <span class="points-gained">(+${s.pointsGained})</span></div>`;
+                            mobileDetailsHtml += `<div class="detail-sub-item"><span class="detail-label"></span><span><span class="autosub-in">${s.inName}</span> <span class="points-gained">(+${s.pointsGained})</span></span></div>`;
                         });
                     }
                     if (live.defconPlayers && live.defconPlayers.length > 0) {
                         const firstDef = live.defconPlayers[0];
-                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">DEFCON:</span> <span class="defcon-player">${firstDef.name}</span> <span class="defcon-points">(+${firstDef.points})</span></div>`;
+                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">DEFCON:</span><span><span class="defcon-player">${firstDef.name}</span> <span class="defcon-points">(+${firstDef.points})</span></span></div>`;
                         live.defconPlayers.slice(1).forEach(p => {
-                            mobileDetailsHtml += `<div class="detail-sub-item"><span class="defcon-player">${p.name}</span> <span class="defcon-points">(+${p.points})</span></div>`;
+                            mobileDetailsHtml += `<div class="detail-sub-item"><span class="detail-label"></span><span><span class="defcon-player">${p.name}</span> <span class="defcon-points">(+${p.points})</span></span></div>`;
                         });
                     }
                     if (live.liveBonus > 0) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">BPS:</span> <span class="points-gained">+${live.liveBonus}</span></div>`;
-                    mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Status:</span> ${statusHtml}</div>`;
+                    mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Status:</span><span>${statusHtml}</span></div>`;
                     if (live.overallRank) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Overall Rank:</span> <span class="rank-value">${live.overallRank.toLocaleString()}</span></div>`;
                     if (live.gwRank) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">GW Rank:</span> <span class="rank-value">${live.gwRank.toLocaleString()}</span></div>`;
                     mobileDetailsHtml += '</div>';
