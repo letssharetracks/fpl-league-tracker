@@ -2829,8 +2829,9 @@
                     }
                 }
 
-                // Use calculated points if API points is 0 (not yet updated)
-                const points = h.points > 0 ? h.points : calculatedPoints;
+                // Always use calculated points - it sums live player scores in real-time
+                // h.points from API only updates after games finish
+                const points = calculatedPoints;
                 const transferCost = h.event_transfers_cost || 0;
                 const netPoints = points - transferCost;
 
