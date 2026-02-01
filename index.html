@@ -2377,6 +2377,7 @@
             try {
                 const response = await fplApiFetch(`/api/fixtures/?event=${gameweek}`);
                 const allFixtures = await response.json();
+                console.log(`Ticker: Fetched ${allFixtures?.length || 0} fixtures for GW${gameweek}`, allFixtures);
 
                 if (!allFixtures || allFixtures.length === 0) {
                     document.getElementById('fixtureTicker').style.display = 'none';
