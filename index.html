@@ -1083,7 +1083,9 @@
             // Try Cloudflare Worker first (unless it previously failed)
             if (useCloudflareWorker && !workerFailed) {
                 try {
-                    const response = await fetch(CLOUDFLARE_WORKER + encodeURIComponent(apiPath));
+                    // Strip /api/ prefix since worker adds it
+                    const workerPath = apiPath.replace(/^\/api\//, '');
+                    const response = await fetch(CLOUDFLARE_WORKER + encodeURIComponent(workerPath));
                     if (response.ok) return response;
                     if (response.status === 429) {
                         console.warn('Cloudflare limit reached, switching to CORS proxy');
@@ -1106,9 +1108,11 @@
             // Use Cloudflare Worker if available (much faster!)
             if (useCloudflareWorker && !workerFailed) {
                 try {
+                    // Strip /api/ prefix since worker adds it
+                    const workerPath = apiPath.replace(/^\/api\//, '');
                     const controller = new AbortController();
                     const timeoutId = setTimeout(() => controller.abort(), 10000);
-                    const response = await fetch(CLOUDFLARE_WORKER + encodeURIComponent(apiPath), {
+                    const response = await fetch(CLOUDFLARE_WORKER + encodeURIComponent(workerPath), {
                         signal: controller.signal
                     });
                     clearTimeout(timeoutId);
