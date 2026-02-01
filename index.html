@@ -1708,12 +1708,71 @@
             const toggle = document.getElementById('autoSubToggle');
             toggle.classList.toggle('active', autoSubsEnabled);
 
-            // Recalculate positions and update views
+            // Recalculate positions and update views immediately
             if (Object.keys(livePoints).length > 0) {
-                calculateLivePositions(livePoints);
+                recalculateLivePositions();
                 updateTableView();
                 renderPlayerToggles();
+                if (currentDisplayMode === 'chart') {
+                    updateChart();
+                }
             }
+        }
+
+        function recalculateLivePositions() {
+            if (!currentGameweek || allPlayers.length === 0) return;
+
+            // Calculate previous GW positions
+            const prevGwIndex = currentGameweek - 2;
+            const prevGwRankings = allPlayers.map(p => {
+                const history = playerHistories[p.entry] || [];
+                const prevGwData = prevGwIndex >= 0 && history[prevGwIndex] ? history[prevGwIndex] : null;
+                const prevTotal = prevGwData ? prevGwData.total_points : 0;
+                return { entry: p.entry, prevTotal };
+            }).sort((a, b) => b.prevTotal - a.prevTotal);
+
+            const prevPositions = {};
+            prevGwRankings.forEach((item, idx) => {
+                prevPositions[item.entry] = idx + 1;
+            });
+
+            // Calculate current positions with auto-subs toggle respected
+            const currentRankings = allPlayers.map(p => {
+                const live = livePoints[p.entry];
+                const history = playerHistories[p.entry] || [];
+                const prevGwData = prevGwIndex >= 0 && history[prevGwIndex] ? history[prevGwIndex] : null;
+                const prevTotal = prevGwData ? prevGwData.total_points : 0;
+
+                let currentTotal, gwPoints;
+                if (live) {
+                    const hasAutoSubs = autoSubsEnabled && live.autoSubs && live.autoSubs.length > 0;
+                    gwPoints = hasAutoSubs ? live.predictedPoints : live.netPoints;
+                    currentTotal = prevTotal + gwPoints;
+                } else {
+                    currentTotal = p.total;
+                    gwPoints = p.total - prevTotal;
+                }
+
+                return {
+                    entry: p.entry,
+                    total: currentTotal,
+                    oldRank: prevPositions[p.entry] || p.rank,
+                    gwPoints: gwPoints
+                };
+            }).sort((a, b) => b.total - a.total);
+
+            // Update livePositions
+            livePositions = {};
+            currentRankings.forEach((item, idx) => {
+                const newRank = idx + 1;
+                const movement = item.oldRank - newRank;
+                livePositions[item.entry] = {
+                    position: newRank,
+                    movement: movement,
+                    currentTotal: item.total,
+                    gwPoints: item.gwPoints
+                };
+            });
         }
 
         // Toggle inline row details (for mobile tap)
