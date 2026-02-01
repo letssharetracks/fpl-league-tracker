@@ -1374,6 +1374,8 @@
         const API_FOOTBALL_BASE = 'https://v3.football.api-sports.io';
         const API_FOOTBALL_DAILY_LIMIT = 90; // Keep 10 buffer from 100 limit
         let matchEventsCache = {}; // Cache events by fixture ID
+        let previousScores = {}; // Track scores to detect goals
+        let cachedGoalScorers = {}; // Cache goal scorer data per fixture
 
         // Track API-Football usage to stay within free tier
         function getApiFootballUsage() {
@@ -2520,23 +2522,39 @@
                 // Show all fixtures when today's games are finished or no games today
                 const fixtures = hasLiveOrUpcomingToday && todaysFixtures.length > 0 ? todaysFixtures : allFixtures;
 
-                // Fetch live match data from API-Football for goal scorers
+                // Check for score changes (goals) and only fetch API-Football when goal detected
                 let liveMatchData = {};
-                const hasLiveMatches = fixtures.some(f => f.started && !f.finished);
-                if (hasLiveMatches) {
-                    try {
-                        const liveMatches = await fetchLiveFootballMatches();
-                        console.log('API-Football live matches:', liveMatches);
-                        // Create lookup by team names
-                        liveMatches.forEach(match => {
-                            const homeTeam = match.teams?.home?.name?.toLowerCase() || '';
-                            const awayTeam = match.teams?.away?.name?.toLowerCase() || '';
-                            const goals = match.events?.filter(e => e.type === 'Goal') || [];
-                            liveMatchData[homeTeam] = { match, goals };
-                            liveMatchData[awayTeam] = { match, goals };
-                        });
-                    } catch (e) {
-                        console.warn('Could not fetch API-Football data:', e);
+                const liveFixtures = fixtures.filter(f => f.started && !f.finished);
+
+                for (const f of liveFixtures) {
+                    const fixtureKey = `${f.team_h}-${f.team_a}`;
+                    const currentTotal = (f.team_h_score || 0) + (f.team_a_score || 0);
+                    const previousTotal = previousScores[fixtureKey] || 0;
+
+                    // Detect if a goal was scored
+                    if (currentTotal > previousTotal) {
+                        console.log(`⚽ GOAL DETECTED in ${fixtureKey}! Score changed from ${previousTotal} to ${currentTotal}`);
+                        // Fetch fresh goal scorer data from API-Football
+                        try {
+                            const liveMatches = await fetchLiveFootballMatches();
+                            liveMatches.forEach(match => {
+                                const homeTeam = match.teams?.home?.name?.toLowerCase() || '';
+                                const awayTeam = match.teams?.away?.name?.toLowerCase() || '';
+                                const goals = match.events?.filter(e => e.type === 'Goal') || [];
+                                // Cache for this fixture
+                                cachedGoalScorers[homeTeam] = goals;
+                                cachedGoalScorers[awayTeam] = goals;
+                            });
+                        } catch (e) {
+                            console.warn('Could not fetch goal scorer data:', e);
+                        }
+                    }
+                    previousScores[fixtureKey] = currentTotal;
+
+                    // Use cached goal scorer data
+                    const homeNorm = normalizeTeamName(teamAbbr[f.team_h] || '').toLowerCase();
+                    if (cachedGoalScorers[homeNorm]) {
+                        liveMatchData[homeNorm] = { goals: cachedGoalScorers[homeNorm] };
                     }
                 }
 
@@ -2557,11 +2575,12 @@
                         statusClass = 'live';
                         statusText = f.minutes > 0 ? `${f.minutes}'` : 'LIVE';
 
-                        // Try to get goal scorers from API-Football
+                        // Try to get goal scorers from cached API-Football data
                         const homeNorm = normalizeTeamName(home).toLowerCase();
-                        const matchData = liveMatchData[homeNorm];
-                        if (matchData && matchData.goals && matchData.goals.length > 0) {
-                            goalScorers = matchData.goals
+                        const awayNorm = normalizeTeamName(away).toLowerCase();
+                        const goals = cachedGoalScorers[homeNorm] || cachedGoalScorers[awayNorm] || [];
+                        if (goals.length > 0) {
+                            goalScorers = goals
                                 .map(g => `⚽ ${g.player?.name || '?'} ${g.time?.elapsed}'`)
                                 .join(' ');
                         }
