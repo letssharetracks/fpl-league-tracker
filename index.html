@@ -305,7 +305,7 @@
             }
         }
 
-        /* Portrait mobile - condensed view, tap for details */
+        /* Mobile portrait - show key columns, tap row for more details */
         @media (max-width: 600px) and (orientation: portrait) {
             .league-table .col-chip,
             .league-table .col-autosub,
@@ -316,21 +316,15 @@
                 display: none;
             }
             .league-table .col-captain {
-                max-width: 70px;
+                max-width: 80px;
                 overflow: hidden;
                 text-overflow: ellipsis;
             }
-            .league-table .col-name {
+            .league-table tr {
                 cursor: pointer;
             }
-            .league-table .col-name:after {
-                content: ' ›';
-                color: #00ff85;
-                font-size: 12px;
-            }
-            .league-table .manager-name {
-                text-decoration: underline;
-                text-decoration-color: rgba(0,255,133,0.3);
+            .league-table tbody tr:active {
+                background: rgba(0,255,133,0.1);
             }
         }
 
@@ -1582,8 +1576,10 @@
 
         // Mobile detail modal functions
         function showMobileDetail(dataStr) {
-            // Only show on portrait mobile
-            if (window.innerWidth > 600 || window.innerHeight < window.innerWidth) return;
+            // Only show modal on mobile portrait (when columns are hidden)
+            const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+            const isMobile = window.innerWidth <= 600;
+            if (!isMobile || !isPortrait) return;
 
             try {
                 const data = JSON.parse(dataStr.replace(/&quot;/g, '"'));
