@@ -2630,12 +2630,14 @@
                 // Calculate live bonus for in-progress AND bonus-pending fixtures
                 const liveBonusMap = {};
                 let liveFixtureCount = 0;
-                const today = new Date().toDateString();
+                // Use UTC date to avoid timezone issues
+                const now = new Date();
+                const todayUTC = now.toISOString().split('T')[0]; // YYYY-MM-DD format
                 fixtures.forEach(f => {
                     // Only calculate provisional bonus for TODAY's fixtures where bonus hasn't been confirmed
                     // Yesterday's finished games already have bonus in total_points
-                    const fixtureDate = f.kickoff_time ? new Date(f.kickoff_time).toDateString() : null;
-                    const isToday = fixtureDate === today;
+                    const fixtureDate = f.kickoff_time ? f.kickoff_time.split('T')[0] : null;
+                    const isToday = fixtureDate === todayUTC;
                     if (f.started && !f.bonus_added && isToday) {
                         liveFixtureCount++;
                         // Get all players from both teams in this fixture
