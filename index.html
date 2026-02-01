@@ -305,8 +305,12 @@
             }
         }
 
-        /* Mobile portrait - show key columns, tap row for more details v2 */
+        /* Mobile portrait - show key columns, tap row for more details */
         @media (max-width: 600px) and (orientation: portrait) {
+            .league-table {
+                min-width: unset;
+                width: 100%;
+            }
             .league-table .col-chip,
             .league-table .col-autosub,
             .league-table .col-bps,
@@ -315,11 +319,13 @@
             .league-table .col-or {
                 display: none;
             }
-            .league-table .col-captain {
-                max-width: 80px;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
+            .league-table .col-rank { width: 25px; }
+            .league-table .col-move { width: 30px; }
+            .league-table .col-name { min-width: 70px; max-width: 90px; }
+            .league-table .col-gw { width: 35px; }
+            .league-table .col-total { width: 45px; }
+            .league-table .col-gap { width: 35px; }
+            .league-table .col-captain { width: 60px; max-width: 70px; overflow: hidden; text-overflow: ellipsis; }
             .league-table tr {
                 cursor: pointer;
             }
