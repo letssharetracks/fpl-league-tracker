@@ -305,6 +305,29 @@
             }
         }
 
+        /* Expandable row details for mobile */
+        .row-details {
+            background: rgba(0,0,0,0.3);
+        }
+        .row-details td {
+            padding: 0 !important;
+        }
+        .row-details-content {
+            padding: 10px 15px;
+            font-size: 12px;
+        }
+        .detail-item {
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+        .detail-label {
+            color: #888;
+            margin-right: 8px;
+        }
+
         /* Mobile narrow screens - show key columns only, tap for details */
         @media (max-width: 480px) {
             .league-table {
@@ -1581,60 +1604,23 @@
             }
         }
 
-        // Mobile detail modal functions
-        function showMobileDetail(dataStr) {
-            // Only show modal on narrow mobile screens (when columns are hidden)
+        // Toggle inline row details (for mobile tap)
+        function toggleRowDetails(entryId) {
+            // Only work on mobile
             if (window.innerWidth > 480) return;
 
-            try {
-                const data = JSON.parse(dataStr.replace(/&quot;/g, '"'));
-                document.getElementById('modalName').textContent = data.name;
-                document.getElementById('modalTeam').textContent = data.team;
+            const detailsRow = document.getElementById(`row-details-${entryId}`);
+            if (!detailsRow) return;
 
-                const chipNames = { 'bboost': 'Bench Boost', '3xc': 'Triple Captain', 'freehit': 'Free Hit', 'wildcard': 'Wildcard' };
-
-                let html = `
-                    <div class="modal-row"><span class="modal-label">Position</span><span class="modal-value">#${data.position}</span></div>
-                    <div class="modal-row"><span class="modal-label">GW Points</span><span class="modal-value highlight">${data.gw}</span></div>
-                    <div class="modal-row"><span class="modal-label">Total</span><span class="modal-value">${data.total.toLocaleString()}</span></div>
-                    <div class="modal-row"><span class="modal-label">Captain</span><span class="modal-value">${data.captain}${data.vcActivated ? ' (VC)' : ''}</span></div>
-                `;
-
-                if (data.chip) {
-                    html += `<div class="modal-row"><span class="modal-label">Chip</span><span class="modal-value" style="color:#04f5ff;">${chipNames[data.chip] || data.chip}</span></div>`;
+            // Close all other open details
+            document.querySelectorAll('.row-details').forEach(row => {
+                if (row.id !== `row-details-${entryId}`) {
+                    row.style.display = 'none';
                 }
+            });
 
-                if (data.autoSubs && data.autoSubs.length > 0) {
-                    html += `<div class="modal-section"><div class="modal-section-title">Auto-Subs</div>`;
-                    data.autoSubs.forEach(sub => {
-                        html += `<div class="modal-row"><span class="modal-value" style="color:#04f5ff;">${sub.inName}</span><span class="modal-value" style="color:#ffaa00;">+${sub.pointsGained}</span></div>`;
-                    });
-                    html += `</div>`;
-                }
-
-                if (data.defcon && data.defcon.length > 0) {
-                    html += `<div class="modal-section"><div class="modal-section-title">DEFCON Points</div>`;
-                    data.defcon.forEach(p => {
-                        html += `<div class="modal-row"><span class="modal-value" style="color:#ff6b6b;">${p.name}</span><span class="modal-value" style="color:#ff6b6b;">+${p.points}</span></div>`;
-                    });
-                    html += `</div>`;
-                }
-
-                if (data.or) {
-                    html += `<div class="modal-row"><span class="modal-label">Overall Rank</span><span class="modal-value" style="color:#888;">${data.or.toLocaleString()}</span></div>`;
-                }
-
-                document.getElementById('modalBody').innerHTML = html;
-                document.getElementById('mobileModal').classList.add('active');
-            } catch(e) {
-                console.error('Modal error:', e);
-            }
-        }
-
-        function closeMobileModal(event) {
-            if (!event || event.target.id === 'mobileModal') {
-                document.getElementById('mobileModal').classList.remove('active');
-            }
+            // Toggle this one
+            detailsRow.style.display = detailsRow.style.display === 'none' ? 'table-row' : 'none';
         }
 
         function updateTableView() {
@@ -1793,8 +1779,27 @@
                     gwRank: live?.gwRank || null
                 }).replace(/'/g, "\\'");
 
+                // Build expandable details for mobile
+                const chipFullNames = { 'bboost': 'Bench Boost', '3xc': 'Triple Captain', 'freehit': 'Free Hit', 'wildcard': 'Wildcard' };
+                let mobileDetailsHtml = '';
+                if (live) {
+                    mobileDetailsHtml = '<div class="row-details-content">';
+                    if (live.chip) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Chip:</span> <span style="color:#04f5ff;">${chipFullNames[live.chip] || live.chip}</span></div>`;
+                    if (live.autoSubs && live.autoSubs.length > 0) {
+                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Auto-Sub:</span> ${live.autoSubs.map(s => `<span style="color:#04f5ff;">${s.inName}</span> <span style="color:#ffaa00;">(+${s.pointsGained})</span>`).join(', ')}</div>`;
+                    }
+                    if (live.defconPlayers && live.defconPlayers.length > 0) {
+                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">DEFCON:</span> ${live.defconPlayers.map(p => `<span style="color:#ff6b6b;">${p.name} (+${p.points})</span>`).join(', ')}</div>`;
+                    }
+                    if (live.liveBonus > 0) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">BPS:</span> <span style="color:#ffaa00;">+${live.liveBonus}</span></div>`;
+                    mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Status:</span> ${statusHtml}</div>`;
+                    if (live.overallRank) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Overall Rank:</span> <span style="color:#888;">${live.overallRank.toLocaleString()}</span></div>`;
+                    if (live.gwRank) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">GW Rank:</span> <span style="color:#888;">${live.gwRank.toLocaleString()}</span></div>`;
+                    mobileDetailsHtml += '</div>';
+                }
+
                 return `
-                    <tr class="${rowClass}" onclick="showMobileDetail('${detailData.replace(/"/g, '&quot;')}')">
+                    <tr class="${rowClass}" onclick="toggleRowDetails(${player.entry})">
                         <td class="col-rank">${position}</td>
                         <td class="col-move">${moveHtml}</td>
                         <td class="col-name">
@@ -1811,6 +1816,9 @@
                         <td class="col-defcon">${defconHtml}</td>
                         <td class="col-status">${statusHtml}</td>
                         <td class="col-or">${orHtml}</td>
+                    </tr>
+                    <tr class="row-details" id="row-details-${player.entry}" style="display:none;">
+                        <td colspan="13">${mobileDetailsHtml}</td>
                     </tr>
                 `;
             }).join('');
