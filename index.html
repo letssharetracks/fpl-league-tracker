@@ -2836,11 +2836,12 @@
                 const bpsPlayers = []; // Track players in bonus positions
                 const activePlayers = isBenchBoost ? data.picks : data.picks.filter(p => p.position <= 11);
                 activePlayers.forEach(pick => {
+                    const playerInfo = players ? players[pick.element] : null;
+                    const playerLiveData = livePlayerData ? livePlayerData[pick.element] : null;
+
                     // Only count provisional bonus from liveBonusMap
                     const provisionalBonus = liveBonusMap[pick.element] || 0;
                     if (provisionalBonus > 0) {
-                        const playerInfo = players ? players[pick.element] : null;
-                        const playerLiveData = livePlayerData ? livePlayerData[pick.element] : null;
                         bpsPlayers.push({
                             name: playerInfo?.name || 'Unknown',
                             bonus: provisionalBonus,
@@ -2852,7 +2853,6 @@
                     // Sum DEFCON points for active players
                     if (playerLiveData && playerLiveData.defcon) {
                         totalDefcon += playerLiveData.defcon;
-                        const playerInfo = players ? players[pick.element] : null;
                         defconPlayers.push({
                             name: playerInfo?.name || 'Unknown',
                             points: playerLiveData.defcon
