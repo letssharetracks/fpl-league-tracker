@@ -1937,13 +1937,12 @@
                 }
 
                 if (live) {
-                    // Always use predictedPoints as it includes provisional bonus
-                    // predictedPoints = base points + auto-subs (if enabled) + provisional bonus
+                    // predictedPoints already includes liveBonus (added in fetchLivePoints)
                     gwPoints = live.predictedPoints;
                     if (live.transferCost > 0) {
                         hitDisplay = `<span class="hit">(-${live.transferCost})</span>`;
                     }
-                    // Calculate live total same as sidebar (always update when we have live data)
+                    // Calculate live total
                     totalDisplay = prevGwTotal + gwPoints;
                 }
 
@@ -2632,9 +2631,10 @@
                 const liveBonusMap = {};
                 let liveFixtureCount = 0;
                 fixtures.forEach(f => {
-                    // Calculate provisional bonus for started fixtures that aren't fully confirmed
-                    // This includes both live matches AND finished_provisional (bonus pending)
-                    if (f.started && !f.finished) {
+                    // Calculate provisional bonus for started fixtures where bonus hasn't been confirmed
+                    // This includes live matches AND finished matches awaiting bonus confirmation
+                    // When bonus_added is true, the bonus is already in player's total_points
+                    if (f.started && !f.bonus_added) {
                         liveFixtureCount++;
                         // Get all players from both teams in this fixture
                         const fixturePlayers = [];
