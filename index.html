@@ -103,6 +103,12 @@
         .team-abbr.home {
             color: #fff;
         }
+        .goal-scorers {
+            font-size: 10px;
+            color: #00ff85;
+            margin-left: 8px;
+            white-space: nowrap;
+        }
         @keyframes ticker-scroll {
             0% { transform: translateX(0); }
             100% { transform: translateX(-50%); }
@@ -1363,6 +1369,41 @@
         const CLOUDFLARE_WORKER = 'https://fpl-proxy.dom-mackie.workers.dev/?path=';
         console.log('Using Cloudflare Worker for fast API calls');
 
+        // API-Football for live goal/assist data (100 requests/day free)
+        const API_FOOTBALL_KEY = 'cf0bff11890d2b352abe3e100cf5c800';
+        const API_FOOTBALL_BASE = 'https://v3.football.api-sports.io';
+        const API_FOOTBALL_DAILY_LIMIT = 90; // Keep 10 buffer from 100 limit
+        let matchEventsCache = {}; // Cache events by fixture ID
+
+        // Track API-Football usage to stay within free tier
+        function getApiFootballUsage() {
+            const stored = localStorage.getItem('apiFootballUsage');
+            if (stored) {
+                const data = JSON.parse(stored);
+                const today = new Date().toDateString();
+                if (data.date === today) {
+                    return data.count;
+                }
+            }
+            return 0;
+        }
+
+        function incrementApiFootballUsage() {
+            const today = new Date().toDateString();
+            const current = getApiFootballUsage();
+            localStorage.setItem('apiFootballUsage', JSON.stringify({ date: today, count: current + 1 }));
+            return current + 1;
+        }
+
+        function canUseApiFootball() {
+            const usage = getApiFootballUsage();
+            const canUse = usage < API_FOOTBALL_DAILY_LIMIT;
+            if (!canUse) {
+                console.warn(`API-Football daily limit reached (${usage}/${API_FOOTBALL_DAILY_LIMIT})`);
+            }
+            return canUse;
+        }
+
         // Fallback CORS Proxies for local development only
         const CORS_PROXIES = [
             'https://api.allorigins.win/raw?url=',
@@ -2397,6 +2438,56 @@
             }
         }
 
+        // Fetch live Premier League fixtures from API-Football
+        async function fetchLiveFootballMatches() {
+            if (!canUseApiFootball()) return [];
+            try {
+                incrementApiFootballUsage();
+                const response = await fetch(`${API_FOOTBALL_BASE}/fixtures?live=all&league=39`, {
+                    headers: { 'x-apisports-key': API_FOOTBALL_KEY }
+                });
+                const data = await response.json();
+                console.log(`API-Football request (${getApiFootballUsage()}/${API_FOOTBALL_DAILY_LIMIT} today)`);
+                return data.response || [];
+            } catch (e) {
+                console.error('API-Football live fixtures error:', e);
+                return [];
+            }
+        }
+
+        // Fetch match events (goals, assists) from API-Football
+        async function fetchMatchEvents(fixtureId) {
+            // Check cache first (refresh every 60 seconds)
+            const cached = matchEventsCache[fixtureId];
+            if (cached && Date.now() - cached.time < 60000) {
+                return cached.events;
+            }
+            try {
+                const response = await fetch(`${API_FOOTBALL_BASE}/fixtures/events?fixture=${fixtureId}`, {
+                    headers: { 'x-apisports-key': API_FOOTBALL_KEY }
+                });
+                const data = await response.json();
+                const events = data.response || [];
+                matchEventsCache[fixtureId] = { events, time: Date.now() };
+                return events;
+            } catch (e) {
+                console.error('API-Football events error:', e);
+                return [];
+            }
+        }
+
+        // Map FPL team names to API-Football team names for matching
+        function normalizeTeamName(name) {
+            const mappings = {
+                'MUN': 'Manchester United', 'MCI': 'Manchester City', 'LIV': 'Liverpool',
+                'ARS': 'Arsenal', 'CHE': 'Chelsea', 'TOT': 'Tottenham', 'NEW': 'Newcastle',
+                'AVL': 'Aston Villa', 'BHA': 'Brighton', 'BRE': 'Brentford', 'BOU': 'Bournemouth',
+                'CRY': 'Crystal Palace', 'EVE': 'Everton', 'FUL': 'Fulham', 'NFO': 'Nottingham Forest',
+                'WHU': 'West Ham', 'WOL': 'Wolves', 'IPS': 'Ipswich', 'LEI': 'Leicester', 'SOU': 'Southampton'
+            };
+            return mappings[name] || name;
+        }
+
         // Fixture ticker
         async function fetchAndUpdateTicker(gameweek) {
             try {
@@ -2429,6 +2520,26 @@
                 // Show all fixtures when today's games are finished or no games today
                 const fixtures = hasLiveOrUpcomingToday && todaysFixtures.length > 0 ? todaysFixtures : allFixtures;
 
+                // Fetch live match data from API-Football for goal scorers
+                let liveMatchData = {};
+                const hasLiveMatches = fixtures.some(f => f.started && !f.finished);
+                if (hasLiveMatches) {
+                    try {
+                        const liveMatches = await fetchLiveFootballMatches();
+                        console.log('API-Football live matches:', liveMatches);
+                        // Create lookup by team names
+                        liveMatches.forEach(match => {
+                            const homeTeam = match.teams?.home?.name?.toLowerCase() || '';
+                            const awayTeam = match.teams?.away?.name?.toLowerCase() || '';
+                            const goals = match.events?.filter(e => e.type === 'Goal') || [];
+                            liveMatchData[homeTeam] = { match, goals };
+                            liveMatchData[awayTeam] = { match, goals };
+                        });
+                    } catch (e) {
+                        console.warn('Could not fetch API-Football data:', e);
+                    }
+                }
+
                 const fixtureHtml = fixtures.map(f => {
                     const home = teamAbbr[f.team_h] || 'TBC';
                     const away = teamAbbr[f.team_a] || 'TBC';
@@ -2437,6 +2548,7 @@
 
                     let statusClass = 'upcoming';
                     let statusText = '';
+                    let goalScorers = '';
 
                     if (f.finished) {
                         statusClass = 'ft';
@@ -2444,6 +2556,15 @@
                     } else if (f.started) {
                         statusClass = 'live';
                         statusText = f.minutes > 0 ? `${f.minutes}'` : 'LIVE';
+
+                        // Try to get goal scorers from API-Football
+                        const homeNorm = normalizeTeamName(home).toLowerCase();
+                        const matchData = liveMatchData[homeNorm];
+                        if (matchData && matchData.goals && matchData.goals.length > 0) {
+                            goalScorers = matchData.goals
+                                .map(g => `⚽ ${g.player?.name || '?'} ${g.time?.elapsed}'`)
+                                .join(' ');
+                        }
                     } else {
                         // Format kickoff time
                         const kickoff = new Date(f.kickoff_time);
@@ -2458,6 +2579,7 @@
                                 <span class="team-abbr">${away}</span>
                             </div>
                             <span class="fixture-status ${statusClass}">${statusText}</span>
+                            ${goalScorers ? `<span class="goal-scorers">${goalScorers}</span>` : ''}
                         </div>
                     `;
                 }).join('');
