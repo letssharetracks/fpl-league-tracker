@@ -41,6 +41,82 @@
             margin-bottom: 30px;
             font-weight: 500;
         }
+        .fixture-ticker {
+            background: rgba(0,0,0,0.4);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: 8px 0;
+            margin-bottom: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+        .ticker-wrapper {
+            display: flex;
+            animation: ticker-scroll 30s linear infinite;
+            width: max-content;
+        }
+        .ticker-wrapper:hover {
+            animation-play-state: paused;
+        }
+        .fixture-item {
+            display: inline-flex;
+            align-items: center;
+            padding: 0 20px;
+            white-space: nowrap;
+            font-size: 12px;
+            border-right: 1px solid rgba(255,255,255,0.2);
+        }
+        .fixture-item:last-child {
+            border-right: none;
+        }
+        .fixture-teams {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .fixture-score {
+            font-weight: 700;
+            color: #fff;
+            margin: 0 6px;
+        }
+        .fixture-status {
+            font-size: 10px;
+            margin-left: 8px;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        .fixture-status.live {
+            background: #e90052;
+            color: #fff;
+        }
+        .fixture-status.ft {
+            background: #00ff85;
+            color: #37003c;
+        }
+        .fixture-status.upcoming {
+            background: rgba(255,255,255,0.2);
+            color: #b8b8b8;
+        }
+        .team-abbr {
+            color: #b8b8b8;
+            font-weight: 500;
+        }
+        .team-abbr.home {
+            color: #fff;
+        }
+        @keyframes ticker-scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        @media (max-width: 480px) {
+            .fixture-ticker {
+                padding: 6px 0;
+                margin-bottom: 10px;
+            }
+            .fixture-item {
+                font-size: 11px;
+                padding: 0 12px;
+            }
+        }
         .controls {
             display: flex;
             gap: 20px;
@@ -1107,6 +1183,12 @@
     <!-- Main App -->
     <div id="mainApp" class="container" style="display: none;">
         <h1>FPL League Tracker</h1>
+
+        <div class="fixture-ticker" id="fixtureTicker" style="display: none;">
+            <div class="ticker-wrapper" id="tickerContent">
+                <!-- Fixtures loaded dynamically -->
+            </div>
+        </div>
 
         <div class="controls">
             <div class="control-group control-group-league">
@@ -2271,6 +2353,69 @@
             }
         }
 
+        // Fixture ticker
+        async function fetchAndUpdateTicker(gameweek) {
+            try {
+                const response = await fplApiFetch(`/api/fixtures/?event=${gameweek}`);
+                const fixtures = await response.json();
+
+                if (!fixtures || fixtures.length === 0) {
+                    document.getElementById('fixtureTicker').style.display = 'none';
+                    return;
+                }
+
+                // Team ID to abbreviation mapping
+                const teamAbbr = {
+                    1: 'ARS', 2: 'AVL', 3: 'BOU', 4: 'BRE', 5: 'BHA',
+                    6: 'CHE', 7: 'CRY', 8: 'EVE', 9: 'FUL', 10: 'IPS',
+                    11: 'LEI', 12: 'LIV', 13: 'MCI', 14: 'MUN', 15: 'NEW',
+                    16: 'NFO', 17: 'SOU', 18: 'TOT', 19: 'WHU', 20: 'WOL'
+                };
+
+                const fixtureHtml = fixtures.map(f => {
+                    const home = teamAbbr[f.team_h] || 'TBC';
+                    const away = teamAbbr[f.team_a] || 'TBC';
+                    const homeScore = f.team_h_score ?? '-';
+                    const awayScore = f.team_a_score ?? '-';
+
+                    let statusClass = 'upcoming';
+                    let statusText = '';
+
+                    if (f.finished) {
+                        statusClass = 'ft';
+                        statusText = 'FT';
+                    } else if (f.started) {
+                        statusClass = 'live';
+                        statusText = f.minutes > 0 ? `${f.minutes}'` : 'LIVE';
+                    } else {
+                        // Format kickoff time
+                        const kickoff = new Date(f.kickoff_time);
+                        statusText = kickoff.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                    }
+
+                    return `
+                        <div class="fixture-item">
+                            <div class="fixture-teams">
+                                <span class="team-abbr home">${home}</span>
+                                <span class="fixture-score">${homeScore}-${awayScore}</span>
+                                <span class="team-abbr">${away}</span>
+                            </div>
+                            <span class="fixture-status ${statusClass}">${statusText}</span>
+                        </div>
+                    `;
+                }).join('');
+
+                // Duplicate for seamless loop
+                const tickerContent = document.getElementById('tickerContent');
+                tickerContent.innerHTML = fixtureHtml + fixtureHtml;
+                document.getElementById('fixtureTicker').style.display = 'block';
+
+            } catch (e) {
+                console.error('Failed to fetch fixtures for ticker:', e);
+                document.getElementById('fixtureTicker').style.display = 'none';
+            }
+        }
+
         async function fetchLivePlayerScores(gameweek) {
             if (livePlayerScores) return livePlayerScores;
             try {
@@ -2870,6 +3015,10 @@
             }
 
             console.log('Live data updated:', Object.keys(livePoints).length, 'players');
+
+            // Update fixture ticker
+            fetchAndUpdateTicker(currentGameweek);
+
             renderPlayerToggles();
             if (currentFilter) filterPlayers(currentFilter);
             updateChart();
