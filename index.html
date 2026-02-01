@@ -2562,7 +2562,11 @@
                         const benchMins = benchData ? benchData.minutes : 0;
                         const benchTeam = benchInfo ? benchInfo.team : 0;
 
-                        // Check if bench player played (or hasn't played yet)
+                        // Only show auto-sub if bench player's game has started
+                        const benchFixtureStarted = teamsPlaying.has(benchTeam) || teamsFinished.has(benchTeam);
+                        if (!benchFixtureStarted) continue; // Game hasn't kicked off yet
+
+                        // Check if bench player actually played (for finished fixtures)
                         const benchFixtureFinished = teamsFinished.has(benchTeam);
                         if (benchFixtureFinished && benchMins === 0) continue; // Didn't play
 
