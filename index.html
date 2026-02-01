@@ -175,10 +175,16 @@
             font-weight: 600;
         }
         .league-table .col-total {
-            width: 80px;
+            width: 70px;
             text-align: right;
             font-weight: 700;
             color: #fff;
+        }
+        .league-table .col-gap {
+            width: 45px;
+            text-align: right;
+            font-size: 10px;
+            color: #ff6b6b;
         }
         .league-table .col-captain {
             min-width: 140px;
@@ -292,6 +298,38 @@
             .league-table .team-name {
                 display: none;
             }
+        }
+
+        /* Landscape mobile - fit all columns without scroll */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .league-table {
+                font-size: 10px;
+                min-width: unset;
+                width: 100%;
+            }
+            .league-table th, .league-table td {
+                padding: 4px 3px;
+                white-space: nowrap;
+            }
+            .league-table .col-rank { width: 20px; }
+            .league-table .col-move { width: 22px; }
+            .league-table .col-name { min-width: 60px; max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
+            .league-table .col-gw { width: 35px; }
+            .league-table .col-total { width: 42px; }
+            .league-table .col-gap { width: 30px; }
+            .league-table .col-captain { max-width: 60px; overflow: hidden; text-overflow: ellipsis; }
+            .league-table .col-chip { width: 22px; }
+            .league-table .col-autosub { max-width: 55px; overflow: hidden; text-overflow: ellipsis; }
+            .league-table .col-bonus { width: 28px; }
+            .league-table .col-defcon { max-width: 60px; overflow: hidden; text-overflow: ellipsis; }
+            .league-table .col-status { width: 45px; }
+            .league-table .col-or { width: 50px; }
+            .league-table .team-name { display: none; }
+            .league-table .manager-name { font-size: 9px; }
+            .table-view { padding: 5px; margin: 0; }
+            .controls { padding: 5px; gap: 5px; }
+            .control-group { padding: 5px 8px; }
+            h1 { font-size: 1.2rem; margin-bottom: 5px; }
         }
 
         /* Footer styles */
@@ -838,8 +876,8 @@
             <div class="control-group">
                 <label>Mode:</label>
                 <div class="view-btns">
-                    <button class="view-btn" id="btn-table-view" onclick="setDisplayMode('table')">📊 Live</button>
-                    <button class="view-btn active" id="btn-chart-view" onclick="setDisplayMode('chart')">📈 Charts</button>
+                    <button class="view-btn active" id="btn-table-view" onclick="setDisplayMode('table')">📊 Live</button>
+                    <button class="view-btn" id="btn-chart-view" onclick="setDisplayMode('chart')">📈 Charts</button>
                 </div>
             </div>
             <div class="control-group chart-controls" id="chartTypeControls">
@@ -865,7 +903,7 @@
             <span id="statusText" style="color: #04f5ff;">Loading...</span>
         </div>
 
-        <div class="main-content">
+        <div class="main-content" style="display: none;">
             <div class="chart-container">
                 <canvas id="mainChart"></canvas>
             </div>
@@ -892,8 +930,8 @@
             </div>
         </div>
 
-        <!-- Table View (hidden by default) -->
-        <div id="tableView" class="table-view" style="display: none;">
+        <!-- Table View (shown by default - LIVE mode) -->
+        <div id="tableView" class="table-view">
             <table class="league-table">
                 <thead>
                     <tr>
@@ -902,6 +940,7 @@
                         <th class="col-name">Manager</th>
                         <th class="col-gw">GW</th>
                         <th class="col-total">Total</th>
+                        <th class="col-gap">Gap</th>
                         <th class="col-captain">Captain</th>
                         <th class="col-chip">Chip</th>
                         <th class="col-autosub">Auto-Sub</th>
@@ -954,7 +993,7 @@
         let selectedEntries = new Set();
         let leagueName = '';
         let currentChartType = 'total';
-        let currentDisplayMode = 'chart';
+        let currentDisplayMode = 'table'; // Default to LIVE view
         let hoveredEntry = null;
         let currentGameweek = null;
         let gameweekFinished = true;
@@ -974,11 +1013,12 @@
         // Default Team ID for development (Dominic Mackie)
         const DEFAULT_TEAM_ID = null; // Set to null for production - users enter their own Team ID
 
-        // Check if running on Netlify (use serverless function) or locally (use CORS proxy)
-        const isNetlify = window.location.hostname.includes('netlify.app') ||
-                          window.location.hostname.includes('fpl-league-tracker');
+        // Netlify functions DISABLED to stay within free tier limits
+        // Using CORS proxies instead (slower but free and unlimited)
+        // To re-enable: set isNetlify = true (requires paid plan or backend)
+        const isNetlify = false;
         const NETLIFY_FUNCTION = '/.netlify/functions/fpl-proxy?path=';
-        console.log('Environment:', isNetlify ? 'Netlify (fast)' : 'Local (CORS proxy)');
+        console.log('Using free CORS proxies');
 
         // Fallback CORS Proxies for local development only
         const CORS_PROXIES = [
@@ -1040,11 +1080,21 @@
         }
 
         // Simple FPL API fetch - uses Netlify function or CORS proxy
+        let netlifyFailed = false; // Track if Netlify is unavailable
         async function fplApiFetch(apiPath) {
-            if (isNetlify) {
-                const response = await fetch(NETLIFY_FUNCTION + encodeURIComponent(apiPath));
-                if (response.ok) return response;
-                console.warn('Netlify function failed, trying CORS proxy');
+            // Try Netlify function first (unless it previously failed)
+            if (isNetlify && !netlifyFailed) {
+                try {
+                    const response = await fetch(NETLIFY_FUNCTION + encodeURIComponent(apiPath));
+                    if (response.ok) return response;
+                    if (response.status === 402 || response.status === 429) {
+                        console.warn('Netlify limit reached, switching to CORS proxy');
+                        netlifyFailed = true;
+                    }
+                } catch (e) {
+                    console.warn('Netlify function error, falling back to CORS proxy');
+                    netlifyFailed = true;
+                }
             }
             // Fallback to CORS proxy
             const url = 'https://fantasy.premierleague.com' + apiPath;
@@ -1408,6 +1458,22 @@
                 return posA - posB;
             });
 
+            // Pre-calculate totals for gap calculation
+            const playerTotals = sortedPlayers.map(player => {
+                const live = livePoints[player.entry];
+                const history = playerHistories[player.entry] || [];
+                const prevGwIndex = currentGameweek - 2;
+                const prevGwData = prevGwIndex >= 0 && history[prevGwIndex] ? history[prevGwIndex] : null;
+                const prevGwTotal = prevGwData ? prevGwData.total_points : 0;
+
+                if (live && live.isLive) {
+                    const hasAutoSubs = live.autoSubs && live.autoSubs.length > 0;
+                    const gwPoints = hasAutoSubs ? live.predictedPoints : live.netPoints;
+                    return prevGwTotal + gwPoints;
+                }
+                return player.total;
+            });
+
             tbody.innerHTML = sortedPlayers.map((player, idx) => {
                 const live = livePoints[player.entry];
                 const posData = livePositions[player.entry];
@@ -1423,6 +1489,13 @@
                 let gwPoints = player.total - prevGwTotal;
                 let hitDisplay = '';
                 let totalDisplay = player.total;
+
+                // Calculate gap to player above
+                let gapHtml = '-';
+                if (idx > 0) {
+                    const gap = playerTotals[idx] - playerTotals[idx - 1];
+                    gapHtml = `<span style="color: ${gap >= 0 ? '#00ff85' : '#ff6b6b'};">${gap}</span>`;
+                }
 
                 if (live) {
                     // Use predicted points if auto-subs (same calculation as sidebar)
@@ -1522,6 +1595,7 @@
                         </td>
                         <td class="col-gw">${gwPoints} ${hitDisplay}</td>
                         <td class="col-total">${totalDisplay.toLocaleString()}</td>
+                        <td class="col-gap">${gapHtml}</td>
                         <td class="col-captain">${captainHtml}</td>
                         <td class="col-chip">${chipHtml}</td>
                         <td class="col-autosub">${autoSubHtml}</td>
