@@ -326,6 +326,10 @@
         .detail-item:last-child {
             border-bottom: none;
         }
+        .detail-item.has-sub-items {
+            border-bottom: none;
+            padding-bottom: 2px;
+        }
         .detail-label {
             color: #888;
         }
@@ -334,6 +338,10 @@
             grid-template-columns: 10ch 1fr;
             gap: 0.6em;
             padding: 2px 0;
+        }
+        .detail-sub-item.last-sub-item {
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 4px;
         }
         .chip-active {
             color: #04f5ff;
@@ -1825,16 +1833,20 @@
                     if (live.chip) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Chip:</span> <span class="chip-active">${chipFullNames[live.chip] || live.chip}</span></div>`;
                     if (live.autoSubs && live.autoSubs.length > 0) {
                         const firstSub = live.autoSubs[0];
-                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Auto-Sub:</span><span><span class="autosub-in">${firstSub.inName}</span> <span class="points-gained">(+${firstSub.pointsGained})</span></span></div>`;
-                        live.autoSubs.slice(1).forEach(s => {
-                            mobileDetailsHtml += `<div class="detail-sub-item"><span class="detail-label"></span><span><span class="autosub-in">${s.inName}</span> <span class="points-gained">(+${s.pointsGained})</span></span></div>`;
+                        const hasMultipleSubs = live.autoSubs.length > 1;
+                        mobileDetailsHtml += `<div class="detail-item${hasMultipleSubs ? ' has-sub-items' : ''}"><span class="detail-label">Auto-Sub:</span><span><span class="autosub-in">${firstSub.inName}</span> <span class="points-gained">(+${firstSub.pointsGained})</span></span></div>`;
+                        live.autoSubs.slice(1).forEach((s, idx, arr) => {
+                            const isLast = idx === arr.length - 1;
+                            mobileDetailsHtml += `<div class="detail-sub-item${isLast ? ' last-sub-item' : ''}"><span class="detail-label"></span><span><span class="autosub-in">${s.inName}</span> <span class="points-gained">(+${s.pointsGained})</span></span></div>`;
                         });
                     }
                     if (live.defconPlayers && live.defconPlayers.length > 0) {
                         const firstDef = live.defconPlayers[0];
-                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">DEFCON:</span><span><span class="defcon-player">${firstDef.name}</span> <span class="defcon-points">(+${firstDef.points})</span></span></div>`;
-                        live.defconPlayers.slice(1).forEach(p => {
-                            mobileDetailsHtml += `<div class="detail-sub-item"><span class="detail-label"></span><span><span class="defcon-player">${p.name}</span> <span class="defcon-points">(+${p.points})</span></span></div>`;
+                        const hasMultipleDef = live.defconPlayers.length > 1;
+                        mobileDetailsHtml += `<div class="detail-item${hasMultipleDef ? ' has-sub-items' : ''}"><span class="detail-label">DEFCON:</span><span><span class="defcon-player">${firstDef.name}</span> <span class="defcon-points">(+${firstDef.points})</span></span></div>`;
+                        live.defconPlayers.slice(1).forEach((p, idx, arr) => {
+                            const isLast = idx === arr.length - 1;
+                            mobileDetailsHtml += `<div class="detail-sub-item${isLast ? ' last-sub-item' : ''}"><span class="detail-label"></span><span><span class="defcon-player">${p.name}</span> <span class="defcon-points">(+${p.points})</span></span></div>`;
                         });
                     }
                     if (live.liveBonus > 0) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">BPS:</span> <span class="points-gained">+${live.liveBonus}</span></div>`;
