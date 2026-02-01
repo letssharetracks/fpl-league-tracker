@@ -2686,13 +2686,13 @@
                 let currentTotal;
                 let gwPoints;
 
-                if (fixtureStatus.matchesLive && live) {
-                    // Matches in progress: use previous total + live calculated points
-                    // This handles the case where API hasn't updated yet
-                    currentTotal = prevTotal + live.netPoints;
-                    gwPoints = live.netPoints;
+                if (live) {
+                    // Use predicted points (includes auto-subs) when available
+                    const hasAutoSubs = live.autoSubs && live.autoSubs.length > 0;
+                    gwPoints = hasAutoSubs ? live.predictedPoints : live.netPoints;
+                    currentTotal = prevTotal + gwPoints;
                 } else {
-                    // No matches live: use API total directly (already includes all confirmed points)
+                    // No live data: use API total
                     currentTotal = p.total;
                     gwPoints = p.total - prevTotal;
                 }
