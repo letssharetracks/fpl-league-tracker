@@ -256,6 +256,13 @@
             text-align: right;
             font-weight: 600;
         }
+        .league-table th.sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+        .league-table th.sortable:hover {
+            background: rgba(255,255,255,0.15);
+        }
         .league-table .col-total {
             width: 70px;
             text-align: right;
@@ -1288,8 +1295,8 @@
                         <th class="col-rank">#</th>
                         <th class="col-move"></th>
                         <th class="col-name">Manager</th>
-                        <th class="col-gw">GW</th>
-                        <th class="col-total">Total</th>
+                        <th class="col-gw sortable" id="sortGw">GW</th>
+                        <th class="col-total sortable" id="sortTotal">Total</th>
                         <th class="col-gap">Gap</th>
                         <th class="col-captain">Cpt</th>
                         <th class="col-chip">Chip</th>
@@ -1351,6 +1358,8 @@
         let livePositions = {};
         let autoSubsEnabled = true; // Toggle for predicted auto-subs
         let currentFilter = '';
+        let sortColumn = 'total'; // Current sort column: 'total', 'gw', 'gap'
+        let sortDirection = 'desc'; // 'asc' or 'desc'
         let userTeamId = null;
         let userLeagues = [];
         let weekRangeStart = 1;
@@ -1807,6 +1816,29 @@
             }
         }
 
+        function toggleSort(column) {
+            // If clicking same column, toggle direction; otherwise, set new column with desc
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
+            } else {
+                sortColumn = column;
+                sortDirection = 'desc';
+            }
+            console.log('Sort toggled:', column, sortDirection);
+
+            // Re-render table
+            updateTableView();
+        }
+
+        // Add click/touch listeners for sort headers (works on mobile)
+        document.addEventListener('click', function(e) {
+            if (e.target.id === 'sortGw' || e.target.closest('#sortGw')) {
+                toggleSort('gw');
+            } else if (e.target.id === 'sortTotal' || e.target.closest('#sortTotal')) {
+                toggleSort('total');
+            }
+        });
+
         function toggleAutoSubs() {
             autoSubsEnabled = !autoSubsEnabled;
             const toggle = document.getElementById('autoSubToggle');
@@ -1849,12 +1881,13 @@
 
                 let currentTotal, gwPoints;
                 if (live) {
-                    const hasAutoSubs = autoSubsEnabled && live.autoSubs && live.autoSubs.length > 0;
-                    gwPoints = live.predictedPoints;
+                    // Include BPS bonus in calculation
+                    const bpsTotal = live.bpsPlayers ? live.bpsPlayers.reduce((sum, bp) => sum + bp.bonus, 0) : 0;
+                    gwPoints = live.predictedPoints + bpsTotal;
                     currentTotal = prevTotal + gwPoints;
                 } else {
-                    currentTotal = p.total;
                     gwPoints = p.total - prevTotal;
+                    currentTotal = prevTotal + gwPoints;
                 }
 
                 return {
@@ -1864,6 +1897,9 @@
                     gwPoints: gwPoints
                 };
             }).sort((a, b) => b.total - a.total);
+
+            // Debug: log ranking order
+            console.log('Ranking order (top 30):', currentRankings.slice(0, 30).map((r, i) => `#${i+1}: ${r.total}`).join(', '));
 
             // Update livePositions
             livePositions = {};
@@ -1902,44 +1938,70 @@
             const tbody = document.getElementById('leagueTableBody');
             if (!tbody || allPlayers.length === 0) return;
 
-            // Sort players by current position
-            const sortedPlayers = [...allPlayers].sort((a, b) => {
-                const posA = livePositions[a.entry]?.position || a.rank;
-                const posB = livePositions[b.entry]?.position || b.rank;
-                return posA - posB;
-            });
-
-            // Pre-calculate totals for gap calculation
-            const playerTotals = sortedPlayers.map(player => {
+            // Pre-calculate ALL display values for each player first
+            const playerData = allPlayers.map(player => {
                 const live = livePoints[player.entry];
                 const history = playerHistories[player.entry] || [];
                 const prevGwIndex = currentGameweek - 2;
                 const prevGwData = prevGwIndex >= 0 && history[prevGwIndex] ? history[prevGwIndex] : null;
                 const prevGwTotal = prevGwData ? prevGwData.total_points : 0;
 
+                // Calculate GW points (with live bonus if available)
+                let gwPoints;
                 if (live) {
-                    const hasAutoSubs = autoSubsEnabled && live.autoSubs && live.autoSubs.length > 0;
-                    const gwPoints = live.predictedPoints;
-                    return prevGwTotal + gwPoints;
+                    const bpsTotal = live.bpsPlayers ? live.bpsPlayers.reduce((sum, p) => sum + p.bonus, 0) : 0;
+                    gwPoints = live.predictedPoints + bpsTotal;
+                } else {
+                    gwPoints = player.total - prevGwTotal;
                 }
-                return player.total;
+
+                // Calculate total consistently for ALL players
+                const totalDisplay = prevGwTotal + gwPoints;
+
+                return {
+                    player,
+                    gwPoints,
+                    totalDisplay,
+                    position: livePositions[player.entry]?.position || player.rank
+                };
             });
 
-            tbody.innerHTML = sortedPlayers.map((player, idx) => {
+            // Sort by calculated total (highest first) - V43
+            console.log('=== V43 SORT RUNNING ===');
+            console.log('BEFORE SORT - first 5:', playerData.slice(0,5).map(d => `${d.player.player_name}:${d.totalDisplay}`).join(', '));
+
+            playerData.sort((a, b) => b.totalDisplay - a.totalDisplay);
+
+            console.log('AFTER SORT - first 10:', playerData.slice(0,10).map(d => `${d.player.player_name}:${d.totalDisplay}`).join(', '));
+
+            // Debug: show sorted order with API total comparison
+            console.log('=== SORTED ORDER (first 30) ===');
+            playerData.slice(0, 30).forEach((d, i) => {
+                const hasLive = !!livePoints[d.player.entry];
+                if (d.totalDisplay !== d.player.total) {
+                    console.log(`  ${i+1}. ${d.player.player_name}: CALC=${d.totalDisplay}, API=${d.player.total}, hasLive=${hasLive} *** MISMATCH`);
+                } else {
+                    console.log(`  ${i+1}. ${d.player.player_name}: Total=${d.totalDisplay}, hasLive=${hasLive}`);
+                }
+            });
+
+            // Extract sorted players and totals
+            const sortedPlayers = playerData.map(d => d.player);
+
+            // Pre-calculate totals for gap calculation (use sorted order)
+            const playerTotals = playerData.map(d => d.totalDisplay);
+
+            tbody.innerHTML = playerData.map((data, idx) => {
+                const player = data.player;
                 const live = livePoints[player.entry];
                 const posData = livePositions[player.entry];
                 const position = posData?.position || player.rank;
                 const movement = posData?.movement || 0;
 
-                // Calculate GW points
-                const history = playerHistories[player.entry] || [];
-                const prevGwIndex = currentGameweek - 2;
-                const prevGwData = prevGwIndex >= 0 && history[prevGwIndex] ? history[prevGwIndex] : null;
-                const prevGwTotal = prevGwData ? prevGwData.total_points : 0;
-
-                let gwPoints = player.total - prevGwTotal;
+                // Use pre-calculated values
+                let gwPoints = data.gwPoints;
                 let hitDisplay = '';
-                let totalDisplay = player.total;
+                let totalDisplay = data.totalDisplay;
 
                 // Calculate gap to player above
                 let gapHtml = '-';
@@ -1948,15 +2010,8 @@
                     gapHtml = `<span style="color: ${gap >= 0 ? '#00ff85' : '#ff6b6b'};">${gap}</span>`;
                 }
 
-                if (live) {
-                    // Sum bonus directly from bpsPlayers (the same data shown in BPS column)
-                    const bpsTotal = live.bpsPlayers ? live.bpsPlayers.reduce((sum, p) => sum + p.bonus, 0) : 0;
-                    gwPoints = live.predictedPoints + bpsTotal;
-                    if (live.transferCost > 0) {
-                        hitDisplay = `<span class="hit">(-${live.transferCost})</span>`;
-                    }
-                    // Calculate live total
-                    totalDisplay = prevGwTotal + gwPoints;
+                if (live && live.transferCost > 0) {
+                    hitDisplay = `<span class="hit">(-${live.transferCost})</span>`;
                 }
 
                 // Movement indicator
@@ -2380,7 +2435,9 @@
                     bootstrapPlayers[p.id] = {
                         team: p.team,
                         position: p.element_type, // 1=GK, 2=DEF, 3=MID, 4=FWD
-                        name: p.web_name
+                        name: p.web_name,
+                        chanceOfPlaying: p.chance_of_playing_this_round, // null = fine, 0 = definitely out
+                        status: p.status // 'a'=available, 'i'=injured, 'u'=unavailable, 's'=suspended, 'd'=doubtful
                     };
                 });
                 // Also cache teams if not already done
@@ -2486,10 +2543,13 @@
 
                 // First pass: check if ANY goals were scored (don't call API yet)
                 let goalsDetected = false;
+                console.log(`Goal check: ${liveFixtures.length} live fixtures, isFirstLoad=${isFirstLoad}`);
                 for (const f of liveFixtures) {
                     const fixtureKey = `${f.team_h}-${f.team_a}`;
                     const currentTotal = (f.team_h_score || 0) + (f.team_a_score || 0);
                     const previousTotal = previousScores[fixtureKey];
+
+                    console.log(`  ${fixtureKey}: current=${currentTotal}, previous=${previousTotal}`);
 
                     // Only detect as new goal if we had a previous score (not first load)
                     if (previousTotal !== undefined && currentTotal > previousTotal) {
@@ -2500,11 +2560,15 @@
                     previousScores[fixtureKey] = currentTotal;
                 }
 
-                // Second pass: fetch API-Football ONCE if any goals were detected
-                if (goalsDetected && !isFirstLoad) {
+                // Check if there are existing goals on first load
+                const hasExistingGoals = liveFixtures.some(f => (f.team_h_score || 0) + (f.team_a_score || 0) > 0);
+
+                // Fetch API-Football if: new goal detected OR first load with existing goals
+                const shouldFetchScorers = goalsDetected || (isFirstLoad && hasExistingGoals);
+                if (shouldFetchScorers) {
                     try {
                         const liveMatches = await fetchLiveFootballMatches();
-                        console.log(`Fetched ${liveMatches.length} live matches from API-Football`);
+                        console.log(`Fetched ${liveMatches.length} live matches from API-Football${isFirstLoad ? ' (first load)' : ''}`);
                         liveMatches.forEach(match => {
                             const homeTeam = match.teams?.home?.name?.toLowerCase() || '';
                             const awayTeam = match.teams?.away?.name?.toLowerCase() || '';
@@ -2516,7 +2580,7 @@
                         console.warn('Could not fetch goal scorer data:', e);
                     }
                 } else if (isFirstLoad) {
-                    console.log('First load - skipping API-Football call, will fetch on next goal');
+                    console.log('First load - no goals yet, will fetch on first goal');
                 }
 
                 const fixtureHtml = fixtures.map(f => {
@@ -2836,6 +2900,17 @@
                 let playersPlaying = 0;
                 const needsAutoSub = []; // Starting players with 0 mins and fixture finished
 
+                // Debug: check for Saka specifically
+                starting.forEach(pick => {
+                    const pInfo = players ? players[pick.element] : null;
+                    if (pInfo?.name === 'Saka') {
+                        const pData = livePlayerData ? livePlayerData[pick.element] : null;
+                        const mins = pData ? pData.minutes : 0;
+                        const tm = pInfo.team;
+                        console.log(`DEBUG Saka: team=${tm}, mins=${mins}, finished=${teamsFinished.has(tm)}, playing=${teamsPlaying.has(tm)}, yetToPlay=${teamsYetToPlay.has(tm)}`);
+                    }
+                });
+
                 for (const pick of starting) {
                     const playerInfo = players ? players[pick.element] : null;
                     const playerData = livePlayerData ? livePlayerData[pick.element] : null;
@@ -2853,6 +2928,8 @@
                         playersPlaying++;
                     } else if (teamsFinished.has(team) && minutes === 0) {
                         // Player didn't play and fixture is done - needs auto-sub
+                        const pName = players ? players[pick.element]?.name : pick.element;
+                        console.log(`Needs auto-sub: ${pName} (team ${team} finished, 0 mins)`);
                         needsAutoSub.push(pick);
                     }
                 }
@@ -2934,9 +3011,17 @@
                         const benchMins = benchData ? benchData.minutes : 0;
                         const benchTeam = benchInfo ? benchInfo.team : 0;
 
-                        // Only show auto-sub if bench player's game has started
+                        // Check fixture status for this bench player
                         const benchFixtureStarted = teamsPlaying.has(benchTeam) || teamsFinished.has(benchTeam);
-                        if (!benchFixtureStarted) continue; // Game hasn't kicked off yet
+                        const benchFixtureYetToPlay = teamsYetToPlay.has(benchTeam);
+
+                        // Skip players who are definitely out (injured/unavailable/suspended or 0% chance)
+                        if (benchInfo) {
+                            const unavailable = ['i', 'u', 's'].includes(benchInfo.status);
+                            const zeroChance = benchInfo.chanceOfPlaying === 0;
+                            console.log(`Auto-sub check: ${benchInfo.name} - status=${benchInfo.status}, chance=${benchInfo.chanceOfPlaying}, mins=${benchMins}, unavailable=${unavailable}, zeroChance=${zeroChance}`);
+                            if (unavailable || zeroChance) continue; // Won't play this GW
+                        }
 
                         // Check if bench player actually played (for finished fixtures)
                         const benchFixtureFinished = teamsFinished.has(benchTeam);
@@ -3214,14 +3299,14 @@
                 let gwPoints;
 
                 if (live) {
-                    // Use predicted points (includes auto-subs) when enabled
-                    const hasAutoSubs = autoSubsEnabled && live.autoSubs && live.autoSubs.length > 0;
-                    gwPoints = live.predictedPoints;
+                    // Include BPS bonus in calculation
+                    const bpsTotal = live.bpsPlayers ? live.bpsPlayers.reduce((sum, bp) => sum + bp.bonus, 0) : 0;
+                    gwPoints = live.predictedPoints + bpsTotal;
                     currentTotal = prevTotal + gwPoints;
                 } else {
-                    // No live data: use API total
-                    currentTotal = p.total;
+                    // No live data: derive from API total
                     gwPoints = p.total - prevTotal;
+                    currentTotal = prevTotal + gwPoints;
                 }
 
                 return {
