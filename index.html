@@ -1937,8 +1937,10 @@
                 }
 
                 if (live) {
-                    // predictedPoints already includes liveBonus (added in fetchLivePoints)
-                    gwPoints = live.predictedPoints;
+                    // Add liveBonus explicitly to ensure BPS is included in total
+                    const bonusToAdd = live.liveBonus || 0;
+                    gwPoints = live.predictedPoints + bonusToAdd;
+                    console.log(`Display [${player.entry}]: predictedPoints=${live.predictedPoints}, liveBonus=${bonusToAdd}, gwPoints=${gwPoints}`);
                     if (live.transferCost > 0) {
                         hitDisplay = `<span class="hit">(-${live.transferCost})</span>`;
                     }
@@ -2633,11 +2635,15 @@
                 // Use UTC date to avoid timezone issues
                 const now = new Date();
                 const todayUTC = now.toISOString().split('T')[0]; // YYYY-MM-DD format
+                console.log(`Today UTC: ${todayUTC}`);
                 fixtures.forEach(f => {
                     // Only calculate provisional bonus for TODAY's fixtures where bonus hasn't been confirmed
-                    // Yesterday's finished games already have bonus in total_points
                     const fixtureDate = f.kickoff_time ? f.kickoff_time.split('T')[0] : null;
                     const isToday = fixtureDate === todayUTC;
+                    // Log fixture details for debugging
+                    if (f.started) {
+                        console.log(`Fixture ${f.team_h}v${f.team_a}: started=${f.started}, finished=${f.finished}, bonus_added=${f.bonus_added}, date=${fixtureDate}, isToday=${isToday}`);
+                    }
                     if (f.started && !f.bonus_added && isToday) {
                         liveFixtureCount++;
                         // Get all players from both teams in this fixture
