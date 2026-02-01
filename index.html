@@ -1013,12 +1013,10 @@
         // Default Team ID for development (Dominic Mackie)
         const DEFAULT_TEAM_ID = null; // Set to null for production - users enter their own Team ID
 
-        // Netlify functions DISABLED to stay within free tier limits
-        // Using CORS proxies instead (slower but free and unlimited)
-        // To re-enable: set isNetlify = true (requires paid plan or backend)
-        const isNetlify = false;
-        const NETLIFY_FUNCTION = '/.netlify/functions/fpl-proxy?path=';
-        console.log('Using free CORS proxies');
+        // Cloudflare Worker for fast API calls (100k requests/day free)
+        const useCloudflareWorker = true;
+        const CLOUDFLARE_WORKER = 'https://fpl-proxy.dom-mackie.workers.dev/?path=';
+        console.log('Using Cloudflare Worker for fast API calls');
 
         // Fallback CORS Proxies for local development only
         const CORS_PROXIES = [
@@ -1079,21 +1077,21 @@
             }
         }
 
-        // Simple FPL API fetch - uses Netlify function or CORS proxy
-        let netlifyFailed = false; // Track if Netlify is unavailable
+        // Simple FPL API fetch - uses Cloudflare Worker or CORS proxy
+        let workerFailed = false; // Track if Cloudflare Worker is unavailable
         async function fplApiFetch(apiPath) {
-            // Try Netlify function first (unless it previously failed)
-            if (isNetlify && !netlifyFailed) {
+            // Try Cloudflare Worker first (unless it previously failed)
+            if (useCloudflareWorker && !workerFailed) {
                 try {
-                    const response = await fetch(NETLIFY_FUNCTION + encodeURIComponent(apiPath));
+                    const response = await fetch(CLOUDFLARE_WORKER + encodeURIComponent(apiPath));
                     if (response.ok) return response;
-                    if (response.status === 402 || response.status === 429) {
-                        console.warn('Netlify limit reached, switching to CORS proxy');
-                        netlifyFailed = true;
+                    if (response.status === 429) {
+                        console.warn('Cloudflare limit reached, switching to CORS proxy');
+                        workerFailed = true;
                     }
                 } catch (e) {
-                    console.warn('Netlify function error, falling back to CORS proxy');
-                    netlifyFailed = true;
+                    console.warn('Cloudflare Worker error, falling back to CORS proxy');
+                    workerFailed = true;
                 }
             }
             // Fallback to CORS proxy
@@ -1105,23 +1103,24 @@
             // Extract API path from full URL
             const apiPath = url.replace('https://fantasy.premierleague.com', '');
 
-            // Use Netlify function if available (much faster!)
-            if (isNetlify) {
+            // Use Cloudflare Worker if available (much faster!)
+            if (useCloudflareWorker && !workerFailed) {
                 try {
                     const controller = new AbortController();
                     const timeoutId = setTimeout(() => controller.abort(), 10000);
-                    const response = await fetch(NETLIFY_FUNCTION + encodeURIComponent(apiPath), {
+                    const response = await fetch(CLOUDFLARE_WORKER + encodeURIComponent(apiPath), {
                         signal: controller.signal
                     });
                     clearTimeout(timeoutId);
                     if (response.ok) {
                         return response;
                     }
-                    console.warn('Netlify function returned', response.status);
+                    console.warn('Cloudflare Worker returned', response.status);
                 } catch (e) {
-                    console.warn('Netlify function failed:', e.message);
+                    console.warn('Cloudflare Worker failed:', e.message);
+                    workerFailed = true;
                 }
-                // Fall through to CORS proxy if Netlify fails
+                // Fall through to CORS proxy if Cloudflare fails
             }
 
             // Fallback: CORS proxy (for local dev or if Netlify fails)
