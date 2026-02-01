@@ -2522,40 +2522,44 @@
                 // Show all fixtures when today's games are finished or no games today
                 const fixtures = hasLiveOrUpcomingToday && todaysFixtures.length > 0 ? todaysFixtures : allFixtures;
 
-                // Check for score changes (goals) and only fetch API-Football when goal detected
+                // Check for score changes (goals) - only fetch API-Football ONCE when any goal detected
                 let liveMatchData = {};
                 const liveFixtures = fixtures.filter(f => f.started && !f.finished);
+                const isFirstLoad = Object.keys(previousScores).length === 0;
 
+                // First pass: check if ANY goals were scored (don't call API yet)
+                let goalsDetected = false;
                 for (const f of liveFixtures) {
                     const fixtureKey = `${f.team_h}-${f.team_a}`;
                     const currentTotal = (f.team_h_score || 0) + (f.team_a_score || 0);
-                    const previousTotal = previousScores[fixtureKey] || 0;
+                    const previousTotal = previousScores[fixtureKey];
 
-                    // Detect if a goal was scored
-                    if (currentTotal > previousTotal) {
-                        console.log(`⚽ GOAL DETECTED in ${fixtureKey}! Score changed from ${previousTotal} to ${currentTotal}`);
-                        // Fetch fresh goal scorer data from API-Football
-                        try {
-                            const liveMatches = await fetchLiveFootballMatches();
-                            liveMatches.forEach(match => {
-                                const homeTeam = match.teams?.home?.name?.toLowerCase() || '';
-                                const awayTeam = match.teams?.away?.name?.toLowerCase() || '';
-                                const goals = match.events?.filter(e => e.type === 'Goal') || [];
-                                // Cache for this fixture
-                                cachedGoalScorers[homeTeam] = goals;
-                                cachedGoalScorers[awayTeam] = goals;
-                            });
-                        } catch (e) {
-                            console.warn('Could not fetch goal scorer data:', e);
-                        }
+                    // Only detect as new goal if we had a previous score (not first load)
+                    if (previousTotal !== undefined && currentTotal > previousTotal) {
+                        console.log(`⚽ GOAL DETECTED in ${fixtureKey}! Score: ${previousTotal} → ${currentTotal}`);
+                        goalsDetected = true;
                     }
+                    // Always update the tracked score
                     previousScores[fixtureKey] = currentTotal;
+                }
 
-                    // Use cached goal scorer data
-                    const homeNorm = normalizeTeamName(teamAbbr[f.team_h] || '').toLowerCase();
-                    if (cachedGoalScorers[homeNorm]) {
-                        liveMatchData[homeNorm] = { goals: cachedGoalScorers[homeNorm] };
+                // Second pass: fetch API-Football ONCE if any goals were detected
+                if (goalsDetected && !isFirstLoad) {
+                    try {
+                        const liveMatches = await fetchLiveFootballMatches();
+                        console.log(`Fetched ${liveMatches.length} live matches from API-Football`);
+                        liveMatches.forEach(match => {
+                            const homeTeam = match.teams?.home?.name?.toLowerCase() || '';
+                            const awayTeam = match.teams?.away?.name?.toLowerCase() || '';
+                            const goals = match.events?.filter(e => e.type === 'Goal') || [];
+                            cachedGoalScorers[homeTeam] = goals;
+                            cachedGoalScorers[awayTeam] = goals;
+                        });
+                    } catch (e) {
+                        console.warn('Could not fetch goal scorer data:', e);
                     }
+                } else if (isFirstLoad) {
+                    console.log('First load - skipping API-Football call, will fetch on next goal');
                 }
 
                 const fixtureHtml = fixtures.map(f => {
