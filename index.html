@@ -1838,7 +1838,7 @@
                 let currentTotal, gwPoints;
                 if (live) {
                     const hasAutoSubs = autoSubsEnabled && live.autoSubs && live.autoSubs.length > 0;
-                    gwPoints = hasAutoSubs ? live.predictedPoints : live.netPoints;
+                    gwPoints = live.predictedPoints;
                     currentTotal = prevTotal + gwPoints;
                 } else {
                     currentTotal = p.total;
@@ -1907,7 +1907,7 @@
 
                 if (live) {
                     const hasAutoSubs = autoSubsEnabled && live.autoSubs && live.autoSubs.length > 0;
-                    const gwPoints = hasAutoSubs ? live.predictedPoints : live.netPoints;
+                    const gwPoints = live.predictedPoints;
                     return prevGwTotal + gwPoints;
                 }
                 return player.total;
@@ -1937,9 +1937,9 @@
                 }
 
                 if (live) {
-                    // Use predicted points if auto-subs enabled and present
-                    const hasAutoSubs = autoSubsEnabled && live.autoSubs && live.autoSubs.length > 0;
-                    gwPoints = hasAutoSubs ? live.predictedPoints : live.netPoints;
+                    // Always use predictedPoints as it includes provisional bonus
+                    // predictedPoints = base points + auto-subs (if enabled) + provisional bonus
+                    gwPoints = live.predictedPoints;
                     if (live.transferCost > 0) {
                         hitDisplay = `<span class="hit">(-${live.transferCost})</span>`;
                     }
@@ -3062,7 +3062,7 @@
                 if (live) {
                     // Use predicted points (includes auto-subs) when enabled
                     const hasAutoSubs = autoSubsEnabled && live.autoSubs && live.autoSubs.length > 0;
-                    gwPoints = hasAutoSubs ? live.predictedPoints : live.netPoints;
+                    gwPoints = live.predictedPoints;
                     currentTotal = prevTotal + gwPoints;
                 } else {
                     // No live data: use API total
@@ -3400,7 +3400,7 @@
                 if (live && live.isLive && matchesInProgress) {
                     // Use predictedPoints if auto-subs enabled and present
                     const hasAutoSubs = autoSubsEnabled && live.autoSubs && live.autoSubs.length > 0;
-                    gwPoints = hasAutoSubs ? live.predictedPoints : live.netPoints;
+                    gwPoints = live.predictedPoints;
                     // When live, total = prevGwTotal + live points
                     pointsDisplay = prevGwTotal + gwPoints;
                 }
