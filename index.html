@@ -340,10 +340,10 @@
             color: #ffaa00;
         }
         .defcon-player {
-            color: #ff6b6b;
+            color: #e056fd;
         }
         .defcon-points {
-            color: #ff6b6b;
+            color: #e056fd;
         }
         .rank-value {
             color: #888;
@@ -1810,14 +1810,16 @@
                     mobileDetailsHtml = '<div class="row-details-content">';
                     if (live.chip) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Chip:</span> <span class="chip-active">${chipFullNames[live.chip] || live.chip}</span></div>`;
                     if (live.autoSubs && live.autoSubs.length > 0) {
-                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Auto-Sub:</span></div>`;
-                        live.autoSubs.forEach(s => {
+                        const firstSub = live.autoSubs[0];
+                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Auto-Sub:</span> <span class="autosub-in">${firstSub.inName}</span> <span class="points-gained">(+${firstSub.pointsGained})</span></div>`;
+                        live.autoSubs.slice(1).forEach(s => {
                             mobileDetailsHtml += `<div class="detail-sub-item"><span class="autosub-in">${s.inName}</span> <span class="points-gained">(+${s.pointsGained})</span></div>`;
                         });
                     }
                     if (live.defconPlayers && live.defconPlayers.length > 0) {
-                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">DEFCON:</span></div>`;
-                        live.defconPlayers.forEach(p => {
+                        const firstDef = live.defconPlayers[0];
+                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">DEFCON:</span> <span class="defcon-player">${firstDef.name}</span> <span class="defcon-points">(+${firstDef.points})</span></div>`;
+                        live.defconPlayers.slice(1).forEach(p => {
                             mobileDetailsHtml += `<div class="detail-sub-item"><span class="defcon-player">${p.name}</span> <span class="defcon-points">(+${p.points})</span></div>`;
                         });
                     }
