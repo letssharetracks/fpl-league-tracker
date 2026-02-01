@@ -853,9 +853,105 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
         }
+
+        /* Mobile detail modal */
+        .mobile-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .mobile-modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background: linear-gradient(135deg, #37003c 0%, #2d0036 100%);
+            border-radius: 12px;
+            padding: 20px;
+            width: 90%;
+            max-width: 350px;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid rgba(0,255,133,0.3);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        .modal-header h3 {
+            margin: 0;
+            color: #00ff85;
+            font-size: 16px;
+        }
+        .modal-header .team-name {
+            font-size: 12px;
+            color: #888;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0 5px;
+        }
+        .modal-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-size: 14px;
+        }
+        .modal-row:last-child {
+            border-bottom: none;
+        }
+        .modal-label {
+            color: #888;
+        }
+        .modal-value {
+            color: #fff;
+            font-weight: 500;
+        }
+        .modal-value.highlight {
+            color: #00ff85;
+        }
+        .modal-section {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+        .modal-section-title {
+            color: #04f5ff;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
     </style>
 </head>
 <body>
+    <!-- Mobile Detail Modal -->
+    <div id="mobileModal" class="mobile-modal" onclick="closeMobileModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div>
+                    <h3 id="modalName"></h3>
+                    <div class="team-name" id="modalTeam"></div>
+                </div>
+                <button class="modal-close" onclick="closeMobileModal()">&times;</button>
+            </div>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
     <!-- Setup Screen -->
     <div id="setupScreen" class="container" style="display: none;">
         <h1>FPL League Tracker</h1>
@@ -1484,6 +1580,62 @@
             }
         }
 
+        // Mobile detail modal functions
+        function showMobileDetail(dataStr) {
+            // Only show on portrait mobile
+            if (window.innerWidth > 600 || window.innerHeight < window.innerWidth) return;
+
+            try {
+                const data = JSON.parse(dataStr.replace(/&quot;/g, '"'));
+                document.getElementById('modalName').textContent = data.name;
+                document.getElementById('modalTeam').textContent = data.team;
+
+                const chipNames = { 'bboost': 'Bench Boost', '3xc': 'Triple Captain', 'freehit': 'Free Hit', 'wildcard': 'Wildcard' };
+
+                let html = `
+                    <div class="modal-row"><span class="modal-label">Position</span><span class="modal-value">#${data.position}</span></div>
+                    <div class="modal-row"><span class="modal-label">GW Points</span><span class="modal-value highlight">${data.gw}</span></div>
+                    <div class="modal-row"><span class="modal-label">Total</span><span class="modal-value">${data.total.toLocaleString()}</span></div>
+                    <div class="modal-row"><span class="modal-label">Captain</span><span class="modal-value">${data.captain}${data.vcActivated ? ' (VC)' : ''}</span></div>
+                `;
+
+                if (data.chip) {
+                    html += `<div class="modal-row"><span class="modal-label">Chip</span><span class="modal-value" style="color:#04f5ff;">${chipNames[data.chip] || data.chip}</span></div>`;
+                }
+
+                if (data.autoSubs && data.autoSubs.length > 0) {
+                    html += `<div class="modal-section"><div class="modal-section-title">Auto-Subs</div>`;
+                    data.autoSubs.forEach(sub => {
+                        html += `<div class="modal-row"><span class="modal-value" style="color:#04f5ff;">${sub.inName}</span><span class="modal-value" style="color:#ffaa00;">+${sub.pointsGained}</span></div>`;
+                    });
+                    html += `</div>`;
+                }
+
+                if (data.defcon && data.defcon.length > 0) {
+                    html += `<div class="modal-section"><div class="modal-section-title">DEFCON Points</div>`;
+                    data.defcon.forEach(p => {
+                        html += `<div class="modal-row"><span class="modal-value" style="color:#ff6b6b;">${p.name}</span><span class="modal-value" style="color:#ff6b6b;">+${p.points}</span></div>`;
+                    });
+                    html += `</div>`;
+                }
+
+                if (data.or) {
+                    html += `<div class="modal-row"><span class="modal-label">Overall Rank</span><span class="modal-value" style="color:#888;">${data.or.toLocaleString()}</span></div>`;
+                }
+
+                document.getElementById('modalBody').innerHTML = html;
+                document.getElementById('mobileModal').classList.add('active');
+            } catch(e) {
+                console.error('Modal error:', e);
+            }
+        }
+
+        function closeMobileModal(event) {
+            if (!event || event.target.id === 'mobileModal') {
+                document.getElementById('mobileModal').classList.remove('active');
+            }
+        }
+
         function updateTableView() {
             const tbody = document.getElementById('leagueTableBody');
             if (!tbody || allPlayers.length === 0) return;
@@ -1622,8 +1774,26 @@
                 const isMyTeam = player.entry === userTeamId;
                 const rowClass = isMyTeam ? 'my-team' : '';
 
+                // Build detail data for mobile modal
+                const detailData = JSON.stringify({
+                    name: player.player_name,
+                    team: player.entry_name,
+                    position: position,
+                    gw: gwPoints,
+                    total: totalDisplay,
+                    captain: live?.captainName || '-',
+                    vcActivated: live?.vcActivated || false,
+                    chip: live?.chip || '',
+                    autoSubs: live?.autoSubs || [],
+                    bonus: live?.liveBonus || 0,
+                    defcon: live?.defconPlayers || [],
+                    status: statusHtml,
+                    or: live?.overallRank || null,
+                    gwRank: live?.gwRank || null
+                }).replace(/'/g, "\\'");
+
                 return `
-                    <tr class="${rowClass}">
+                    <tr class="${rowClass}" onclick="showMobileDetail('${detailData.replace(/"/g, '&quot;')}')">
                         <td class="col-rank">${position}</td>
                         <td class="col-move">${moveHtml}</td>
                         <td class="col-name">
