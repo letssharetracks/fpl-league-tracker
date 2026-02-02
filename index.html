@@ -1909,8 +1909,10 @@
 
                 let currentTotal, gwPoints;
                 if (live) {
-                    // Use basePoints or predictedPoints based on auto-subs toggle
-                    const liveGwPoints = autoSubsEnabled ? live.predictedPoints : (live.basePoints ?? live.predictedPoints);
+                    // Calculate base points by subtracting auto-sub bonus if basePoints not stored
+                    const autoSubBonus = live.autoSubs ? live.autoSubs.reduce((sum, s) => sum + (s.pointsGained || 0), 0) : 0;
+                    const basePoints = live.basePoints ?? (live.predictedPoints - autoSubBonus);
+                    const liveGwPoints = autoSubsEnabled ? live.predictedPoints : basePoints;
                     const bpsTotal = live.bpsPlayers ? live.bpsPlayers.reduce((sum, bp) => sum + bp.bonus, 0) : 0;
                     gwPoints = liveGwPoints + bpsTotal;
                     currentTotal = prevTotal + gwPoints;
@@ -1978,8 +1980,10 @@
                 // Calculate GW points (with live bonus, respect auto-subs toggle)
                 let gwPoints;
                 if (live) {
-                    // Use basePoints or predictedPoints based on auto-subs toggle
-                    const liveGwPoints = autoSubsEnabled ? live.predictedPoints : (live.basePoints ?? live.predictedPoints);
+                    // Calculate base points by subtracting auto-sub bonus if basePoints not stored
+                    const autoSubBonus = live.autoSubs ? live.autoSubs.reduce((sum, s) => sum + (s.pointsGained || 0), 0) : 0;
+                    const basePoints = live.basePoints ?? (live.predictedPoints - autoSubBonus);
+                    const liveGwPoints = autoSubsEnabled ? live.predictedPoints : basePoints;
                     const bpsTotal = live.bpsPlayers ? live.bpsPlayers.reduce((sum, p) => sum + p.bonus, 0) : 0;
                     gwPoints = liveGwPoints + bpsTotal;
                 } else {
@@ -3322,8 +3326,10 @@
                 let gwPoints;
 
                 if (live) {
-                    // Use basePoints or predictedPoints based on auto-subs toggle
-                    const liveGwPoints = autoSubsEnabled ? live.predictedPoints : (live.basePoints ?? live.predictedPoints);
+                    // Calculate base points by subtracting auto-sub bonus if basePoints not stored
+                    const autoSubBonus = live.autoSubs ? live.autoSubs.reduce((sum, s) => sum + (s.pointsGained || 0), 0) : 0;
+                    const basePoints = live.basePoints ?? (live.predictedPoints - autoSubBonus);
+                    const liveGwPoints = autoSubsEnabled ? live.predictedPoints : basePoints;
                     const bpsTotal = live.bpsPlayers ? live.bpsPlayers.reduce((sum, bp) => sum + bp.bonus, 0) : 0;
                     gwPoints = liveGwPoints + bpsTotal;
                     currentTotal = prevTotal + gwPoints;
