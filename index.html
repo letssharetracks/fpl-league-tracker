@@ -1474,6 +1474,11 @@
     </div>
 
     <script>
+        // Clean UTM params from URL after page loads (keeps analytics, cleans bookmarks)
+        if (window.location.search.includes('utm_')) {
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+
         let LEAGUE_ID = null;
         let allPlayers = [];
         let playerHistories = {};
