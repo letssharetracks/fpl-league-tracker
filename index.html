@@ -678,9 +678,9 @@
             }
         }
 
-        /* Back to top button */
+        /* Back to top button - always visible on desktop, scroll-triggered on mobile */
         #backToTop {
-            display: none;
+            display: flex;
             position: fixed;
             bottom: 30px;
             right: 30px;
@@ -697,19 +697,23 @@
             align-items: center;
             justify-content: center;
             box-shadow: 0 4px 15px rgba(0, 255, 133, 0.3);
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
         }
         #backToTop:hover {
             transform: scale(1.1);
             box-shadow: 0 6px 20px rgba(0, 255, 133, 0.5);
         }
-        @media (max-width: 600px) {
+        @media (max-width: 768px) {
             #backToTop {
                 width: 40px;
                 height: 40px;
                 font-size: 20px;
                 bottom: 20px;
                 right: 20px;
+                display: none; /* Hidden by default on mobile */
+            }
+            #backToTop.visible {
+                display: flex;
             }
         }
 
@@ -1556,14 +1560,15 @@
     </div>
 
     <script>
-        // Back to top button visibility
+        // Back to top button - visible on desktop, scroll-triggered on mobile
         function scrollToTop() {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
         window.addEventListener('scroll', () => {
             const btn = document.getElementById('backToTop');
-            if (btn) {
-                btn.style.display = window.scrollY > 500 ? 'flex' : 'none';
+            if (btn && window.innerWidth <= 768) {
+                // On mobile: show/hide based on scroll
+                btn.classList.toggle('visible', window.scrollY > 300);
             }
         });
         // Clean UTM params from URL after page loads (keeps analytics, cleans bookmarks)
