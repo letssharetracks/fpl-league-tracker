@@ -2387,9 +2387,7 @@
                 .sort((a, b) => {
                     // Sort by total points; for ties preserve API order (official tiebreaker: fewest transfers)
                     if (b.total !== a.total) return b.total - a.total;
-                    const playerA = allPlayers.find(p => p.entry === a.entry);
-                    const playerB = allPlayers.find(p => p.entry === b.entry);
-                    return (playerA?.rank || 0) - (playerB?.rank || 0);
+                    return a.apiRank - b.apiRank; // Use stored apiRank directly
                 });
 
             const top100Positions = {};
@@ -2478,12 +2476,16 @@
                 let comparison = 0;
                 if (sortColumn === 'gw') {
                     comparison = b.gwPoints - a.gwPoints;
+                    // Tiebreaker: API rank (official FPL tiebreaker is fewest transfers)
+                    if (comparison === 0) comparison = a.player.rank - b.player.rank;
                 } else if (sortColumn === 'total') {
-                    // Sort by total, then GW points as tiebreaker
-                    comparison = b.totalDisplay - a.totalDisplay || b.gwPoints - a.gwPoints;
+                    // Sort by total, then API rank as tiebreaker (official FPL tiebreaker)
+                    comparison = b.totalDisplay - a.totalDisplay;
+                    if (comparison === 0) comparison = a.player.rank - b.player.rank;
                 } else {
-                    // Default: sort by position (which respects auto-subs toggle)
+                    // Default: sort by position, then API rank as tiebreaker
                     comparison = a.position - b.position;
+                    if (comparison === 0) comparison = a.player.rank - b.player.rank;
                 }
                 return sortDirection === 'asc' ? -comparison : comparison;
             });
