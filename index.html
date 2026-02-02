@@ -2279,13 +2279,34 @@
             console.log('Using API ranks:', useApiRanks, '(hasMorePages:', hasMorePages, 'total:', leagueTotalPlayers, 'loaded:', allPlayers.length, ')');
 
             livePositions = {};
+
+            // For top 100, calculate live positions within the top 100 subset
+            // For players outside top 100, use API rank (we can't know real position)
+            const top100Entries = currentRankings
+                .filter(r => {
+                    const player = allPlayers.find(p => p.entry === r.entry);
+                    return player && player.rank <= 100;
+                })
+                .sort((a, b) => b.total - a.total);
+
+            const top100Positions = {};
+            top100Entries.forEach((item, idx) => {
+                top100Positions[item.entry] = idx + 1;
+            });
+
             currentRankings.forEach((item, idx) => {
                 const player = allPlayers.find(p => p.entry === item.entry);
-                const newRank = useApiRanks ? (player?.rank || idx + 1) : (idx + 1);
-                const movement = item.oldRank - newRank;
+                const isTop100 = player && player.rank <= 100;
+
+                // Top 100: use recalculated position, Others: use API rank
+                const newRank = isTop100
+                    ? (top100Positions[item.entry] || idx + 1)
+                    : (useApiRanks ? (player?.rank || idx + 1) : (idx + 1));
+
+                const movement = isTop100 ? (item.oldRank - newRank) : 0;
                 livePositions[item.entry] = {
                     position: newRank,
-                    movement: useApiRanks ? 0 : movement, // Don't show movement for partial data
+                    movement: movement,
                     currentTotal: item.total,
                     gwPoints: item.gwPoints
                 };
@@ -5534,8 +5555,14 @@
             setTimeout(handleResize, 100); // Small delay for orientation to settle
         });
 
-        // Infinite scroll detection for large leagues
+        // Infinite scroll detection for large leagues (both up and down)
         let scrollTimeout;
+        function canLoadUp() {
+            // Can load up if there are unloaded pages below page 3 (pages 1-2 are top 100)
+            const minLoaded = Math.min(...loadedPages, 999);
+            return minLoaded > 3 && !isLoadingMore;
+        }
+
         function setupScrollListener() {
             const tableContainer = document.getElementById('tableView');
             if (!tableContainer) return;
@@ -5543,18 +5570,22 @@
             tableContainer.addEventListener('scroll', () => {
                 clearTimeout(scrollTimeout);
                 scrollTimeout = setTimeout(() => {
-                    // Check if near bottom
                     const scrollTop = tableContainer.scrollTop;
                     const scrollHeight = tableContainer.scrollHeight;
                     const clientHeight = tableContainer.clientHeight;
 
+                    // Near bottom - load more down
                     if (scrollTop + clientHeight >= scrollHeight - 200) {
-                        // Near bottom, load more if we can
-                        console.log('Scroll near bottom (container):', { hasMorePages, isLoadingMore, total: leagueTotalPlayers, loaded: allPlayers.length });
                         if (hasMorePages && !isLoadingMore && leagueTotalPlayers > allPlayers.length) {
-                            console.log('Triggering loadMoreManagers from container scroll');
+                            console.log('Loading more (down) from container scroll');
                             loadMoreManagers('down');
                         }
+                    }
+
+                    // Near top - load more up (fill gap between top 100 and user's area)
+                    if (scrollTop <= 200 && canLoadUp()) {
+                        console.log('Loading more (up) from container scroll');
+                        loadMoreManagers('up');
                     }
                 }, 100);
             });
@@ -5568,12 +5599,18 @@
                 const scrollHeight = document.documentElement.scrollHeight;
                 const clientHeight = window.innerHeight;
 
+                // Near bottom - load more down
                 if (scrollTop + clientHeight >= scrollHeight - 300) {
-                    console.log('Scroll near bottom (window):', { hasMorePages, isLoadingMore, total: leagueTotalPlayers, loaded: allPlayers.length });
                     if (hasMorePages && !isLoadingMore && leagueTotalPlayers > allPlayers.length) {
-                        console.log('Triggering loadMoreManagers from window scroll');
+                        console.log('Loading more (down) from window scroll');
                         loadMoreManagers('down');
                     }
+                }
+
+                // Near top - load more up
+                if (scrollTop <= 200 && canLoadUp()) {
+                    console.log('Loading more (up) from window scroll');
+                    loadMoreManagers('up');
                 }
             }, 100);
         });
