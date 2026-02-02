@@ -131,62 +131,6 @@
             justify-content: center;
         }
 
-        /* Floating Auto-Subs toggle */
-        .floating-toggle {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 1000;
-            background: rgba(55, 0, 60, 0.95);
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 25px;
-            padding: 10px 15px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .floating-toggle:hover {
-            background: rgba(55, 0, 60, 1);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.5);
-        }
-        .floating-toggle.active {
-            border-color: #00ff85;
-        }
-        .floating-toggle .toggle-icon {
-            width: 36px;
-            height: 20px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 10px;
-            position: relative;
-            transition: background 0.2s;
-        }
-        .floating-toggle.active .toggle-icon {
-            background: #00ff85;
-        }
-        .floating-toggle .toggle-icon::after {
-            content: '';
-            position: absolute;
-            width: 16px;
-            height: 16px;
-            background: white;
-            border-radius: 50%;
-            top: 2px;
-            left: 2px;
-            transition: transform 0.2s;
-        }
-        .floating-toggle.active .toggle-icon::after {
-            transform: translateX(16px);
-        }
-        .floating-toggle span {
-            color: #fff;
-            font-size: 12px;
-            font-weight: 500;
-        }
-
         .control-group {
             background: rgba(255,255,255,0.08);
             padding: 15px 20px;
@@ -1369,12 +1313,6 @@
 
     <!-- Main App -->
     <div id="mainApp" class="container" style="display: none;">
-        <!-- Floating Auto-Subs Toggle -->
-        <div class="floating-toggle active" id="floatingAutoSub" onclick="toggleAutoSubs()" title="Toggle Auto-Subs">
-            <div class="toggle-icon"></div>
-            <span>Auto-Subs</span>
-        </div>
-
         <h1>FPL League Tracker</h1>
 
         <div class="fixture-ticker" id="fixtureTicker" style="display: none;">
@@ -2199,11 +2137,8 @@
 
         function toggleAutoSubs() {
             autoSubsEnabled = !autoSubsEnabled;
-            // Update both toggles
             const toggle = document.getElementById('autoSubToggle');
-            const floatingToggle = document.getElementById('floatingAutoSub');
             toggle.classList.toggle('active', autoSubsEnabled);
-            if (floatingToggle) floatingToggle.classList.toggle('active', autoSubsEnabled);
 
             // Recalculate positions and update views immediately
             if (Object.keys(livePoints).length > 0) {
