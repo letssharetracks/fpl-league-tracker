@@ -2308,7 +2308,8 @@
                     player,
                     gwPoints,
                     totalDisplay,
-                    position: livePositions[player.entry]?.position || player.rank
+                    // When viewing partial data (My Area), always use API rank for correct ordering
+                    position: viewingMyArea ? player.rank : (livePositions[player.entry]?.position || player.rank)
                 };
             });
 
@@ -2665,6 +2666,12 @@
                     // Replace current view with user's area
                     allPlayers = newPlayers.sort((a, b) => a.rank - b.rank);
                     viewingMyArea = true;
+
+                    // Ensure hasMorePages is set correctly - there are more pages if we haven't loaded all
+                    const maxLoadedPage = Math.max(...pagesToLoad);
+                    const totalPages = Math.ceil(leagueTotalPlayers / 50);
+                    hasMorePages = maxLoadedPage < totalPages;
+                    console.log('loadMyArea: maxLoadedPage=', maxLoadedPage, 'totalPages=', totalPages, 'hasMorePages=', hasMorePages);
 
                     // Fetch histories for these players
                     await fetchHistoriesForPlayers(newPlayers);
