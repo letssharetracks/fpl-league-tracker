@@ -2898,14 +2898,18 @@
 
                 // Find user's rank in this specific league
                 const classicLeagues = data.leagues?.classic || [];
+                console.log('Looking for league', leagueId, 'in', classicLeagues.length, 'leagues');
                 const league = classicLeagues.find(l => l.id === parseInt(leagueId));
 
                 if (league) {
+                    console.log('Found league:', league.name, 'entry_rank:', league.entry_rank, 'entry_last_rank:', league.entry_last_rank);
                     return {
                         rank: league.entry_rank,
                         lastRank: league.entry_last_rank,
                         leagueCount: league.total_entries || 0
                     };
+                } else {
+                    console.log('League not found in user data. Available leagues:', classicLeagues.map(l => `${l.id}:${l.name}`));
                 }
                 return null;
             } catch (e) {
