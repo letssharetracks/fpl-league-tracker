@@ -139,20 +139,26 @@
         }
         .controls {
             display: flex;
-            gap: 20px;
+            gap: 10px;
             margin-bottom: 20px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             justify-content: center;
+            align-items: center;
+        }
+        @media (max-width: 1100px) {
+            .controls {
+                flex-wrap: wrap;
+            }
         }
 
         .control-group {
             background: rgba(255,255,255,0.08);
-            padding: 15px 20px;
+            padding: 10px 15px;
             border-radius: 8px;
             border: 1px solid rgba(255,255,255,0.1);
             display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
+            flex-wrap: nowrap;
+            gap: 6px;
             align-items: center;
         }
         .control-group label {
@@ -2871,18 +2877,18 @@
                     updateLeagueNotice();
                     hideStatus();
 
-                    // Scroll to user's row
-                    setTimeout(() => {
+                    // Scroll to user's row (instant to avoid jumping)
+                    requestAnimationFrame(() => {
                         const myRow = document.querySelector(`tr[data-entry="${userTeamId}"]`);
                         if (myRow) {
-                            myRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            myRow.style.transition = 'background-color 0.3s';
-                            myRow.style.backgroundColor = 'rgba(0, 255, 133, 0.3)';
-                            setTimeout(() => { myRow.style.backgroundColor = ''; }, 2000);
+                            myRow.scrollIntoView({ behavior: 'auto', block: 'center' });
+                            myRow.style.transition = 'background-color 0.5s';
+                            myRow.style.backgroundColor = 'rgba(0, 255, 133, 0.4)';
+                            setTimeout(() => { myRow.style.backgroundColor = ''; }, 2500);
                         } else {
                             console.warn('loadMyArea: user row not found after render, entry:', userTeamId);
                         }
-                    }, 300);
+                    });
                 } else {
                     console.error('loadMyArea: no players returned from pages', pagesToLoad);
                     showStatus('Could not load your position - try again');
