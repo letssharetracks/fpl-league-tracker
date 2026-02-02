@@ -2783,9 +2783,16 @@
         }
 
         // Load and display 100 managers around user's position (ADD to top 100, don't replace)
+        let isLoadingMyArea = false; // Prevent double-clicks
         async function loadMyArea() {
-            if (!userLeagueRank) {
-                console.log('loadMyArea: no userLeagueRank set');
+            // Prevent multiple simultaneous calls
+            if (isLoadingMyArea) {
+                console.log('loadMyArea: already loading, skipping');
+                return;
+            }
+
+            if (!userLeagueRank || !userTeamId) {
+                console.log('loadMyArea: missing userLeagueRank or userTeamId');
                 showStatus('Could not determine your position');
                 setTimeout(hideStatus, 2000);
                 return;
@@ -2803,8 +2810,6 @@
                 return;
             }
 
-            console.log('loadMyArea: userLeagueRank=', userLeagueRank, 'userTeamId=', userTeamId);
-
             // Check if user's row already exists in current data
             const existingRow = document.querySelector(`tr[data-entry="${userTeamId}"]`);
             if (existingRow) {
@@ -2815,7 +2820,9 @@
                 return;
             }
 
-            showStatus('Loading your position...');
+            isLoadingMyArea = true;
+            console.log('loadMyArea: userLeagueRank=', userLeagueRank, 'userTeamId=', userTeamId);
+            showStatus('Loading position ' + userLeagueRank.toLocaleString() + '...');
 
             // Cache current top 100 if not already cached
             if (!top100Players && allPlayers.length > 0) {
@@ -2824,7 +2831,12 @@
 
             // Calculate pages to load (100 managers around user)
             const userPage = Math.ceil(userLeagueRank / 50);
-            const pagesToLoad = [userPage - 1, userPage].filter(p => p > 0 && p > 2); // Skip pages 1-2 (already in top 100)
+            const pagesToLoad = [userPage - 1, userPage].filter(p => p > 0 && p > 2);
+
+            // If no pages to load (user at position 101-150), load page 3
+            if (pagesToLoad.length === 0) {
+                pagesToLoad.push(3);
+            }
             console.log('loadMyArea: userPage=', userPage, 'pagesToLoad=', pagesToLoad);
 
             // Clear these pages from loadedPages to force reload
@@ -2842,15 +2854,15 @@
                     allPlayers = [...combinedMap.values()].sort((a, b) => a.rank - b.rank);
                     viewingMyArea = true;
 
-                    // Ensure hasMorePages is set correctly based on all loaded pages
-                    const maxLoadedPage = Math.max(...loadedPages);
-                    const totalPages = Math.ceil(leagueTotalPlayers / 50);
+                    // Calculate hasMorePages safely
+                    const maxLoadedPage = loadedPages.size > 0 ? Math.max(...loadedPages) : 0;
+                    const totalPages = leagueTotalPlayers > 0 ? Math.ceil(leagueTotalPlayers / 50) : 999;
                     hasMorePages = maxLoadedPage < totalPages;
-                    console.log('loadMyArea: combined', allPlayers.length, 'players, maxPage=', maxLoadedPage, 'totalPages=', totalPages, 'hasMorePages=', hasMorePages);
+                    console.log('loadMyArea: combined', allPlayers.length, 'players, maxPage=', maxLoadedPage, 'totalPages=', totalPages);
 
-                    // Fetch histories and live data for the new players only
+                    // Fetch histories and live data
                     await fetchHistoriesForPlayers(newPlayers);
-                    await refreshLiveData(); // Fetch captain, chips, BPS, etc.
+                    await refreshLiveData();
 
                     // Update displays
                     updateTableView();
@@ -2859,27 +2871,29 @@
                     updateLeagueNotice();
                     hideStatus();
 
-                    // Scroll to user's row after render (longer delay for DOM update)
+                    // Scroll to user's row
                     setTimeout(() => {
                         const myRow = document.querySelector(`tr[data-entry="${userTeamId}"]`);
-                        console.log('loadMyArea: looking for row with entry', userTeamId, 'found:', !!myRow);
                         if (myRow) {
                             myRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             myRow.style.transition = 'background-color 0.3s';
                             myRow.style.backgroundColor = 'rgba(0, 255, 133, 0.3)';
                             setTimeout(() => { myRow.style.backgroundColor = ''; }, 2000);
+                        } else {
+                            console.warn('loadMyArea: user row not found after render, entry:', userTeamId);
                         }
                     }, 300);
                 } else {
-                    // No players returned - API issue or invalid pages
                     console.error('loadMyArea: no players returned from pages', pagesToLoad);
-                    showStatus('Could not load your position');
-                    setTimeout(hideStatus, 2000);
+                    showStatus('Could not load your position - try again');
+                    setTimeout(hideStatus, 3000);
                 }
             } catch (e) {
                 console.error('Error loading my area:', e);
-                showStatus('Error loading your position');
-                setTimeout(hideStatus, 2000);
+                showStatus('Error loading your position - try again');
+                setTimeout(hideStatus, 3000);
+            } finally {
+                isLoadingMyArea = false;
             }
         }
 
