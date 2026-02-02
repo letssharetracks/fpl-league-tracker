@@ -101,6 +101,23 @@
             font-size: 0.85rem;
             margin: 0;
         }
+        .column-guide {
+            list-style: none;
+            margin-left: 0;
+            padding-left: 0;
+        }
+        .column-guide li {
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .column-guide li:last-child {
+            border-bottom: none;
+        }
+        .column-guide strong {
+            color: #00ff85;
+            min-width: 70px;
+            display: inline-block;
+        }
         .tip {
             background: rgba(4, 245, 255, 0.1);
             border-left: 3px solid #04f5ff;
@@ -189,40 +206,16 @@
             <p>The default view shows your league standings with live gameweek data.</p>
 
             <h3>Column Guide</h3>
-            <div class="feature-grid">
-                <div class="feature-item">
-                    <h4>GW</h4>
-                    <p>Gameweek points (red number = hit taken)</p>
-                </div>
-                <div class="feature-item">
-                    <h4>Gap</h4>
-                    <p>Points difference to player above</p>
-                </div>
-                <div class="feature-item">
-                    <h4>Cpt</h4>
-                    <p>Captain chosen this week</p>
-                </div>
-                <div class="feature-item">
-                    <h4>Chip</h4>
-                    <p>Active chip (BB, TC, FH, WC)</p>
-                </div>
-                <div class="feature-item">
-                    <h4>Auto-Sub</h4>
-                    <p>Predicted bench players coming on</p>
-                </div>
-                <div class="feature-item">
-                    <h4>BPS</h4>
-                    <p>Bonus points (confirmed or provisional)</p>
-                </div>
-                <div class="feature-item">
-                    <h4>DEFCON</h4>
-                    <p>Clean sheet points at risk</p>
-                </div>
-                <div class="feature-item">
-                    <h4>Status</h4>
-                    <p>Players still to play / playing</p>
-                </div>
-            </div>
+            <ul class="column-guide">
+                <li><strong>GW</strong> — Gameweek points (red = hit taken)</li>
+                <li><strong>Gap</strong> — Points difference to player above</li>
+                <li><strong>Cpt</strong> — Captain chosen this week</li>
+                <li><strong>Chip</strong> — Active chip (BB, TC, FH, WC)</li>
+                <li><strong>Auto-Sub</strong> — Predicted bench players coming on</li>
+                <li><strong>BPS</strong> — Bonus points (confirmed or provisional)</li>
+                <li><strong>DEFCON</strong> — Defensive contribution points</li>
+                <li><strong>Status</strong> — Players still to play / playing</li>
+            </ul>
 
             <h3>Tap a Row for More Details</h3>
             <p>Click/tap any row to expand and see full breakdown including:</p>
