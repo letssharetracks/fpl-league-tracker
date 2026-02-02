@@ -1881,7 +1881,7 @@
             const savedLeagues = localStorage.getItem('fpl_user_leagues');
 
             if (savedTeamId && savedLeagues) {
-                userTeamId = savedTeamId;
+                userTeamId = parseInt(savedTeamId, 10);
                 userLeagues = JSON.parse(savedLeagues);
                 showMainApp();
             } else if (DEFAULT_TEAM_ID) {
@@ -1945,7 +1945,7 @@
                 }
 
                 // Save to localStorage
-                userTeamId = teamId;
+                userTeamId = parseInt(teamId, 10);
                 localStorage.setItem('fpl_team_id', teamId);
                 localStorage.setItem('fpl_user_leagues', JSON.stringify(userLeagues));
 
