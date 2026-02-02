@@ -2462,6 +2462,12 @@
                 // Add separator ONCE when jumping from top 100 to user's area
                 if (!separatorShown && prevPosition > 0 && prevPosition <= 100 && position > 100) {
                     separatorShown = true;
+                    // Check if we can load previous records
+                    const pagesAboveTop100 = [...loadedPages].filter(p => p > 2);
+                    const canLoadPrev = pagesAboveTop100.length > 0 && Math.min(...pagesAboveTop100) > 3;
+                    const loadPrevBtn = canLoadPrev
+                        ? `<button onclick="loadMoreManagers('up')" style="margin-left: 15px; padding: 4px 12px; background: #04f5ff; color: #37003c; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600;">↑ Load Previous 200</button>`
+                        : '';
                     tableHtml.push(`
                         <tr class="jump-separator">
                             <td colspan="13" style="
@@ -2475,6 +2481,7 @@
                                 border-bottom: 2px solid #04f5ff;
                             ">
                                 ↓ Jumped to position ${position.toLocaleString()} ↓
+                                ${loadPrevBtn}
                             </td>
                         </tr>
                     `);
