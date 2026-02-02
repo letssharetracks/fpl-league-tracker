@@ -1350,6 +1350,7 @@
                 <button class="btn btn-top-10" onclick="loadNewLeague()">Load</button>
                 <button class="btn btn-clear-all" onclick="clearAllCaches()" title="Clear all cached data">Reset</button>
                 <button class="btn btn-select-all" id="refreshLiveBtn" onclick="refreshLiveData()" title="Refresh live gameweek data">Refresh</button>
+                <button class="btn btn-select-all" onclick="findMyTeam()" title="Jump to your team in the table" style="background: linear-gradient(135deg, #00ff85, #04f5ff);">⭐ Find Me</button>
                 <button class="btn btn-clear-all" onclick="changeTeam()" title="Go back and enter a different Team ID">Change Team</button>
             </div>
             <div class="control-group">
@@ -2541,7 +2542,7 @@
                 }
 
                 return `
-                    <tr class="${rowClass}" onclick="toggleRowDetails(${player.entry})">
+                    <tr class="${rowClass}" data-entry="${player.entry}" onclick="toggleRowDetails(${player.entry})">
                         <td class="col-rank">${position}</td>
                         <td class="col-move">${moveHtml}</td>
                         <td class="col-name" title="${player.entry_name} - ${player.player_name}">
@@ -2564,6 +2565,51 @@
                     </tr>
                 `;
             }).join('');
+        }
+
+        // Find and scroll to user's team in the table
+        function findMyTeam() {
+            if (!userTeamId) {
+                console.log('No user team ID set');
+                return;
+            }
+
+            // Find the row with the user's team
+            const myRow = document.querySelector(`tr[data-entry="${userTeamId}"]`);
+            if (myRow) {
+                // Scroll to the row
+                myRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                // Highlight it briefly
+                myRow.style.transition = 'background-color 0.3s';
+                myRow.style.backgroundColor = 'rgba(0, 255, 133, 0.3)';
+                setTimeout(() => {
+                    myRow.style.backgroundColor = '';
+                }, 2000);
+            } else {
+                // Team might not be loaded yet - need to load their area
+                if (userLeagueRank && leagueTotalPlayers > allPlayers.length) {
+                    // Load the user's area
+                    const userPage = Math.ceil(userLeagueRank / 50);
+                    if (!loadedPages.has(userPage)) {
+                        showStatus('Loading your position...');
+                        fetchLeaguePages([userPage - 1, userPage, userPage + 1].filter(p => p > 0)).then(newPlayers => {
+                            if (newPlayers.length > 0) {
+                                const allEntries = new Map(allPlayers.map(p => [p.entry, p]));
+                                newPlayers.forEach(p => allEntries.set(p.entry, p));
+                                allPlayers = [...allEntries.values()].sort((a, b) => a.rank - b.rank);
+                                fetchHistoriesForPlayers(newPlayers).then(() => {
+                                    updateTableView();
+                                    updateLeagueNotice();
+                                    hideStatus();
+                                    // Try again after loading
+                                    setTimeout(findMyTeam, 100);
+                                });
+                            }
+                        });
+                    }
+                }
+            }
         }
 
         function loadNewLeague() {
