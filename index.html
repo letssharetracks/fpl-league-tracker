@@ -2741,7 +2741,7 @@
 
                     // Fetch histories and live data for these players
                     await fetchHistoriesForPlayers(newPlayers);
-                    await loadLiveData(); // Fetch captain, chips, BPS, etc.
+                    await refreshLiveData(); // Fetch captain, chips, BPS, etc.
 
                     // Update displays
                     updateTableView();
