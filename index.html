@@ -678,6 +678,41 @@
             }
         }
 
+        /* Back to top button */
+        #backToTop {
+            display: none;
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00ff85, #04f5ff);
+            color: #37003c;
+            border: none;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0, 255, 133, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        #backToTop:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0, 255, 133, 0.5);
+        }
+        @media (max-width: 600px) {
+            #backToTop {
+                width: 40px;
+                height: 40px;
+                font-size: 20px;
+                bottom: 20px;
+                right: 20px;
+            }
+        }
+
         /* Footer styles */
         .site-footer {
             margin-top: 40px;
@@ -1515,9 +1550,22 @@
                 <p style="font-size: 0.7rem; margin-top: 8px; opacity: 0.5;">Unofficial tool. Not affiliated with the Premier League.</p>
             </div>
         </footer>
+
+        <!-- Back to top button -->
+        <button id="backToTop" onclick="scrollToTop()" title="Back to top">↑</button>
     </div>
 
     <script>
+        // Back to top button visibility
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        window.addEventListener('scroll', () => {
+            const btn = document.getElementById('backToTop');
+            if (btn) {
+                btn.style.display = window.scrollY > 500 ? 'flex' : 'none';
+            }
+        });
         // Clean UTM params from URL after page loads (keeps analytics, cleans bookmarks)
         if (window.location.search.includes('utm_')) {
             window.history.replaceState({}, '', window.location.pathname);
