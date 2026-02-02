@@ -2239,7 +2239,9 @@
 
             // Update livePositions
             // For large leagues with partial data, use API ranks to avoid incorrect positioning
-            const useApiRanks = leagueTotalPlayers > 0 && allPlayers.length < leagueTotalPlayers;
+            // Use API ranks if: more pages exist, OR we know total and haven't loaded all
+            const useApiRanks = hasMorePages || (leagueTotalPlayers > 0 && allPlayers.length < leagueTotalPlayers);
+            console.log('Using API ranks:', useApiRanks, '(hasMorePages:', hasMorePages, 'total:', leagueTotalPlayers, 'loaded:', allPlayers.length, ')');
 
             livePositions = {};
             currentRankings.forEach((item, idx) => {
@@ -2329,12 +2331,39 @@
             // Pre-calculate totals for gap calculation (use sorted order)
             const playerTotals = playerData.map(d => d.totalDisplay);
 
-            tbody.innerHTML = playerData.map((data, idx) => {
+            // Build table HTML with gap separators for non-contiguous rankings
+            let tableHtml = [];
+            let prevPosition = 0;
+
+            playerData.forEach((data, idx) => {
                 const player = data.player;
                 const live = livePoints[player.entry];
                 const posData = livePositions[player.entry];
                 const position = posData?.position || player.rank;
                 const movement = posData?.movement || 0;
+
+                // Add gap separator if there's a large gap in rankings (more than 10 positions)
+                if (prevPosition > 0 && position - prevPosition > 10) {
+                    const gapSize = position - prevPosition - 1;
+                    tableHtml.push(`
+                        <tr class="gap-separator-row">
+                            <td colspan="13" style="
+                                text-align: center;
+                                padding: 15px 10px;
+                                background: linear-gradient(90deg, rgba(4,245,255,0.05), rgba(4,245,255,0.15), rgba(4,245,255,0.05));
+                                color: #888;
+                                font-size: 12px;
+                                border-top: 1px dashed rgba(4,245,255,0.3);
+                                border-bottom: 1px dashed rgba(4,245,255,0.3);
+                            ">
+                                <span style="color: #04f5ff;">⋮</span>
+                                <strong>${gapSize.toLocaleString()}</strong> managers not shown (positions ${(prevPosition + 1).toLocaleString()} - ${(position - 1).toLocaleString()})
+                                <span style="color: #04f5ff;">⋮</span>
+                            </td>
+                        </tr>
+                    `);
+                }
+                prevPosition = position;
 
                 // Use pre-calculated values
                 let gwPoints = data.gwPoints;
@@ -2550,9 +2579,9 @@
                     mobileDetailsHtml += '</div>';
                 }
 
-                return `
+                tableHtml.push(`
                     <tr class="${rowClass}" data-entry="${player.entry}" onclick="toggleRowDetails(${player.entry})">
-                        <td class="col-rank">${position}</td>
+                        <td class="col-rank">${position.toLocaleString()}</td>
                         <td class="col-move">${moveHtml}</td>
                         <td class="col-name" title="${player.entry_name} - ${player.player_name}">
                             <div class="team-name">${isMyTeam ? '⭐ ' : ''}${player.entry_name.length > 18 ? player.entry_name.substring(0, 18) + '...' : player.entry_name}</div>
@@ -2572,8 +2601,10 @@
                     <tr class="row-details" id="row-details-${player.entry}" style="display:none;">
                         <td colspan="13">${mobileDetailsHtml}</td>
                     </tr>
-                `;
-            }).join('');
+                `);
+            });
+
+            tbody.innerHTML = tableHtml.join('');
         }
 
         // Find and scroll to user's team in the table
@@ -2871,24 +2902,33 @@
             for (const page of pagesToLoad) {
                 if (loadedPages.has(page)) continue; // Skip already loaded pages
 
-                const url = `https://fantasy.premierleague.com/api/leagues-classic/${LEAGUE_ID}/standings/?page_standings=${page}`;
-                const response = await fetchWithFallback(url);
-                const data = await response.json();
+                try {
+                    const url = `https://fantasy.premierleague.com/api/leagues-classic/${LEAGUE_ID}/standings/?page_standings=${page}`;
+                    const response = await fetchWithFallback(url);
+                    const data = await response.json();
 
-                // Get league info from first page response
-                if (data.league) {
-                    leagueName = data.league.name;
-                    document.title = 'FPL Tracker - ' + leagueName;
-                    // Get total members from standings API (more reliable than entry API for public leagues)
-                    if (data.standings?.total_results) {
-                        leagueTotalPlayers = data.standings.total_results;
-                        console.log('League total from API:', leagueTotalPlayers);
+                    // Get league info from first page response
+                    if (data.league) {
+                        leagueName = data.league.name;
+                        document.title = 'FPL Tracker - ' + leagueName;
                     }
-                }
 
-                players.push(...data.standings.results);
-                loadedPages.add(page);
-                hasMorePages = data.standings.has_next;
+                    players.push(...data.standings.results);
+                    loadedPages.add(page);
+                    hasMorePages = data.standings.has_next;
+
+                    // Estimate total from highest rank seen (rank = position in league)
+                    const maxRank = Math.max(...data.standings.results.map(p => p.rank || 0));
+                    if (maxRank > leagueTotalPlayers) {
+                        // If has_next is true, there are more players beyond this page
+                        // Estimate: at minimum, there are (page * 50) + more pages
+                        leagueTotalPlayers = hasMorePages ? Math.max(maxRank + 50, page * 50 + 50) : maxRank;
+                        console.log('Estimated league total:', leagueTotalPlayers, 'from max rank:', maxRank);
+                    }
+                } catch (e) {
+                    console.error(`Error loading page ${page}:`, e);
+                    // Continue with other pages on error
+                }
             }
 
             return players;
@@ -3050,12 +3090,14 @@
             const loadedCount2 = document.getElementById('loadedCount2');
             const totalCount2 = document.getElementById('totalCount2');
 
-            const showMore = leagueTotalPlayers > 100 && allPlayers.length < leagueTotalPlayers;
+            // Show "Load More" if there are more pages OR we have more players than loaded
+            const showMore = hasMorePages || (leagueTotalPlayers > 0 && allPlayers.length < leagueTotalPlayers);
+            const totalDisplay = leagueTotalPlayers > 0 ? leagueTotalPlayers.toLocaleString() : (hasMorePages ? '...' : allPlayers.length);
 
             if (notice) {
                 if (showMore) {
                     loadedCount.textContent = allPlayers.length;
-                    totalCount.textContent = leagueTotalPlayers.toLocaleString();
+                    totalCount.textContent = totalDisplay;
                     notice.style.display = 'block';
                 } else {
                     notice.style.display = 'none';
@@ -3065,7 +3107,7 @@
             if (loadMoreSection) {
                 if (showMore) {
                     loadedCount2.textContent = allPlayers.length;
-                    totalCount2.textContent = leagueTotalPlayers.toLocaleString();
+                    totalCount2.textContent = totalDisplay;
                     loadMoreSection.style.display = 'block';
                 } else {
                     loadMoreSection.style.display = 'none';
@@ -4169,7 +4211,8 @@
             console.log('Current rankings (GW' + currentGameweek + '):', rankDebug);
 
             // For large leagues with partial data, use API ranks to avoid incorrect positioning
-            const useApiRanks = leagueTotalPlayers > 0 && allPlayers.length < leagueTotalPlayers;
+            // Use API ranks if: more pages exist, OR we know total and haven't loaded all
+            const useApiRanks = hasMorePages || (leagueTotalPlayers > 0 && allPlayers.length < leagueTotalPlayers);
 
             livePositions = {};
             currentRankings.forEach((item, idx) => {
@@ -4470,12 +4513,39 @@
             // Get leader's total for gap calculation
             const leaderTotal = sortedPlayers.length > 0 ? sortedPlayers[0].total : 0;
 
-            container.innerHTML = sortedPlayers.map((player, idx) => {
+            // Build HTML with gap separators for non-contiguous rankings
+            let htmlParts = [];
+            let prevRank = 0;
+
+            sortedPlayers.forEach((player, idx) => {
                 const isSelected = selectedEntries.has(player.entry);
                 const originalIndex = allPlayers.findIndex(p => p.entry === player.entry);
                 const color = colors[originalIndex % colors.length];
                 const live = livePoints[player.entry];
                 const posData = livePositions[player.entry];
+                const currentRank = posData ? posData.position : player.rank;
+
+                // Add gap separator if there's a large gap in rankings (more than 10 positions)
+                if (prevRank > 0 && currentRank - prevRank > 10) {
+                    const gapSize = currentRank - prevRank - 1;
+                    htmlParts.push(`
+                        <div class="gap-separator" style="
+                            text-align: center;
+                            padding: 12px 10px;
+                            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+                            color: #888;
+                            font-size: 11px;
+                            margin: 8px 0;
+                            border-top: 1px dashed rgba(255,255,255,0.2);
+                            border-bottom: 1px dashed rgba(255,255,255,0.2);
+                        ">
+                            <span style="color: #04f5ff;">⋮</span>
+                            ${gapSize.toLocaleString()} managers not shown (positions ${prevRank + 1} - ${currentRank - 1})
+                            <span style="color: #04f5ff;">⋮</span>
+                        </div>
+                    `);
+                }
+                prevRank = currentRank;
 
                 // Get previous GW total for calculating GW points
                 const history = playerHistories[player.entry] || [];
@@ -4672,7 +4742,10 @@
                     </label>
                     ${detailSection}
                 </div>
-            `}).join('');
+            `);
+            });
+
+            container.innerHTML = htmlParts.join('');
 
             // Also update table view if in table mode
             if (currentDisplayMode === 'table') {
