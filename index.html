@@ -2744,6 +2744,17 @@
             }
 
             console.log('loadMyArea: userLeagueRank=', userLeagueRank, 'userTeamId=', userTeamId);
+
+            // Check if user's row already exists in current data
+            const existingRow = document.querySelector(`tr[data-entry="${userTeamId}"]`);
+            if (existingRow) {
+                existingRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                existingRow.style.transition = 'background-color 0.3s';
+                existingRow.style.backgroundColor = 'rgba(0, 255, 133, 0.3)';
+                setTimeout(() => { existingRow.style.backgroundColor = ''; }, 2000);
+                return;
+            }
+
             showStatus('Loading your position...');
 
             // Cache current top 100 if not already cached
@@ -2755,6 +2766,9 @@
             const userPage = Math.ceil(userLeagueRank / 50);
             const pagesToLoad = [userPage - 1, userPage].filter(p => p > 0 && p > 2); // Skip pages 1-2 (already in top 100)
             console.log('loadMyArea: userPage=', userPage, 'pagesToLoad=', pagesToLoad);
+
+            // Clear these pages from loadedPages to force reload
+            pagesToLoad.forEach(p => loadedPages.delete(p));
 
             try {
                 const newPlayers = await fetchLeaguePages(pagesToLoad);
@@ -3105,40 +3119,49 @@
             '#10B981', // Emerald
         ];
 
-        // Fetch specific pages of league standings
+        // Fetch specific pages of league standings (in parallel for speed)
         async function fetchLeaguePages(pagesToLoad) {
             console.log('fetchLeaguePages for LEAGUE_ID:', LEAGUE_ID, 'pages:', pagesToLoad);
-            const players = [];
 
-            for (const page of pagesToLoad) {
-                if (loadedPages.has(page)) continue; // Skip already loaded pages
+            // Filter out already loaded pages
+            const pagesToFetch = pagesToLoad.filter(p => !loadedPages.has(p));
+            if (pagesToFetch.length === 0) return [];
 
+            // Fetch all pages in parallel
+            const fetchPromises = pagesToFetch.map(async (page) => {
                 try {
                     const url = `https://fantasy.premierleague.com/api/leagues-classic/${LEAGUE_ID}/standings/?page_standings=${page}`;
                     const response = await fetchWithFallback(url);
                     const data = await response.json();
-
-                    // Get league info from first page response
-                    if (data.league) {
-                        leagueName = data.league.name;
-                        document.title = 'FPL Tracker - ' + leagueName;
-                    }
-
-                    players.push(...data.standings.results);
-                    loadedPages.add(page);
-                    hasMorePages = data.standings.has_next;
-
-                    // Estimate total from highest rank seen (rank = position in league)
-                    const maxRank = Math.max(...data.standings.results.map(p => p.rank || 0));
-                    if (maxRank > leagueTotalPlayers) {
-                        // If has_next is true, there are more players beyond this page
-                        // Estimate: at minimum, there are (page * 50) + more pages
-                        leagueTotalPlayers = hasMorePages ? Math.max(maxRank + 50, page * 50 + 50) : maxRank;
-                        console.log('Estimated league total:', leagueTotalPlayers, 'from max rank:', maxRank);
-                    }
+                    return { page, data, success: true };
                 } catch (e) {
                     console.error(`Error loading page ${page}:`, e);
-                    // Continue with other pages on error
+                    return { page, success: false };
+                }
+            });
+
+            const results = await Promise.all(fetchPromises);
+            const players = [];
+
+            for (const result of results) {
+                if (!result.success) continue;
+
+                const { page, data } = result;
+
+                // Get league info from first page response
+                if (data.league) {
+                    leagueName = data.league.name;
+                    document.title = 'FPL Tracker - ' + leagueName;
+                }
+
+                players.push(...data.standings.results);
+                loadedPages.add(page);
+                hasMorePages = data.standings.has_next;
+
+                // Estimate total from highest rank seen
+                const maxRank = Math.max(...data.standings.results.map(p => p.rank || 0));
+                if (maxRank > leagueTotalPlayers) {
+                    leagueTotalPlayers = hasMorePages ? Math.max(maxRank + 50, page * 50 + 50) : maxRank;
                 }
             }
 
@@ -3255,13 +3278,15 @@
                     newPlayers.forEach(p => allEntries.set(p.entry, p));
                     allPlayers = [...allEntries.values()].sort((a, b) => a.rank - b.rank);
 
-                    // Fetch histories for new players
-                    await fetchHistoriesForPlayers(newPlayers);
-
-                    // Re-render
+                    // Re-render immediately (don't wait for histories)
                     updateTableView();
                     renderPlayerToggles();
                     updateLeagueNotice();
+
+                    // Fetch histories in background (non-blocking)
+                    fetchHistoriesForPlayers(newPlayers).then(() => {
+                        updateTableView(); // Re-render with full data
+                    });
                 }
             } catch (e) {
                 console.error('Error loading more:', e);
