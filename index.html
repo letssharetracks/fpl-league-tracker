@@ -2346,8 +2346,9 @@
                 const player = data.player;
                 const live = livePoints[player.entry];
                 const posData = livePositions[player.entry];
-                const position = posData?.position || player.rank;
-                const movement = posData?.movement || 0;
+                // Use pre-calculated position from data (respects viewingMyArea)
+                const position = data.position;
+                const movement = viewingMyArea ? 0 : (posData?.movement || 0);
 
                 // Add separator ONCE when jumping from top 100 to user's area
                 if (!separatorShown && prevPosition > 0 && prevPosition <= 100 && position > 100) {
@@ -2673,8 +2674,9 @@
                     hasMorePages = maxLoadedPage < totalPages;
                     console.log('loadMyArea: maxLoadedPage=', maxLoadedPage, 'totalPages=', totalPages, 'hasMorePages=', hasMorePages);
 
-                    // Fetch histories for these players
+                    // Fetch histories and live data for these players
                     await fetchHistoriesForPlayers(newPlayers);
+                    await loadLiveData(); // Fetch captain, chips, BPS, etc.
 
                     // Update displays
                     updateTableView();
