@@ -1382,7 +1382,35 @@
         // Worker caches responses for 60 seconds, so 100 users = still ~1 API call/min
         const API_FOOTBALL_WORKER = 'https://api-football-proxy.dom-mackie.workers.dev';
         let previousScores = {}; // Track scores to detect goals
-        let cachedGoalScorers = {}; // Cache goal scorer data per fixture
+
+        // Load cached goal scorers from localStorage (persists across page loads)
+        let cachedGoalScorers = {};
+        try {
+            const stored = localStorage.getItem('fpl_goal_scorers');
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                // Only use if from current gameweek (stored with gameweek number)
+                if (parsed.gameweek === currentGameweek) {
+                    cachedGoalScorers = parsed.data || {};
+                    console.log('Loaded goal scorers from localStorage');
+                }
+            }
+        } catch (e) {
+            console.warn('Could not load cached goal scorers:', e);
+        }
+
+        // Function to save goal scorers to localStorage
+        function saveGoalScorersToStorage() {
+            try {
+                localStorage.setItem('fpl_goal_scorers', JSON.stringify({
+                    gameweek: currentGameweek,
+                    data: cachedGoalScorers,
+                    updated: Date.now()
+                }));
+            } catch (e) {
+                console.warn('Could not save goal scorers:', e);
+            }
+        }
 
         // Fallback CORS Proxies for local development only
         const CORS_PROXIES = [
@@ -2516,22 +2544,14 @@
                     return;
                 }
 
-                // Check for today's fixtures and if any are live/upcoming today
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const tomorrow = new Date(today);
-                tomorrow.setDate(tomorrow.getDate() + 1);
+                // Check for live games
+                const liveGames = allFixtures.filter(f => f.started && !f.finished);
+                const hasLiveGames = liveGames.length > 0;
 
-                const todaysFixtures = allFixtures.filter(f => {
-                    const kickoff = new Date(f.kickoff_time);
-                    return kickoff >= today && kickoff < tomorrow;
-                });
-
-                const hasLiveOrUpcomingToday = todaysFixtures.some(f => !f.finished);
-
-                // Show only today's games when there are live/upcoming matches today
-                // Show all fixtures when today's games are finished or no games today
-                const fixtures = hasLiveOrUpcomingToday && todaysFixtures.length > 0 ? todaysFixtures : allFixtures;
+                // Ticker logic:
+                // - If games are LIVE: show only those live games
+                // - If NO games live: show ALL GW fixtures with results
+                const fixtures = hasLiveGames ? liveGames : allFixtures;
 
                 // Check for score changes (goals) - only fetch API-Football ONCE when any goal detected
                 let liveMatchData = {};
@@ -2573,6 +2593,8 @@
                             cachedGoalScorers[homeTeam] = goals;
                             cachedGoalScorers[awayTeam] = goals;
                         });
+                        // Save to localStorage for persistence
+                        saveGoalScorersToStorage();
                     } catch (e) {
                         console.warn('Could not fetch goal scorer data:', e);
                     }
@@ -2590,27 +2612,27 @@
                     let statusText = '';
                     let goalScorers = '';
 
+                    // Try to get goal scorers from cached data (for both live and finished games)
+                    const homeNorm = normalizeTeamName(home).toLowerCase();
+                    const awayNorm = normalizeTeamName(away).toLowerCase();
+                    const goals = cachedGoalScorers[homeNorm] || cachedGoalScorers[awayNorm] || [];
+                    if (goals.length > 0) {
+                        goalScorers = goals
+                            .map(g => {
+                                const scorer = g.player?.name || '?';
+                                const time = g.time?.elapsed || '?';
+                                const assist = g.assist?.name ? ` (${g.assist.name})` : '';
+                                return `⚽ ${scorer} ${time}'${assist}`;
+                            })
+                            .join(' │ ');
+                    }
+
                     if (f.finished) {
                         statusClass = 'ft';
                         statusText = 'FT';
                     } else if (f.started) {
                         statusClass = 'live';
                         statusText = f.minutes > 0 ? `${f.minutes}'` : 'LIVE';
-
-                        // Try to get goal scorers from cached API-Football data
-                        const homeNorm = normalizeTeamName(home).toLowerCase();
-                        const awayNorm = normalizeTeamName(away).toLowerCase();
-                        const goals = cachedGoalScorers[homeNorm] || cachedGoalScorers[awayNorm] || [];
-                        if (goals.length > 0) {
-                            goalScorers = goals
-                                .map(g => {
-                                    const scorer = g.player?.name || '?';
-                                    const time = g.time?.elapsed || '?';
-                                    const assist = g.assist?.name ? ` (${g.assist.name})` : '';
-                                    return `⚽ ${scorer} ${time}'${assist}`;
-                                })
-                                .join(' │ ');
-                        }
                     } else {
                         // Format kickoff time
                         const kickoff = new Date(f.kickoff_time);
