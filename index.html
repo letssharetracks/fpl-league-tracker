@@ -1384,82 +1384,82 @@
         const API_FOOTBALL_WORKER = 'https://api-football-proxy.dom-mackie.workers.dev';
         let previousScores = {}; // Track scores to detect goals
 
-        // Hardcoded goal data per gameweek (fallback when API unavailable)
+        // Hardcoded goal data per gameweek - sourced from Sky Sports
         // GW24: Brighton 1-1 Everton, Leeds 0-4 Arsenal, Wolves 0-2 Bournemouth, Chelsea 3-2 West Ham,
         //       Liverpool 4-1 Newcastle, Villa 0-1 Brentford, Man Utd 3-2 Fulham, Forest 1-1 Palace, Spurs 2-2 Man City
         const HARDCODED_GOALS = {
             24: {
                 // Brighton 1-1 Everton
                 'brighton': [
-                    { player: { name: 'Minteh' }, time: { elapsed: 45 }, assist: null }
+                    { player: { name: 'Groß' }, time: { elapsed: 73 }, assist: { name: 'Ayari' } }
                 ],
                 'everton': [
-                    { player: { name: 'Calvert-Lewin' }, time: { elapsed: 78 }, assist: null }
+                    { player: { name: 'Beto' }, time: { elapsed: 97 }, assist: null }
                 ],
                 // Leeds 0-4 Arsenal
                 'leeds': [],
                 'arsenal': [
-                    { player: { name: 'Saka' }, time: { elapsed: 35 }, assist: null },
-                    { player: { name: 'Havertz' }, time: { elapsed: 52 }, assist: null },
-                    { player: { name: 'Martinelli' }, time: { elapsed: 67 }, assist: null },
-                    { player: { name: 'Trossard' }, time: { elapsed: 88 }, assist: null }
+                    { player: { name: 'Zubimendi' }, time: { elapsed: 27 }, assist: { name: 'Madueke' } },
+                    { player: { name: 'Darlow (OG)' }, time: { elapsed: 38 }, assist: null },
+                    { player: { name: 'Gyökeres' }, time: { elapsed: 70 }, assist: { name: 'Martinelli' } },
+                    { player: { name: 'G. Jesus' }, time: { elapsed: 85 }, assist: { name: 'Ødegaard' } }
                 ],
                 // Wolves 0-2 Bournemouth
                 'wolves': [],
                 'bournemouth': [
-                    { player: { name: 'Kluivert' }, time: { elapsed: 23 }, assist: null },
-                    { player: { name: 'Semenyo' }, time: { elapsed: 71 }, assist: null }
+                    { player: { name: 'Kroupi Jr' }, time: { elapsed: 33 }, assist: null },
+                    { player: { name: 'A. Scott' }, time: { elapsed: 91 }, assist: null }
                 ],
                 // Chelsea 3-2 West Ham
                 'chelsea': [
-                    { player: { name: 'Palmer' }, time: { elapsed: 12 }, assist: null },
-                    { player: { name: 'Jackson' }, time: { elapsed: 55 }, assist: null },
-                    { player: { name: 'Nkunku' }, time: { elapsed: 82 }, assist: null }
+                    { player: { name: 'João Pedro' }, time: { elapsed: 57 }, assist: { name: 'Fofana' } },
+                    { player: { name: 'Cucurella' }, time: { elapsed: 70 }, assist: null },
+                    { player: { name: 'Enzo' }, time: { elapsed: 93 }, assist: null }
                 ],
                 'west ham': [
-                    { player: { name: 'Bowen' }, time: { elapsed: 38 }, assist: null },
-                    { player: { name: 'Kudus' }, time: { elapsed: 64 }, assist: null }
+                    { player: { name: 'Bowen' }, time: { elapsed: 20 }, assist: null },
+                    { player: { name: 'Summerville' }, time: { elapsed: 35 }, assist: null }
                 ],
                 // Liverpool 4-1 Newcastle
                 'liverpool': [
-                    { player: { name: 'Salah' }, time: { elapsed: 18 }, assist: null },
-                    { player: { name: 'Gakpo' }, time: { elapsed: 42 }, assist: null },
-                    { player: { name: 'Salah' }, time: { elapsed: 59 }, assist: null },
-                    { player: { name: 'Diaz' }, time: { elapsed: 76 }, assist: null }
+                    { player: { name: 'Ekitiké' }, time: { elapsed: 41 }, assist: null },
+                    { player: { name: 'Ekitiké' }, time: { elapsed: 43 }, assist: null },
+                    { player: { name: 'Wirtz' }, time: { elapsed: 67 }, assist: null },
+                    { player: { name: 'Konaté' }, time: { elapsed: 93 }, assist: null }
                 ],
                 'newcastle': [
-                    { player: { name: 'Isak' }, time: { elapsed: 31 }, assist: null }
+                    { player: { name: 'Gordon' }, time: { elapsed: 36 }, assist: null }
                 ],
                 // Aston Villa 0-1 Brentford
                 'aston villa': [],
                 'brentford': [
-                    { player: { name: 'Mbeumo' }, time: { elapsed: 68 }, assist: null }
+                    { player: { name: 'Ouattara' }, time: { elapsed: 46 }, assist: null }
                 ],
                 // Man Utd 3-2 Fulham
                 'manchester united': [
-                    { player: { name: 'Fernandes' }, time: { elapsed: 22 }, assist: null },
-                    { player: { name: 'Rashford' }, time: { elapsed: 51 }, assist: null },
-                    { player: { name: 'Hojlund' }, time: { elapsed: 89 }, assist: null }
+                    { player: { name: 'Casemiro' }, time: { elapsed: 25 }, assist: { name: 'Fernandes' } },
+                    { player: { name: 'M. Cunha' }, time: { elapsed: 52 }, assist: { name: 'Casemiro' } },
+                    { player: { name: 'Sesko' }, time: { elapsed: 88 }, assist: { name: 'Fernandes' } }
                 ],
                 'fulham': [
-                    { player: { name: 'Jimenez' }, time: { elapsed: 35 }, assist: null },
-                    { player: { name: 'Iwobi' }, time: { elapsed: 73 }, assist: null }
+                    { player: { name: 'Jiménez (P)' }, time: { elapsed: 40 }, assist: null },
+                    { player: { name: 'Kevin' }, time: { elapsed: 72 }, assist: null }
                 ],
                 // Forest 1-1 Crystal Palace
                 'nottingham forest': [
-                    { player: { name: 'Wood' }, time: { elapsed: 44 }, assist: null }
+                    { player: { name: 'Gibbs-White' }, time: { elapsed: 5 }, assist: null }
                 ],
                 'crystal palace': [
-                    { player: { name: 'Eze' }, time: { elapsed: 61 }, assist: null }
+                    { player: { name: 'Sarr (P)' }, time: { elapsed: 47 }, assist: null }
                 ],
                 // Spurs 2-2 Man City
                 'tottenham': [
-                    { player: { name: 'Son' }, time: { elapsed: 28 }, assist: null },
-                    { player: { name: 'Kulusevski' }, time: { elapsed: 75 }, assist: null }
+                    { player: { name: 'Solanke' }, time: { elapsed: 53 }, assist: null },
+                    { player: { name: 'Solanke' }, time: { elapsed: 70 }, assist: null }
                 ],
                 'manchester city': [
-                    { player: { name: 'Haaland' }, time: { elapsed: 15 }, assist: null },
-                    { player: { name: 'Foden' }, time: { elapsed: 82 }, assist: null }
+                    { player: { name: 'Cherki' }, time: { elapsed: 11 }, assist: null },
+                    { player: { name: 'Semenyo' }, time: { elapsed: 44 }, assist: null }
                 ],
                 // Empty for teams not playing
                 'leicester': [],
@@ -1509,6 +1509,51 @@
                 }));
             } catch (e) {
                 console.warn('Could not save goal scorers:', e);
+            }
+        }
+
+        // Build goal scorer data from FPL live stats (players with goals/assists)
+        function buildGoalDataFromFPL() {
+            if (!livePlayerData || !bootstrapPlayers || !bootstrapTeams) return;
+
+            const teamGoals = {}; // team name -> array of goals
+
+            Object.keys(livePlayerData).forEach(playerId => {
+                const stats = livePlayerData[playerId];
+                const playerInfo = bootstrapPlayers[playerId];
+                if (!playerInfo || !stats) return;
+
+                const teamId = playerInfo.team;
+                const teamName = bootstrapTeams[teamId];
+                if (!teamName) return;
+
+                const teamKey = normalizeTeamName(teamName).toLowerCase();
+                if (!teamGoals[teamKey]) teamGoals[teamKey] = [];
+
+                // Add goals
+                for (let i = 0; i < (stats.goals || 0); i++) {
+                    teamGoals[teamKey].push({
+                        player: { name: playerInfo.name },
+                        time: { elapsed: '?' }, // FPL doesn't give us times
+                        assist: null
+                    });
+                }
+            });
+
+            // Merge into cachedGoalScorers (only if we don't already have data)
+            let addedCount = 0;
+            Object.keys(teamGoals).forEach(team => {
+                if (!cachedGoalScorers[team] || cachedGoalScorers[team].length === 0) {
+                    if (teamGoals[team].length > 0) {
+                        cachedGoalScorers[team] = teamGoals[team];
+                        addedCount++;
+                    }
+                }
+            });
+
+            if (addedCount > 0) {
+                console.log(`Built goal data from FPL for ${addedCount} teams`);
+                saveGoalScorersToStorage();
             }
         }
 
@@ -2182,20 +2227,13 @@
                     }).join('<br>');
                 }
 
-                // Bonus display - compact format, limit to top 2 players
+                // Bonus display - show all players
                 let bonusHtml = '';
                 if (live && live.bpsPlayers && live.bpsPlayers.length > 0) {
-                    const topBps = live.bpsPlayers.slice(0, 2); // Show max 2 players
-                    const totalBps = live.bpsPlayers.reduce((sum, p) => sum + p.bonus, 0);
-                    const extraCount = live.bpsPlayers.length - 2;
-                    bonusHtml = topBps.map(p => {
-                        // Shorten name: "B.Fernandes" -> "B.Fern..."
-                        const shortName = p.name.length > 8 ? p.name.substring(0, 8) + '..' : p.name;
+                    bonusHtml = live.bpsPlayers.map(p => {
+                        const shortName = p.name.length > 10 ? p.name.substring(0, 10) + '..' : p.name;
                         return `<span class="bps-pts">${shortName} +${p.bonus}</span>`;
                     }).join('<br>');
-                    if (extraCount > 0) {
-                        bonusHtml += `<br><span class="bps-pts" style="opacity:0.6">+${extraCount} more</span>`;
-                    }
                 }
 
                 // Status display
@@ -2218,18 +2256,13 @@
                     orHtml = live.overallRank.toLocaleString();
                 }
 
-                // DEFCON points - compact format, limit to top 2
+                // DEFCON points - show all players
                 let defconHtml = '';
                 if (live && live.defconPlayers && live.defconPlayers.length > 0) {
-                    const topDef = live.defconPlayers.slice(0, 2);
-                    const extraCount = live.defconPlayers.length - 2;
-                    defconHtml = topDef.map(p => {
-                        const shortName = p.name.length > 8 ? p.name.substring(0, 8) + '..' : p.name;
+                    defconHtml = live.defconPlayers.map(p => {
+                        const shortName = p.name.length > 10 ? p.name.substring(0, 10) + '..' : p.name;
                         return `<span class="defcon-pts">${shortName} +${p.points}</span>`;
                     }).join('<br>');
-                    if (extraCount > 0) {
-                        defconHtml += `<br><span class="defcon-pts" style="opacity:0.6">+${extraCount} more</span>`;
-                    }
                 }
 
                 // Highlight user's team
@@ -2871,7 +2904,9 @@
                         minutes: el.stats.minutes,
                         bonus: el.stats.bonus || 0,
                         bps: el.stats.bps || 0,  // Live BPS score for calculating provisional bonus
-                        defcon: defconPoints
+                        defcon: defconPoints,
+                        goals: el.stats.goals_scored || 0,
+                        assists: el.stats.assists || 0
                     };
                 });
                 console.log('Fetched live scores for', Object.keys(livePlayerScores).length, 'players');
