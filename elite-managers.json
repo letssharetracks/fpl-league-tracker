@@ -1,0 +1,561 @@
+{
+  "metadata": {
+    "description": "Elite FPL Managers - Legends, Content Creators & Champions",
+    "lastUpdated": "2026-02-02",
+    "season": "2025/26",
+    "note": "Team IDs may change each season - verify at start of new season"
+  },
+  "categories": {
+    "legends": {
+      "name": "All-Time Legends",
+      "description": "Top-ranked managers in FPL history",
+      "icon": "👑"
+    },
+    "creators": {
+      "name": "Content Creators",
+      "description": "YouTubers, podcasters & Twitter personalities",
+      "icon": "📺"
+    },
+    "champions": {
+      "name": "FPL Champions",
+      "description": "Past FPL overall winners",
+      "icon": "🏆"
+    },
+    "celebrities": {
+      "name": "Famous Managers",
+      "description": "Celebrities & well-known FPL players",
+      "icon": "⭐"
+    },
+    "elite": {
+      "name": "Elite XI",
+      "description": "Fantasy Football Fix Elite Team managers",
+      "icon": "🎯"
+    }
+  },
+  "managers": [
+    {
+      "id": 1213878,
+      "name": "David Fairchild",
+      "category": "legends",
+      "rank": 1,
+      "achievement": "#1 All-Time (FPL Form)",
+      "top1k": "Multiple",
+      "top10k": "Multiple"
+    },
+    {
+      "id": 74756,
+      "name": "Rob Mayes",
+      "category": "legends",
+      "rank": 2,
+      "achievement": "#2 All-Time",
+      "top1k": "Multiple",
+      "top10k": "Multiple"
+    },
+    {
+      "id": 512846,
+      "name": "Harry Daniels",
+      "category": "legends",
+      "rank": 3,
+      "achievement": "#3 All-Time",
+      "top1k": "Multiple",
+      "top10k": "Multiple"
+    },
+    {
+      "id": 4633,
+      "name": "Ben Crellin",
+      "category": "legends",
+      "rank": 4,
+      "achievement": "11× top 50k, Chip Strategy Guru",
+      "top1k": "Multiple",
+      "top10k": "5× in last 7 seasons",
+      "twitter": "@BenCrellin",
+      "knownFor": "Blank & Double Gameweek spreadsheets"
+    },
+    {
+      "id": 1168153,
+      "name": "Tom Dollimore",
+      "category": "legends",
+      "rank": 5,
+      "achievement": "World #1 (FPL Form, FPL Research, FFS Hall of Fame)",
+      "top1k": "2×",
+      "top10k": "5×",
+      "twitter": "@FPL_Barbossa"
+    },
+    {
+      "id": 1230926,
+      "name": "Sam Hackett",
+      "category": "legends",
+      "rank": 6,
+      "achievement": "#6 All-Time",
+      "top1k": "Multiple",
+      "top10k": "Multiple"
+    },
+    {
+      "id": 121212,
+      "name": "Abinav C",
+      "category": "legends",
+      "rank": 7,
+      "achievement": "#7 All-Time",
+      "top1k": "Multiple",
+      "top10k": "Multiple"
+    },
+    {
+      "id": 1205614,
+      "name": "Cameron Scott",
+      "category": "legends",
+      "rank": 8,
+      "achievement": "Sweet Viktory",
+      "top1k": "Multiple",
+      "top10k": "Multiple"
+    },
+    {
+      "id": 950135,
+      "name": "Udememfon Ekarika",
+      "category": "legends",
+      "rank": 9,
+      "achievement": "#9 All-Time",
+      "top1k": "Multiple",
+      "top10k": "Multiple"
+    },
+    {
+      "id": 269988,
+      "name": "Patrick Mathias",
+      "category": "legends",
+      "rank": 10,
+      "achievement": "#10 All-Time",
+      "top1k": "Multiple",
+      "top10k": "Multiple"
+    },
+    {
+      "id": 495008,
+      "name": "John Walsh",
+      "category": "legends",
+      "rank": 11,
+      "achievement": "#11 All-Time",
+      "top1k": "Multiple",
+      "top10k": "Multiple"
+    },
+    {
+      "id": 1740425,
+      "name": "William Johansson",
+      "category": "legends",
+      "rank": 12,
+      "achievement": "Tores råttor",
+      "top1k": "Multiple",
+      "top10k": "Multiple"
+    },
+    {
+      "id": 237572,
+      "name": "Dan Wright",
+      "category": "legends",
+      "rank": 13,
+      "achievement": "#13 All-Time",
+      "top1k": "Multiple",
+      "top10k": "Multiple"
+    },
+    {
+      "id": 177284,
+      "name": "Jesper Øiestad",
+      "category": "legends",
+      "rank": 14,
+      "achievement": "#14 All-Time",
+      "top1k": "Multiple",
+      "top10k": "Multiple"
+    },
+    {
+      "id": 689809,
+      "name": "Stevie Jackson",
+      "category": "legends",
+      "rank": 15,
+      "achievement": "#15 All-Time",
+      "top1k": "Multiple",
+      "top10k": "Multiple"
+    },
+    {
+      "id": 409941,
+      "name": "Fábio Borges",
+      "category": "legends",
+      "rank": 27,
+      "achievement": "GOAT contender, 8× consecutive top 5k",
+      "top1k": "1× (Rank 95 in 18/19)",
+      "top10k": "8× consecutive",
+      "twitter": "@FabioBorworges"
+    },
+    {
+      "id": 226,
+      "name": "Colin Innes",
+      "category": "legends",
+      "rank": 39,
+      "achievement": "Top 50 All-Time",
+      "top1k": "Multiple",
+      "top10k": "Multiple"
+    },
+    {
+      "id": 85285,
+      "name": "Øyvind Bjørnevik",
+      "category": "legends",
+      "rank": 44,
+      "achievement": "Top 50 All-Time",
+      "top1k": "Multiple",
+      "top10k": "Multiple"
+    },
+    {
+      "id": 121598,
+      "name": "Teemu Remes",
+      "category": "legends",
+      "rank": 49,
+      "achievement": "Top 50 All-Time",
+      "top1k": "Multiple",
+      "top10k": "Multiple"
+    },
+
+    {
+      "id": 9,
+      "name": "Holly Shand",
+      "category": "creators",
+      "platform": "Fantasy Football Scout",
+      "twitter": "@FFScout_Holly",
+      "knownFor": "FFS Writer, statistical analysis"
+    },
+    {
+      "id": 24,
+      "name": "Let's Talk FPL (Andy)",
+      "category": "creators",
+      "platform": "YouTube",
+      "subscribers": "478k+",
+      "twitter": "@LetsTalk_FPL",
+      "knownFor": "Weekly FPL tips & analysis"
+    },
+    {
+      "id": 96,
+      "name": "FPL Mate (Dan)",
+      "category": "creators",
+      "platform": "YouTube",
+      "subscribers": "240k+",
+      "twitter": "@FPLMate",
+      "achievement": "OR 243",
+      "knownFor": "Cool graphics, multiple videos per week"
+    },
+    {
+      "id": 156,
+      "name": "FPL Salah",
+      "category": "creators",
+      "platform": "Twitter",
+      "twitter": "@FPL_Salah"
+    },
+    {
+      "id": 271,
+      "name": "Big Man Bakar",
+      "category": "creators",
+      "platform": "Twitter/YouTube",
+      "followers": "200k+",
+      "twitter": "@BigManBakar",
+      "knownFor": "Data-driven previews, actionable advice"
+    },
+    {
+      "id": 746,
+      "name": "FPL Raptor (Dr. Ross)",
+      "category": "creators",
+      "platform": "Twitter",
+      "twitter": "@FPL_Raptor",
+      "knownFor": "Statistical analysis"
+    },
+    {
+      "id": 1301,
+      "name": "FPL Focal (Oscar)",
+      "category": "creators",
+      "platform": "YouTube",
+      "twitter": "@FPLFocal",
+      "achievement": "Former World #1",
+      "knownFor": "Insightful analysis, was briefly #1 in FPL"
+    },
+    {
+      "id": 1536,
+      "name": "FPL Hints",
+      "category": "creators",
+      "platform": "Twitter/YouTube",
+      "twitter": "@FPLHints",
+      "knownFor": "FPL tips and hints"
+    },
+    {
+      "id": 2140,
+      "name": "FPL Family",
+      "category": "creators",
+      "platform": "YouTube",
+      "twitter": "@FPL_Family",
+      "knownFor": "Family-friendly FPL content"
+    },
+    {
+      "id": 2869,
+      "name": "Ben Crellin",
+      "category": "creators",
+      "platform": "Twitter/Spreadsheets",
+      "twitter": "@BenCrellin",
+      "knownFor": "Blank & Double Gameweek planning spreadsheets",
+      "note": "Also listed in legends"
+    },
+    {
+      "id": 2974,
+      "name": "FPL Goat",
+      "category": "creators",
+      "platform": "Twitter",
+      "twitter": "@FPL_GOAT"
+    },
+    {
+      "id": 3544,
+      "name": "FPL Harry",
+      "category": "creators",
+      "platform": "YouTube/Podcasts",
+      "twitter": "@FPL_Harry",
+      "knownFor": "FFS Podcasts, Great and The Good"
+    },
+    {
+      "id": 4805,
+      "name": "Pras",
+      "category": "creators",
+      "platform": "Fantasy Football Scout",
+      "twitter": "@Pras_FPL",
+      "knownFor": "FFS contributor"
+    },
+    {
+      "id": 7685,
+      "name": "Gianni Buttice",
+      "category": "creators",
+      "platform": "YouTube",
+      "twitter": "@GianniButtice"
+    },
+    {
+      "id": 9505,
+      "name": "Zophar",
+      "category": "creators",
+      "platform": "Twitter",
+      "twitter": "@zaborami",
+      "knownFor": "Statistical analysis"
+    },
+    {
+      "id": 11539,
+      "name": "Jian Batra",
+      "category": "creators",
+      "platform": "YouTube",
+      "twitter": "@JianBatra"
+    },
+    {
+      "id": 20360,
+      "name": "Andy Martin",
+      "category": "creators",
+      "platform": "YouTube"
+    },
+    {
+      "id": 24194,
+      "name": "Lateriser",
+      "category": "creators",
+      "platform": "Twitter/Podcasts",
+      "twitter": "@lateriser12",
+      "knownFor": "FPL analysis"
+    },
+    {
+      "id": 68585,
+      "name": "FPL Matthew",
+      "category": "creators",
+      "platform": "YouTube",
+      "twitter": "@FPL_Matthew"
+    },
+    {
+      "id": 5131,
+      "name": "FPL General",
+      "category": "creators",
+      "platform": "Twitter/Podcasts",
+      "twitter": "@FPLGeneral",
+      "knownFor": "FFS Podcasts"
+    },
+
+    {
+      "id": 76862,
+      "name": "Magnus Carlsen",
+      "category": "celebrities",
+      "achievement": "World Chess Champion, Rank #10 (19/20)",
+      "top1k": "0",
+      "top10k": "4×",
+      "knownFor": "Chess GOAT who dominates FPL",
+      "bestFinish": "Rank 10 (2019/20)"
+    },
+
+    {
+      "id": null,
+      "name": "Paul Marshman",
+      "category": "elite",
+      "achievement": "6× top 1k finishes (MOST EVER)",
+      "top1k": "6×",
+      "top10k": "Multiple",
+      "knownFor": "Arguably GOAT, most top 1k finishes ever",
+      "bestFinish": "532nd (2023/24)"
+    },
+    {
+      "id": null,
+      "name": "Mark Mansfield",
+      "category": "elite",
+      "achievement": "#2 Premier FPL Tools All-Time",
+      "top1k": "Multiple",
+      "top10k": "6× top 5k",
+      "knownFor": "Elite XI manager"
+    },
+    {
+      "id": null,
+      "name": "Matt Corbidge",
+      "category": "elite",
+      "achievement": "#10 FFS Hall of Fame",
+      "top1k": "Multiple",
+      "top10k": "5× top 5k",
+      "knownFor": "Elite XI manager"
+    },
+    {
+      "id": null,
+      "name": "James Cooper",
+      "category": "elite",
+      "achievement": "#13 LiveFPL Best Managers All-Time",
+      "top1k": "Multiple",
+      "top10k": "7×",
+      "knownFor": "Elite XI manager"
+    },
+    {
+      "id": null,
+      "name": "Philman (Phil)",
+      "category": "elite",
+      "achievement": "9× top 10k finishes",
+      "top1k": "1×",
+      "top10k": "9×",
+      "bestFinish": "365th"
+    },
+    {
+      "id": null,
+      "name": "Tarek Balbaa",
+      "category": "elite",
+      "achievement": "10× top 10k, 6× top 5k, 2× top 1k",
+      "top1k": "2×",
+      "top10k": "10×",
+      "knownFor": "Nearly 20 years of FPL experience"
+    },
+    {
+      "id": null,
+      "name": "Tim Walpole",
+      "category": "elite",
+      "achievement": "8× top 10k finishes",
+      "top1k": "1×",
+      "top10k": "8×",
+      "bestFinish": "496th"
+    },
+    {
+      "id": null,
+      "name": "Copenhagen Wednesday (Craig)",
+      "category": "elite",
+      "achievement": "6× top 10k finishes",
+      "top1k": "1×",
+      "top10k": "6×",
+      "bestFinish": "80th"
+    },
+    {
+      "id": null,
+      "name": "Alistair Hughes",
+      "category": "elite",
+      "achievement": "3× top 1k finishes",
+      "top1k": "3×",
+      "top10k": "4×",
+      "bestFinish": "291st (2019/20)"
+    },
+    {
+      "id": null,
+      "name": "Ville Ronka",
+      "category": "elite",
+      "achievement": "FPL Legend, 9× top 10k, 4× top 1k",
+      "top1k": "4×",
+      "top10k": "9×",
+      "knownFor": "Legendary patience, only 1 finish outside top 100k ever",
+      "note": "Team ID changes yearly, registers late each season"
+    },
+
+    {
+      "id": null,
+      "name": "Lovro Budišin",
+      "category": "champions",
+      "season": "2024/25",
+      "teamName": "Aina Krafth Bree",
+      "points": 2810,
+      "achievement": "First Croatian FPL winner"
+    },
+    {
+      "id": null,
+      "name": "Jonas Sand Låbakk",
+      "category": "champions",
+      "season": "2023/24",
+      "teamName": "Onkel Blaa",
+      "points": 2799
+    },
+    {
+      "id": null,
+      "name": "Ali Jahangirov",
+      "category": "champions",
+      "season": "2022/23",
+      "teamName": "FPL Gunz",
+      "points": 2776,
+      "twitter": "@FplGunz",
+      "achievement": "Won by 5 points in GW38"
+    },
+    {
+      "id": null,
+      "name": "Jamie Pigott",
+      "category": "champions",
+      "season": "2021/22",
+      "teamName": "Futbol Is Life",
+      "points": 2844,
+      "twitter": "@futbolislifefpl",
+      "achievement": "Highest ever FPL points total, Free Hit GW37 to win"
+    },
+    {
+      "id": null,
+      "name": "Michael Coone",
+      "category": "champions",
+      "season": "2020/21",
+      "teamName": "Teddy Bears Utd",
+      "points": 2680
+    },
+    {
+      "id": null,
+      "name": "Joshua Bull",
+      "category": "champions",
+      "season": "2019/20",
+      "teamName": "The Bulldozers",
+      "points": 2557,
+      "twitter": "@JoshuaABull",
+      "achievement": "Won after disqualification of original winner"
+    },
+    {
+      "id": null,
+      "name": "Adam Levy",
+      "category": "champions",
+      "season": "2018/19",
+      "teamName": "#TheyAreUs",
+      "points": 2659
+    }
+  ],
+  "stats": {
+    "totalManagers": 57,
+    "withTeamIds": 38,
+    "needsIdLookup": 19,
+    "categories": {
+      "legends": 19,
+      "creators": 20,
+      "champions": 7,
+      "celebrities": 1,
+      "elite": 10
+    }
+  },
+  "sources": [
+    "https://fpl.team/managers/",
+    "https://fplform.com/fpl-manager-ranking",
+    "https://www.fantasyfootballpundit.com/fpl-content-creators-league-table/",
+    "https://www.fantasyfootballpundit.com/all-time-fpl-manager-ranking-table/",
+    "https://www.fantasyfootballfix.com/blog-index/fpl-meet-elite/",
+    "https://fpl.page/top-all-time-managers",
+    "https://footballcontentawards.com/best-in-fantasy-football-creators-finalists-2025/"
+  ]
+}

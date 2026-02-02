@@ -126,9 +126,20 @@
         .controls {
             display: flex;
             gap: 20px;
-            margin-bottom: 20px;
             flex-wrap: wrap;
             justify-content: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: #37003c;
+            padding: 15px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.15);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+        .controls-spacer {
+            height: 90px;
         }
         .control-group {
             background: rgba(255,255,255,0.08);
@@ -156,6 +167,94 @@
         }
         select:hover {
             border-color: #00ff85;
+        }
+        /* Elite option styling */
+        select option[value="elite"] {
+            background: linear-gradient(90deg, #37003c, #1a001d);
+            color: #ffd700;
+            font-weight: 600;
+        }
+        /* Elite player toggle styling */
+        .player-toggle.elite-player {
+            border-left: 4px solid #ffd700 !important;
+            background: rgba(255, 215, 0, 0.08);
+        }
+        .player-toggle.elite-player .player-name {
+            color: #ffd700;
+        }
+        .player-toggle.user-player {
+            border-left: 4px solid #00ff85 !important;
+            background: rgba(0, 255, 133, 0.15);
+        }
+        .player-toggle.user-player .player-name {
+            color: #00ff85;
+            font-weight: bold;
+        }
+        .elite-badge {
+            font-size: 8px;
+            padding: 2px 5px;
+            border-radius: 3px;
+            margin-left: 5px;
+            font-weight: 600;
+        }
+        .elite-badge.legend {
+            background: #ffd700;
+            color: #37003c;
+        }
+        .elite-badge.creator {
+            background: #04f5ff;
+            color: #37003c;
+        }
+        .elite-badge.celebrity {
+            background: #ff6b6b;
+            color: #fff;
+        }
+        .elite-badge.you {
+            background: #00ff85;
+            color: #37003c;
+        }
+        /* Info tooltip for elite */
+        .elite-info {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            background: rgba(255, 215, 0, 0.2);
+            border: 1px solid #ffd700;
+            border-radius: 50%;
+            color: #ffd700;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: help;
+            margin-left: 8px;
+            position: relative;
+        }
+        .elite-info:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: normal;
+            white-space: nowrap;
+            z-index: 1000;
+            border: 1px solid #ffd700;
+        }
+        .elite-info:hover::before {
+            content: '';
+            position: absolute;
+            bottom: 115%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #ffd700;
+            z-index: 1000;
         }
         .separator {
             color: #666;
@@ -392,17 +491,23 @@
                 padding: 5px 4px;
             }
             .league-table .col-name {
-                min-width: 60px;
-                max-width: 90px;
+                min-width: 70px;
+                max-width: 105px;
             }
             .league-table .team-name {
-                max-width: 85px;
+                max-width: 100px;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
+                font-size: 11px;
             }
             .league-table .manager-name {
-                display: none;
+                display: block;
+                font-size: 7px;
+                color: #666;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
             }
         }
 
@@ -650,7 +755,11 @@
             }
             .controls {
                 flex-direction: column;
-                gap: 10px;
+                gap: 8px;
+                padding: 10px;
+            }
+            .controls-spacer {
+                height: 180px;
             }
             .control-group {
                 width: 100%;
@@ -1232,6 +1341,7 @@
                 <select id="leagueSelect" onchange="selectLeague()">
                 </select>
                 <button class="btn-star" id="defaultLeagueBtn" onclick="toggleDefaultLeague()" title="Set as default league">☆</button>
+                <span class="elite-info" data-tooltip="Select '⭐ vs The Best' to compare against elite FPL managers & creators!">?</span>
                 <span class="separator">or</span>
                 <input type="text" id="leagueId" placeholder="League ID" class="league-id-input">
                 <button class="btn btn-top-10" onclick="loadNewLeague()">Load</button>
@@ -1268,6 +1378,7 @@
                 <button class="btn btn-top-10" onclick="resetWeekRange()">All</button>
             </div>
         </div>
+        <div class="controls-spacer"></div>
 
         <div id="statusBar" style="display: none; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
             <span id="statusText" style="color: #04f5ff;">Loading...</span>
@@ -1307,7 +1418,7 @@
                     <tr>
                         <th class="col-rank">#</th>
                         <th class="col-move"></th>
-                        <th class="col-name">Manager</th>
+                        <th class="col-name">Team</th>
                         <th class="col-gw sortable" id="sortGw">GW</th>
                         <th class="col-total sortable" id="sortTotal">Total</th>
                         <th class="col-gap">Gap</th>
@@ -1377,6 +1488,7 @@
         let userLeagues = [];
         let weekRangeStart = 1;
         let weekRangeEnd = 38;
+        let topOverallTotal = null; // #1 overall's total points
 
         // Match status tracking
         let matchesInProgress = false;  // Are any matches currently live?
@@ -1844,9 +1956,17 @@
 
         function populateLeagueDropdown() {
             const select = document.getElementById('leagueSelect');
-            select.innerHTML = userLeagues.map(league =>
+
+            // Add user leagues
+            let options = userLeagues.map(league =>
                 `<option value="${league.id}">${league.name}</option>`
             ).join('');
+
+            // Add separator and "vs The Best" option
+            options += `<option disabled>──────────────</option>`;
+            options += `<option value="elite" title="Compare yourself against elite FPL managers, content creators & legends!">⭐ vs The Best</option>`;
+
+            select.innerHTML = options;
 
             // Check for default league first, then fall back to LEAGUE_ID
             const defaultLeagueId = getDefaultLeague();
@@ -2304,37 +2424,92 @@
                 let mobileDetailsHtml = '';
                 if (live) {
                     mobileDetailsHtml = '<div class="row-details-content">';
-                    if (live.chip) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Chip:</span> <span class="chip-active">${chipFullNames[live.chip] || live.chip}</span></div>`;
-                    if (live.autoSubs && live.autoSubs.length > 0) {
-                        const firstSub = live.autoSubs[0];
-                        const hasMultipleSubs = live.autoSubs.length > 1;
-                        mobileDetailsHtml += `<div class="detail-item${hasMultipleSubs ? ' has-sub-items' : ''}"><span class="detail-label">Auto-Sub:</span><span><span class="autosub-in">${firstSub.inName}</span> <span class="points-gained">(+${firstSub.pointsGained})</span></span></div>`;
-                        live.autoSubs.slice(1).forEach((s, idx, arr) => {
-                            const isLast = idx === arr.length - 1;
-                            mobileDetailsHtml += `<div class="detail-sub-item${isLast ? ' last-sub-item' : ''}"><span class="detail-label"></span><span><span class="autosub-in">${s.inName}</span> <span class="points-gained">(+${s.pointsGained})</span></span></div>`;
-                        });
+
+                    // GW Points (gross)
+                    mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">GW${currentGameweek} Pts:</span><span style="color: #00ff85;">${live.points}</span></div>`;
+
+                    // Captain
+                    if (live.captainName) {
+                        const capLabel = live.isTripleCaptain ? 'Triple Cap:' : 'Captain:';
+                        const capMultiplier = live.isTripleCaptain ? 3 : 2;
+                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">${capLabel}</span><span>${live.captainName} <span style="color: #00ff85;">(${live.captainPoints} × ${capMultiplier})</span></span></div>`;
                     }
+
+                    // Hit Taken
+                    if (live.transferCost > 0) {
+                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Hit Taken:</span><span style="color: #ffaa00;">-${live.transferCost}</span></div>`;
+                    }
+
+                    // Net GW Points
+                    mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Net GW Pts:</span><span style="color: #04f5ff;">${gwPoints}</span></div>`;
+
+                    // Auto-subs
+                    if (live.autoSubs && live.autoSubs.length > 0) {
+                        const hasMultipleSubs = live.autoSubs.length > 1;
+                        if (hasMultipleSubs) {
+                            mobileDetailsHtml += `<div class="detail-item has-sub-items"><span class="detail-label">Auto-Subs:</span><span></span></div>`;
+                            live.autoSubs.forEach((s, idx, arr) => {
+                                const isLast = idx === arr.length - 1;
+                                mobileDetailsHtml += `<div class="detail-sub-item${isLast ? ' last-sub-item' : ''}"><span class="detail-label"></span><span style="color: #ffaa00;">${s.outName} → ${s.inName} (+${s.pointsGained})</span></div>`;
+                            });
+                        } else {
+                            const sub = live.autoSubs[0];
+                            mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Auto-Sub:</span><span style="color: #ffaa00;">${sub.outName} → ${sub.inName} (+${sub.pointsGained})</span></div>`;
+                        }
+                    }
+
+                    // Bonus Points
                     if (live.bpsPlayers && live.bpsPlayers.length > 0) {
-                        // Calculate total bonus from all players
                         const totalBonus = live.bpsPlayers.reduce((sum, p) => sum + p.bonus, 0);
-                        mobileDetailsHtml += `<div class="detail-item has-sub-items"><span class="detail-label">Bonus Points:</span><span class="bps-bonus">+${totalBonus}</span></div>`;
+                        mobileDetailsHtml += `<div class="detail-item has-sub-items"><span class="detail-label">Bonus Pts:</span><span style="color: #ffaa00;">+${totalBonus}</span></div>`;
                         live.bpsPlayers.forEach((p, idx, arr) => {
                             const isLast = idx === arr.length - 1;
-                            mobileDetailsHtml += `<div class="detail-sub-item${isLast ? ' last-sub-item' : ''}"><span class="detail-label"></span><span><span class="bps-player">${p.name}</span> <span class="bps-bonus">(+${p.bonus})</span></span></div>`;
+                            mobileDetailsHtml += `<div class="detail-sub-item${isLast ? ' last-sub-item' : ''}"><span class="detail-label"></span><span style="color: #ffaa00;">${p.name} (+${p.bonus})</span></div>`;
                         });
                     }
+
+                    // DEFCON
                     if (live.defconPlayers && live.defconPlayers.length > 0) {
-                        const firstDef = live.defconPlayers[0];
                         const hasMultipleDef = live.defconPlayers.length > 1;
-                        mobileDetailsHtml += `<div class="detail-item${hasMultipleDef ? ' has-sub-items' : ''}"><span class="detail-label">DEFCON:</span><span><span class="defcon-player">${firstDef.name}</span> <span class="defcon-points">(+${firstDef.points})</span></span></div>`;
-                        live.defconPlayers.slice(1).forEach((p, idx, arr) => {
-                            const isLast = idx === arr.length - 1;
-                            mobileDetailsHtml += `<div class="detail-sub-item${isLast ? ' last-sub-item' : ''}"><span class="detail-label"></span><span><span class="defcon-player">${p.name}</span> <span class="defcon-points">(+${p.points})</span></span></div>`;
-                        });
+                        if (hasMultipleDef) {
+                            mobileDetailsHtml += `<div class="detail-item has-sub-items"><span class="detail-label">DEFCON:</span><span style="color: #e056fd;">+${live.defconPoints}</span></div>`;
+                            live.defconPlayers.forEach((p, idx, arr) => {
+                                const isLast = idx === arr.length - 1;
+                                mobileDetailsHtml += `<div class="detail-sub-item${isLast ? ' last-sub-item' : ''}"><span class="detail-label"></span><span style="color: #e056fd;">${p.name} (+${p.points})</span></div>`;
+                            });
+                        } else {
+                            const p = live.defconPlayers[0];
+                            mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">DEFCON:</span><span style="color: #e056fd;">${p.name} (+${p.points})</span></div>`;
+                        }
                     }
-                    mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Status:</span><span>${statusHtml}</span></div>`;
-                    if (live.overallRank) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Overall Rank:</span> <span class="rank-value">${live.overallRank.toLocaleString()}</span></div>`;
-                    if (live.gwRank) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">GW Rank:</span> <span class="rank-value">${live.gwRank.toLocaleString()}</span></div>`;
+
+                    // VC Active
+                    if (live.vcActivated && live.vcName) {
+                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">VC Active:</span><span style="color: #04f5ff;">${live.vcName} (C)</span></div>`;
+                    }
+
+                    // Players status
+                    const playing = live.playersPlaying || 0;
+                    const yetToPlay = live.playersYetToPlay || 0;
+                    if (playing > 0 || yetToPlay > 0) {
+                        const parts = [];
+                        if (playing > 0) parts.push(`<span style="color: #ff4757;">${playing} playing</span>`);
+                        if (yetToPlay > 0) parts.push(`<span style="color: #888;">${yetToPlay} to play</span>`);
+                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Players:</span><span>${parts.join(', ')}</span></div>`;
+                    }
+
+                    // Chip
+                    if (live.chip) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Chip:</span><span style="color: #04f5ff;">${chipFullNames[live.chip] || live.chip}</span></div>`;
+
+                    // Total (with separator)
+                    mobileDetailsHtml += `<div class="detail-item" style="border-top: 1px solid rgba(255,255,255,0.2); margin-top: 5px; padding-top: 8px;"><span class="detail-label">Total:</span><span style="font-weight: bold;">${totalDisplay.toLocaleString()}</span></div>`;
+
+                    // Overall Rank
+                    if (live.overallRank) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Overall Rank:</span><span style="color: #888;">${live.overallRank.toLocaleString()}</span></div>`;
+
+                    // GW Rank
+                    if (live.gwRank) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">GW Rank:</span><span style="color: #888;">${live.gwRank.toLocaleString()}</span></div>`;
+
                     mobileDetailsHtml += '</div>';
                 }
 
@@ -2373,13 +2548,28 @@
             }
         }
 
+        // Track if we're in elite mode
+        let isEliteMode = false;
+
         function selectLeague() {
             const select = document.getElementById('leagueSelect');
-            const newLeagueId = parseInt(select.value);
-            console.log('Selected league from dropdown:', newLeagueId, select.options[select.selectedIndex].text);
-            LEAGUE_ID = newLeagueId;
-            updateDefaultLeagueButton();
-            resetAndLoad();
+            const selectedValue = select.value;
+            console.log('Selected league from dropdown:', selectedValue, select.options[select.selectedIndex].text);
+
+            if (selectedValue === 'elite') {
+                // Elite mode - load elite managers
+                isEliteMode = true;
+                LEAGUE_ID = null;
+                updateDefaultLeagueButton();
+                resetAndLoadElite();
+            } else {
+                // Normal league mode
+                isEliteMode = false;
+                const newLeagueId = parseInt(selectedValue);
+                LEAGUE_ID = newLeagueId;
+                updateDefaultLeagueButton();
+                resetAndLoad();
+            }
         }
 
         function clearCacheAndReload() {
@@ -2419,6 +2609,160 @@
             chart = null;
             document.getElementById('playerToggles').innerHTML = '<div class="loading"><div id="loadingText">Loading...</div><div style="margin-top: 10px;"><div id="loadingPercent" style="font-size: 20px; color: #00ff88;">0%</div></div></div>';
             loadAllData();
+        }
+
+        // Elite managers data
+        const eliteManagers = [
+            // Legends - Top All-Time Managers
+            { id: 1213878, name: "David Fairchild", category: "legend", achievement: "#1 All-Time" },
+            { id: 74756, name: "Rob Mayes", category: "legend", achievement: "#2 All-Time" },
+            { id: 512846, name: "Harry Daniels", category: "legend", achievement: "#3 All-Time" },
+            { id: 4633, name: "Ben Crellin", category: "legend", achievement: "Chip Guru, 11× top 50k" },
+            { id: 1168153, name: "Tom Dollimore", category: "legend", achievement: "World #1" },
+            { id: 409941, name: "Fábio Borges", category: "legend", achievement: "8× consecutive top 5k" },
+            { id: 1205614, name: "Cameron Scott", category: "legend", achievement: "Sweet Viktory" },
+            { id: 121212, name: "Abinav C", category: "legend", achievement: "#7 All-Time" },
+            { id: 226, name: "Colin Innes", category: "legend", achievement: "Top 50 All-Time" },
+            // Content Creators
+            { id: 24, name: "Let's Talk FPL", category: "creator", achievement: "YouTube 478k" },
+            { id: 96, name: "FPL Mate", category: "creator", achievement: "YouTube 240k, OR 243" },
+            { id: 271, name: "Big Man Bakar", category: "creator", achievement: "Twitter 200k+" },
+            { id: 1301, name: "FPL Focal", category: "creator", achievement: "Former World #1" },
+            { id: 3544, name: "FPL Harry", category: "creator", achievement: "FFS Podcasts" },
+            { id: 746, name: "FPL Raptor", category: "creator", achievement: "Stats Analysis" },
+            { id: 9, name: "Holly Shand", category: "creator", achievement: "FFS Writer" },
+            { id: 5131, name: "FPL General", category: "creator", achievement: "Podcaster" },
+            { id: 2869, name: "Ben Crellin", category: "creator", achievement: "BGW/DGW Spreadsheets" },
+            { id: 24194, name: "Lateriser", category: "creator", achievement: "FPL Analyst" },
+            // Celebrity
+            { id: 76862, name: "Magnus Carlsen", category: "celebrity", achievement: "Chess GOAT, Rank #10" },
+        ];
+
+        function resetAndLoadElite() {
+            console.log('=== Loading Elite Managers ===');
+            allPlayers = [];
+            playerHistories = {};
+            selectedEntries = new Set();
+            hoveredEntry = null;
+            livePoints = {};
+            livePositions = {};
+            livePlayerScores = null;
+            if (chart) chart.destroy();
+            chart = null;
+            document.getElementById('playerToggles').innerHTML = '<div class="loading"><div id="loadingText">Loading elite managers...</div><div style="margin-top: 10px;"><div id="loadingPercent" style="font-size: 20px; color: #ffd700;">0%</div></div></div>';
+            loadEliteData();
+        }
+
+        async function loadEliteData() {
+            isLoading = true;
+            try {
+                showStatus('Loading elite managers...');
+
+                // Fetch bootstrap data for current gameweek
+                await fetchBootstrapStatic();
+
+                const loadingPercent = document.getElementById('loadingPercent');
+                const loadingText = document.getElementById('loadingText');
+                let loaded = 0;
+                const total = eliteManagers.length + (userTeamId ? 1 : 0);
+
+                // Add user's team first if they have one
+                let managersToLoad = [...eliteManagers];
+                if (userTeamId && !eliteManagers.some(m => m.id === userTeamId)) {
+                    managersToLoad.unshift({
+                        id: userTeamId,
+                        name: "⭐ YOU",
+                        category: "you",
+                        achievement: "Your Team"
+                    });
+                }
+
+                // Fetch data for each elite manager
+                const players = [];
+                const histories = {};
+
+                for (const manager of managersToLoad) {
+                    try {
+                        // Fetch entry data
+                        const entryUrl = `https://fantasy.premierleague.com/api/entry/${manager.id}/`;
+                        const entryResponse = await fetchWithFallback(entryUrl);
+                        const entryData = await entryResponse.json();
+
+                        // Fetch history data
+                        const historyUrl = `https://fantasy.premierleague.com/api/entry/${manager.id}/history/`;
+                        const historyResponse = await fetchWithFallback(historyUrl);
+                        const historyData = await historyResponse.json();
+
+                        // Format as player object matching existing structure
+                        const player = {
+                            entry: manager.id,
+                            entry_name: entryData.name,
+                            player_name: manager.name,
+                            total: entryData.summary_overall_points || 0,
+                            rank: entryData.summary_overall_rank || 0,
+                            event_total: entryData.summary_event_points || 0,
+                            // Add elite-specific fields
+                            isElite: manager.category !== 'you',
+                            isUser: manager.category === 'you',
+                            eliteCategory: manager.category,
+                            eliteAchievement: manager.achievement
+                        };
+
+                        players.push(player);
+                        histories[manager.id] = historyData.current || [];
+
+                        loaded++;
+                        if (loadingPercent) {
+                            loadingPercent.textContent = Math.round((loaded / total) * 100) + '%';
+                        }
+                        if (loadingText) {
+                            loadingText.textContent = `Loading ${manager.name}...`;
+                        }
+                    } catch (error) {
+                        console.error(`Failed to load ${manager.name}:`, error);
+                        loaded++;
+                    }
+                }
+
+                // Sort by total points descending
+                players.sort((a, b) => b.total - a.total);
+
+                // Assign ranks based on sorted position
+                players.forEach((p, idx) => {
+                    p.last_rank = idx + 1;
+                    p.rank = idx + 1;
+                });
+
+                allPlayers = players;
+                playerHistories = histories;
+                leagueName = '⭐ vs The Best';
+                document.title = 'FPL Tracker - vs The Best';
+
+                // Select top 10 by default (or user + top 9)
+                const userEntry = players.find(p => p.isUser);
+                if (userEntry) {
+                    selectedEntries.add(userEntry.entry);
+                    players.filter(p => !p.isUser).slice(0, 9).forEach(p => selectedEntries.add(p.entry));
+                } else {
+                    players.slice(0, 10).forEach(p => selectedEntries.add(p.entry));
+                }
+
+                // Populate week range selectors
+                weekRangeEnd = currentGameweek || 38;
+                populateWeekSelectors();
+
+                renderPlayerToggles();
+                updateChart();
+                hideStatus();
+
+                console.log('Elite data loaded:', players.length, 'managers');
+
+            } catch (error) {
+                console.error('Failed to load elite data:', error);
+                showStatus('Failed to load elite managers');
+            } finally {
+                isLoading = false;
+            }
         }
 
         // High-contrast, colorblind-friendly palette (12 distinct colors)
@@ -4008,9 +4352,17 @@
                     </div>`;
                 }
 
+                // Elite styling
+                const isElite = player.isElite;
+                const isUser = player.isUser;
+                const eliteClass = isUser ? 'user-player' : (isElite ? 'elite-player' : '');
+                const eliteBadge = player.eliteCategory && player.eliteCategory !== 'you'
+                    ? `<span class="elite-badge ${player.eliteCategory}" title="${player.eliteAchievement || ''}">${player.eliteCategory.toUpperCase()}</span>`
+                    : (isUser ? '<span class="elite-badge you">YOU</span>' : '');
+
                 return `
                 <div class="player-wrapper">
-                    <label class="player-toggle ${isSelected ? 'selected' : ''}" id="toggle-${player.entry}"
+                    <label class="player-toggle ${isSelected ? 'selected' : ''} ${eliteClass}" id="toggle-${player.entry}"
                            onmouseenter="hoverPlayer(${player.entry})"
                            onmouseleave="hoverPlayer(null)"
                            onclick="toggleDetails(${player.entry}, event)"
@@ -4021,7 +4373,7 @@
                                onchange="togglePlayer(${player.entry}, this.checked)">
                         <span class="rank">#${displayRank} ${movementIndicator}</span>
                         <span class="color-dot" style="background: ${color}; box-shadow: 0 0 4px ${color};"></span>
-                        <span class="player-name" title="${player.player_name} - ${player.entry_name}">${player.player_name}</span>
+                        <span class="player-name" title="${player.player_name} - ${player.entry_name}${player.eliteAchievement ? ' | ' + player.eliteAchievement : ''}">${player.player_name}${eliteBadge}</span>
                         <span class="points">${pointsDisplay}${liveIndicator}</span>
                         ${live ? '<span class="expand-icon">ℹ️</span>' : ''}
                     </label>
