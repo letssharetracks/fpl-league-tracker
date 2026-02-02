@@ -282,22 +282,13 @@
             flex-wrap: wrap;
         }
         .control-group-league {
-            flex: 1 1 100%;
+            flex: 1 1 auto;
+            flex-wrap: nowrap;
         }
-        @media (min-width: 1200px) {
+        @media (max-width: 900px) {
             .control-group-league {
-                flex: 1 1 auto;
+                flex-wrap: wrap;
             }
-            .controls {
-                flex-wrap: nowrap;
-            }
-        }
-        /* Responsive text - hide on mobile, show on desktop */
-        .hide-mobile { display: inline; }
-        .show-mobile { display: none; }
-        @media (max-width: 768px) {
-            .hide-mobile { display: none; }
-            .show-mobile { display: inline; }
         }
         .main-content {
             display: grid;
@@ -1395,7 +1386,7 @@
                 <button class="btn btn-clear-all" onclick="clearAllCaches()" title="Clear all cached data">Reset</button>
                 <button class="btn btn-select-all" id="refreshLiveBtn" onclick="refreshLiveData()" title="Refresh live gameweek data">Refresh</button>
                 <button class="btn btn-select-all" onclick="findMyTeam()" title="Jump to your team in the table" style="background: linear-gradient(135deg, #00ff85, #04f5ff);">⭐ Find Me</button>
-                <button class="btn btn-clear-all" onclick="changeTeam()" title="Go back and enter a different Team ID"><span class="hide-mobile">Change Team</span><span class="show-mobile">Change</span></button>
+                <button class="btn btn-clear-all" onclick="changeTeam()" title="Go back and enter a different Team ID">Change</button>
             </div>
             <div class="control-group">
                 <label>Mode:</label>
