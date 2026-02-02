@@ -637,7 +637,12 @@
         /* Mobile optimizations */
         @media (max-width: 600px) {
             body {
-                padding: 10px;
+                padding: 5px;
+            }
+            .table-view {
+                padding: 3px;
+                margin: 0;
+                border-radius: 8px;
             }
             h1 {
                 font-size: 1.4rem;
@@ -2309,15 +2314,6 @@
                             mobileDetailsHtml += `<div class="detail-sub-item${isLast ? ' last-sub-item' : ''}"><span class="detail-label"></span><span><span class="autosub-in">${s.inName}</span> <span class="points-gained">(+${s.pointsGained})</span></span></div>`;
                         });
                     }
-                    if (live.defconPlayers && live.defconPlayers.length > 0) {
-                        const firstDef = live.defconPlayers[0];
-                        const hasMultipleDef = live.defconPlayers.length > 1;
-                        mobileDetailsHtml += `<div class="detail-item${hasMultipleDef ? ' has-sub-items' : ''}"><span class="detail-label">DEFCON:</span><span><span class="defcon-player">${firstDef.name}</span> <span class="defcon-points">(+${firstDef.points})</span></span></div>`;
-                        live.defconPlayers.slice(1).forEach((p, idx, arr) => {
-                            const isLast = idx === arr.length - 1;
-                            mobileDetailsHtml += `<div class="detail-sub-item${isLast ? ' last-sub-item' : ''}"><span class="detail-label"></span><span><span class="defcon-player">${p.name}</span> <span class="defcon-points">(+${p.points})</span></span></div>`;
-                        });
-                    }
                     if (live.bpsPlayers && live.bpsPlayers.length > 0) {
                         // Calculate total bonus from all players
                         const totalBonus = live.bpsPlayers.reduce((sum, p) => sum + p.bonus, 0);
@@ -2325,6 +2321,15 @@
                         live.bpsPlayers.forEach((p, idx, arr) => {
                             const isLast = idx === arr.length - 1;
                             mobileDetailsHtml += `<div class="detail-sub-item${isLast ? ' last-sub-item' : ''}"><span class="detail-label"></span><span><span class="bps-player">${p.name}</span> <span class="bps-bonus">(+${p.bonus})</span></span></div>`;
+                        });
+                    }
+                    if (live.defconPlayers && live.defconPlayers.length > 0) {
+                        const firstDef = live.defconPlayers[0];
+                        const hasMultipleDef = live.defconPlayers.length > 1;
+                        mobileDetailsHtml += `<div class="detail-item${hasMultipleDef ? ' has-sub-items' : ''}"><span class="detail-label">DEFCON:</span><span><span class="defcon-player">${firstDef.name}</span> <span class="defcon-points">(+${firstDef.points})</span></span></div>`;
+                        live.defconPlayers.slice(1).forEach((p, idx, arr) => {
+                            const isLast = idx === arr.length - 1;
+                            mobileDetailsHtml += `<div class="detail-sub-item${isLast ? ' last-sub-item' : ''}"><span class="detail-label"></span><span><span class="defcon-player">${p.name}</span> <span class="defcon-points">(+${p.points})</span></span></div>`;
                         });
                     }
                     mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Status:</span><span>${statusHtml}</span></div>`;
@@ -3991,10 +3996,10 @@
                         ${capHtml}
                         ${live.transferCost > 0 ? `<div class="detail-row"><span>Hit Taken:</span><span style="color: #ffaa00;">-${live.transferCost}</span></div>` : ''}
                         <div class="detail-row"><span>Net GW Points:</span><span style="color: #04f5ff;">${gwPoints}</span></div>
+                        ${autoSubHtml}
                         ${bonusHtml}
                         ${defconHtml}
                         ${vcHtml}
-                        ${autoSubHtml}
                         ${playersStatusHtml}
                         ${live.chip ? `<div class="detail-row"><span>Chip:</span><span style="color: #04f5ff;">${chipAbbrevFull[live.chip] || live.chip}</span></div>` : ''}
                         <div class="detail-row" style="border-top: 1px solid rgba(255,255,255,0.2); margin-top: 5px; padding-top: 8px;"><span>Total:</span><span style="font-weight: bold;">${pointsDisplay}</span></div>
