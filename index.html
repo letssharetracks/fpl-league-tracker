@@ -2653,11 +2653,15 @@
         let top100Players = null; // Cache top 100 for switching back
 
         // Find and scroll to user's team in the table
-        function findMyTeam() {
+        async function findMyTeam() {
             if (!userTeamId) {
                 console.log('No user team ID set');
+                showStatus('No team ID set. Use Change to set your team.');
+                setTimeout(hideStatus, 2000);
                 return;
             }
+
+            console.log('findMyTeam: userTeamId=', userTeamId, 'userLeagueRank=', userLeagueRank);
 
             // Find the row with the user's team
             const myRow = document.querySelector(`tr[data-entry="${userTeamId}"]`);
@@ -2671,8 +2675,27 @@
                 setTimeout(() => {
                     myRow.style.backgroundColor = '';
                 }, 2000);
-            } else if (userLeagueRank && userLeagueRank > 100) {
-                // User not in top 100 - switch to viewing their area
+                return;
+            }
+
+            // User not in current view - need to fetch their rank and load their area
+            if (!userLeagueRank) {
+                showStatus('Finding your position...');
+                const rankInfo = await fetchUserLeagueRank(LEAGUE_ID, userTeamId);
+                if (rankInfo) {
+                    userLeagueRank = rankInfo.rank;
+                    leagueTotalPlayers = rankInfo.leagueCount || leagueTotalPlayers;
+                    console.log('Fetched rank:', userLeagueRank);
+                } else {
+                    hideStatus();
+                    showStatus('Could not find your team in this league');
+                    setTimeout(hideStatus, 2000);
+                    return;
+                }
+            }
+
+            // Now load their area
+            if (userLeagueRank) {
                 loadMyArea();
             }
         }
