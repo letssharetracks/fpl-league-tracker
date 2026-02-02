@@ -1881,9 +1881,10 @@
 
                 let currentTotal, gwPoints;
                 if (live) {
-                    // Include BPS bonus in calculation
+                    // Use basePoints or predictedPoints based on auto-subs toggle
+                    const liveGwPoints = autoSubsEnabled ? live.predictedPoints : live.basePoints;
                     const bpsTotal = live.bpsPlayers ? live.bpsPlayers.reduce((sum, bp) => sum + bp.bonus, 0) : 0;
-                    gwPoints = live.predictedPoints + bpsTotal;
+                    gwPoints = liveGwPoints + bpsTotal;
                     currentTotal = prevTotal + gwPoints;
                 } else {
                     gwPoints = p.total - prevTotal;
@@ -1946,11 +1947,13 @@
                 const prevGwData = prevGwIndex >= 0 && history[prevGwIndex] ? history[prevGwIndex] : null;
                 const prevGwTotal = prevGwData ? prevGwData.total_points : 0;
 
-                // Calculate GW points (with live bonus if available)
+                // Calculate GW points (with live bonus, respect auto-subs toggle)
                 let gwPoints;
                 if (live) {
+                    // Use basePoints or predictedPoints based on auto-subs toggle
+                    const liveGwPoints = autoSubsEnabled ? live.predictedPoints : live.basePoints;
                     const bpsTotal = live.bpsPlayers ? live.bpsPlayers.reduce((sum, p) => sum + p.bonus, 0) : 0;
-                    gwPoints = live.predictedPoints + bpsTotal;
+                    gwPoints = liveGwPoints + bpsTotal;
                 } else {
                     gwPoints = player.total - prevGwTotal;
                 }
@@ -1966,24 +1969,18 @@
                 };
             });
 
-            // Sort by calculated total (highest first) - V43
-            console.log('=== V43 SORT RUNNING ===');
-            console.log('BEFORE SORT - first 5:', playerData.slice(0,5).map(d => `${d.player.player_name}:${d.totalDisplay}`).join(', '));
-
-            playerData.sort((a, b) => b.totalDisplay - a.totalDisplay);
-
-            console.log('AFTER SORT - first 10:', playerData.slice(0,10).map(d => `${d.player.player_name}:${d.totalDisplay}`).join(', '));
-
-            // Debug: show sorted order with API total comparison
-            console.log('=== SORTED ORDER (first 30) ===');
-            playerData.slice(0, 30).forEach((d, i) => {
-                const hasLive = !!livePoints[d.player.entry];
-                if (d.totalDisplay !== d.player.total) {
-                    console.log(`  ${i+1}. ${d.player.player_name}: CALC=${d.totalDisplay}, API=${d.player.total}, hasLive=${hasLive} *** MISMATCH`);
+            // Sort based on sortColumn and sortDirection
+            playerData.sort((a, b) => {
+                let comparison = 0;
+                if (sortColumn === 'gw') {
+                    comparison = b.gwPoints - a.gwPoints;
                 } else {
-                    console.log(`  ${i+1}. ${d.player.player_name}: Total=${d.totalDisplay}, hasLive=${hasLive}`);
+                    // Default: sort by total
+                    comparison = b.totalDisplay - a.totalDisplay;
                 }
+                return sortDirection === 'asc' ? -comparison : comparison;
             });
+
 
             // Extract sorted players and totals
             const sortedPlayers = playerData.map(d => d.player);
@@ -3128,7 +3125,10 @@
                 // Add provisional bonus to predicted points for live updates
                 calculatedPoints += liveBonus;
                 predictedPoints += liveBonus;
-                const predictedWithBonus = predictedPoints;
+
+                // Store both: basePoints (without auto-subs) and predictedPoints (with auto-subs)
+                const basePointsWithBonus = calculatedPoints - transferCost;
+                const predictedWithBonus = predictedPoints - transferCost;
 
                 return {
                     points: points,
@@ -3140,7 +3140,8 @@
                     chip: activeChip,
                     playersYetToPlay: playersYetToPlay,
                     playersPlaying: playersPlaying,
-                    predictedPoints: predictedWithBonus - transferCost,
+                    basePoints: basePointsWithBonus,        // GW points WITHOUT auto-subs
+                    predictedPoints: predictedWithBonus,    // GW points WITH auto-subs
                     autoSubs: autoSubs,
                     vcActivated: vcActivated,
                     vcName: vcName,
@@ -3299,9 +3300,10 @@
                 let gwPoints;
 
                 if (live) {
-                    // Include BPS bonus in calculation
+                    // Use basePoints or predictedPoints based on auto-subs toggle
+                    const liveGwPoints = autoSubsEnabled ? live.predictedPoints : live.basePoints;
                     const bpsTotal = live.bpsPlayers ? live.bpsPlayers.reduce((sum, bp) => sum + bp.bonus, 0) : 0;
-                    gwPoints = live.predictedPoints + bpsTotal;
+                    gwPoints = liveGwPoints + bpsTotal;
                     currentTotal = prevTotal + gwPoints;
                 } else {
                     // No live data: derive from API total
