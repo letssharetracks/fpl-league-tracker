@@ -1592,6 +1592,22 @@
         let chart = null;
         let selectedEntries = new Set();
         let leagueName = '';
+
+        // Memory cache for quick league switching (keeps last 3 leagues in memory)
+        const leagueMemoryCache = new Map();
+        const MAX_MEMORY_CACHE = 3;
+
+        // Throttle utility for scroll handlers
+        function throttle(func, limit) {
+            let inThrottle;
+            return function(...args) {
+                if (!inThrottle) {
+                    func.apply(this, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
+        }
         let currentChartType = 'total';
         let currentDisplayMode = 'table'; // Default to LIVE view
         let hoveredEntry = null;
@@ -2944,6 +2960,9 @@
                         if (myRow) {
                             myRow.scrollIntoView({ behavior: 'auto', block: 'center' });
                         }
+
+                        // Pre-fetch nearby pages for smoother scrolling
+                        prefetchNearbyPages();
                     });
                 } else {
                     console.error('loadMyArea: no players returned from pages', pagesToLoad);
@@ -2956,6 +2975,49 @@
                 setTimeout(hideStatus, 3000);
             } finally {
                 isLoadingMyArea = false;
+            }
+        }
+
+        // Pre-fetch nearby pages in background for smoother scrolling
+        async function prefetchNearbyPages() {
+            if (!userLeagueRank || userLeagueRank <= 100) return;
+
+            const userPage = Math.ceil(userLeagueRank / 50);
+            const totalPages = leagueTotalPlayers > 0 ? Math.ceil(leagueTotalPlayers / 50) : 999;
+
+            // Pages to pre-fetch: 2 above and 2 below current position
+            const pagesToPrefetch = [];
+            for (let i = userPage - 3; i <= userPage + 3; i++) {
+                if (i > 2 && i <= totalPages && !loadedPages.has(i)) {
+                    pagesToPrefetch.push(i);
+                }
+            }
+
+            if (pagesToPrefetch.length === 0) return;
+
+            console.log('Pre-fetching nearby pages:', pagesToPrefetch);
+
+            // Fetch in background without blocking UI
+            try {
+                const prefetchedPlayers = await fetchLeaguePages(pagesToPrefetch);
+                if (prefetchedPlayers.length > 0 && LEAGUE_ID) {
+                    // Merge into allPlayers
+                    const combinedMap = new Map(allPlayers.map(p => [p.entry, p]));
+                    prefetchedPlayers.forEach(p => combinedMap.set(p.entry, p));
+                    allPlayers = [...combinedMap.values()].sort((a, b) => a.rank - b.rank);
+
+                    // Update hasMorePages
+                    const maxLoadedPage = Math.max(...loadedPages);
+                    hasMorePages = maxLoadedPage < totalPages;
+
+                    console.log('Pre-fetch complete:', prefetchedPlayers.length, 'players added. Total:', allPlayers.length);
+
+                    // Silently update table (no status message)
+                    updateTableView();
+                    updateLeagueNotice();
+                }
+            } catch (e) {
+                console.warn('Pre-fetch failed (non-critical):', e);
             }
         }
 
@@ -3030,6 +3092,66 @@
         // Track if we're in elite mode
         let isEliteMode = false;
 
+        // Save current league state to memory cache
+        function saveLeagueToMemory() {
+            if (!LEAGUE_ID || allPlayers.length === 0) return;
+
+            const state = {
+                allPlayers: [...allPlayers],
+                playerHistories: { ...playerHistories },
+                livePoints: { ...livePoints },
+                livePositions: { ...livePositions },
+                loadedPages: new Set(loadedPages),
+                top100Players: top100Players ? [...top100Players] : null,
+                userLeagueRank,
+                leagueTotalPlayers,
+                viewingMyArea,
+                hasMorePages,
+                leagueName,
+                timestamp: Date.now()
+            };
+
+            leagueMemoryCache.set(LEAGUE_ID, state);
+            console.log('Saved league', LEAGUE_ID, 'to memory cache');
+
+            // Evict oldest if over limit
+            if (leagueMemoryCache.size > MAX_MEMORY_CACHE) {
+                const oldest = [...leagueMemoryCache.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp)[0];
+                leagueMemoryCache.delete(oldest[0]);
+                console.log('Evicted league', oldest[0], 'from memory cache');
+            }
+        }
+
+        // Restore league state from memory cache
+        function restoreLeagueFromMemory(leagueId) {
+            const cached = leagueMemoryCache.get(leagueId);
+            if (!cached) return false;
+
+            // Shorter expiry during live games (1 min), longer when finished (5 min)
+            const maxAge = gameweekFinished ? 5 * 60 * 1000 : 60 * 1000;
+            if (Date.now() - cached.timestamp > maxAge) {
+                leagueMemoryCache.delete(leagueId);
+                console.log('Memory cache expired for league', leagueId, '(maxAge:', maxAge/1000, 's)');
+                return false;
+            }
+
+            console.log('Restoring league', leagueId, 'from memory cache');
+
+            allPlayers = [...cached.allPlayers];
+            playerHistories = { ...cached.playerHistories };
+            livePoints = { ...cached.livePoints };
+            livePositions = { ...cached.livePositions };
+            loadedPages = new Set(cached.loadedPages);
+            top100Players = cached.top100Players ? [...cached.top100Players] : null;
+            userLeagueRank = cached.userLeagueRank;
+            leagueTotalPlayers = cached.leagueTotalPlayers;
+            viewingMyArea = cached.viewingMyArea;
+            hasMorePages = cached.hasMorePages;
+            leagueName = cached.leagueName;
+
+            return true;
+        }
+
         // Helper to aggressively clear all view state notices
         function clearViewStateUI() {
             // Remove viewing notice
@@ -3050,37 +3172,69 @@
             const selectedValue = select.value;
             console.log('Selected league from dropdown:', selectedValue, select.options[select.selectedIndex].text);
 
-            // FORCE REFRESH: Clear everything immediately
+            // Save current league to memory before switching
+            saveLeagueToMemory();
+
+            // Clear UI immediately
             clearViewStateUI();
 
-            // Clear table immediately - show loading state
-            const leagueTable = document.getElementById('leagueTable');
-            if (leagueTable) leagueTable.innerHTML = '';
-            document.getElementById('playerToggles').innerHTML = '<div class="loading"><div id="loadingText">Loading...</div><div style="margin-top: 10px;"><div id="loadingPercent" style="font-size: 20px; color: #00ff88;">0%</div></div></div>';
-
-            // Reset ALL loading/state flags
+            // Reset loading flags
             isLoadingMyArea = false;
             isLoadingMore = false;
-            viewingMyArea = false;
-            hasMorePages = false;
-            loadedPages = new Set();
-            top100Players = null;
-            userLeagueRank = null;
             highlightedEntry = null;
 
             if (selectedValue === 'elite') {
                 // Elite mode - load elite managers
                 isEliteMode = true;
                 LEAGUE_ID = null;
+
+                // Clear table and show loading
+                const leagueTable = document.getElementById('leagueTable');
+                if (leagueTable) leagueTable.innerHTML = '';
+                document.getElementById('playerToggles').innerHTML = '<div class="loading"><div id="loadingText">Loading...</div><div style="margin-top: 10px;"><div id="loadingPercent" style="font-size: 20px; color: #00ff88;">0%</div></div></div>';
+
                 updateDefaultLeagueButton();
                 resetAndLoadElite();
             } else {
                 // Normal league mode
                 isEliteMode = false;
                 const newLeagueId = parseInt(selectedValue);
-                LEAGUE_ID = newLeagueId;
-                updateDefaultLeagueButton();
-                resetAndLoad();
+
+                // Try to restore from memory cache first
+                if (restoreLeagueFromMemory(newLeagueId)) {
+                    LEAGUE_ID = newLeagueId;
+                    updateDefaultLeagueButton();
+
+                    // Render immediately from cache
+                    updateTableView();
+                    renderPlayerToggles();
+                    updateViewToggle();
+                    updateLeagueNotice();
+                    console.log('League restored from memory - instant switch!');
+
+                    // Refresh live data in background
+                    refreshLiveData().then(() => {
+                        updateTableView();
+                    });
+                } else {
+                    // No cache - full reload
+                    LEAGUE_ID = newLeagueId;
+
+                    // Clear table and show loading
+                    const leagueTable = document.getElementById('leagueTable');
+                    if (leagueTable) leagueTable.innerHTML = '';
+                    document.getElementById('playerToggles').innerHTML = '<div class="loading"><div id="loadingText">Loading...</div><div style="margin-top: 10px;"><div id="loadingPercent" style="font-size: 20px; color: #00ff88;">0%</div></div></div>';
+
+                    // Reset state for fresh load
+                    viewingMyArea = false;
+                    hasMorePages = false;
+                    loadedPages = new Set();
+                    top100Players = null;
+                    userLeagueRank = null;
+
+                    updateDefaultLeagueButton();
+                    resetAndLoad();
+                }
             }
         }
 
@@ -3937,10 +4091,22 @@
                 const liveMatches = fixtures.some(f => f.started && !f.finished);
                 hasLiveMatches = liveMatches;
 
+                // Check for score changes using BOTH detection methods (belt and suspenders)
+                const backupDetected = checkScoreChanges(fixtures);
+                const shouldRefreshTable = goalsDetected || backupDetected;
+
+                if (shouldRefreshTable) {
+                    console.log(`Score change detected (goal=${goalsDetected}, backup=${backupDetected}) - refreshing table`);
+                    silentRefreshLiveData();
+                }
+
                 if (liveMatches) {
                     startTickerAutoRefresh();
+                    startTableAutoRefresh();
                 } else {
                     stopTickerAutoRefresh();
+                    stopTableAutoRefresh();
+                    lastKnownScores = null; // Reset backup tracker when no live games
                 }
 
             } catch (e) {
@@ -3949,9 +4115,11 @@
             }
         }
 
-        // Auto-refresh ticker when matches are live
+        // Auto-refresh ticker and table when matches are live
         let tickerRefreshInterval = null;
+        let tableRefreshInterval = null;
         let hasLiveMatches = false;
+        let lastKnownScores = null; // Backup score tracking for table refresh
 
         function startTickerAutoRefresh() {
             if (tickerRefreshInterval) return; // Already running
@@ -3974,13 +4142,71 @@
             }
         }
 
+        // Auto-refresh table during live matches (every 2 minutes)
+        function startTableAutoRefresh() {
+            if (tableRefreshInterval) return; // Already running
+
+            tableRefreshInterval = setInterval(async () => {
+                if (!currentGameweek || document.hidden || !LEAGUE_ID) return;
+
+                console.log('Auto-refreshing table (2 min interval)...');
+                await silentRefreshLiveData();
+            }, 120000); // Every 2 minutes
+
+            console.log('Table auto-refresh started (2 min interval)');
+        }
+
+        function stopTableAutoRefresh() {
+            if (tableRefreshInterval) {
+                clearInterval(tableRefreshInterval);
+                tableRefreshInterval = null;
+                console.log('Table auto-refresh stopped');
+            }
+        }
+
+        // Silent refresh - updates table without showing status messages
+        async function silentRefreshLiveData() {
+            try {
+                livePlayerScores = null; // Clear cache to get fresh data
+                await refreshLiveData();
+                updateTableView();
+                console.log('Silent table refresh complete');
+            } catch (e) {
+                console.warn('Silent refresh failed:', e);
+            }
+        }
+
+        // Backup check: detect any score changes in live fixtures
+        function checkScoreChanges(fixtures) {
+            const liveFixtures = fixtures.filter(f => f.started && !f.finished);
+            if (liveFixtures.length === 0) return false;
+
+            const currentScores = liveFixtures
+                .map(f => `${f.team_h}:${f.team_h_score || 0}-${f.team_a_score || 0}:${f.team_a}`)
+                .sort()
+                .join('|');
+
+            const hasChanged = lastKnownScores !== null && lastKnownScores !== currentScores;
+
+            if (hasChanged) {
+                console.log('Backup score check: change detected!');
+                console.log('  Previous:', lastKnownScores);
+                console.log('  Current:', currentScores);
+            }
+
+            lastKnownScores = currentScores;
+            return hasChanged;
+        }
+
+
         // Pause/resume based on tab visibility
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
-                console.log('Tab hidden - pausing ticker refresh');
+                console.log('Tab hidden - pausing auto-refresh');
             } else if (hasLiveMatches && currentGameweek) {
-                console.log('Tab visible - refreshing ticker');
+                console.log('Tab visible - refreshing ticker and table');
                 fetchAndUpdateTicker(currentGameweek);
+                silentRefreshLiveData();
             }
         });
 
