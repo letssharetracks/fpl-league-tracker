@@ -2879,11 +2879,16 @@
                 if (data.league) {
                     leagueName = data.league.name;
                     document.title = 'FPL Tracker - ' + leagueName;
+                    // Get total members from standings API (more reliable than entry API for public leagues)
+                    if (data.standings?.total_results) {
+                        leagueTotalPlayers = data.standings.total_results;
+                        console.log('League total from API:', leagueTotalPlayers);
+                    }
                 }
 
                 players.push(...data.standings.results);
                 loadedPages.add(page);
-                hasMorePages = data.standings.has_next || page < Math.ceil(leagueTotalPlayers / 50);
+                hasMorePages = data.standings.has_next;
             }
 
             return players;
