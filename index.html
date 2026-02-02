@@ -796,6 +796,13 @@
                 flex: 1;
                 min-width: 60px;
             }
+            .btn .btn-text {
+                display: none;
+            }
+            .btn-find-me, .btn-change-team {
+                min-width: 40px;
+                padding: 12px 10px;
+            }
             .chart-container {
                 padding: 10px;
                 min-height: 350px;
@@ -1350,8 +1357,8 @@
                 <button class="btn btn-top-10" onclick="loadNewLeague()">Load</button>
                 <button class="btn btn-clear-all" onclick="clearAllCaches()" title="Clear all cached data">Reset</button>
                 <button class="btn btn-select-all" id="refreshLiveBtn" onclick="refreshLiveData()" title="Refresh live gameweek data">Refresh</button>
-                <button class="btn btn-select-all" onclick="findMyTeam()" title="Jump to your team in the table" style="background: linear-gradient(135deg, #00ff85, #04f5ff);">⭐ Find Me</button>
-                <button class="btn btn-clear-all" onclick="changeTeam()" title="Go back and enter a different Team ID">Change Team</button>
+                <button class="btn btn-select-all btn-find-me" onclick="findMyTeam()" title="Jump to your team in the table" style="background: linear-gradient(135deg, #00ff85, #04f5ff);">⭐ <span class="btn-text">Find Me</span></button>
+                <button class="btn btn-clear-all btn-change-team" onclick="changeTeam()" title="Go back and enter a different Team ID">↩ <span class="btn-text">Change</span></button>
             </div>
             <div class="control-group">
                 <label>Mode:</label>
@@ -5420,15 +5427,28 @@
             updateChart();
         }
 
-        // Handle window resize - debounced chart update
+        // Handle window resize and orientation change - debounced update
         let resizeTimeout;
-        window.addEventListener('resize', () => {
+        let lastWidth = window.innerWidth;
+
+        function handleResize() {
             clearTimeout(resizeTimeout);
             resizeTimeout = setTimeout(() => {
                 if (chart) {
                     chart.resize();
                 }
+                // Re-render table on significant width change (orientation change)
+                const widthChange = Math.abs(window.innerWidth - lastWidth);
+                if (widthChange > 100 && currentDisplayMode === 'table') {
+                    updateTableView();
+                }
+                lastWidth = window.innerWidth;
             }, 150);
+        }
+
+        window.addEventListener('resize', handleResize);
+        window.addEventListener('orientationchange', () => {
+            setTimeout(handleResize, 100); // Small delay for orientation to settle
         });
 
         // Infinite scroll detection for large leagues
