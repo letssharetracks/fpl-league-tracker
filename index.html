@@ -2238,13 +2238,17 @@
             console.log('Ranking order (top 30):', currentRankings.slice(0, 30).map((r, i) => `#${i+1}: ${r.total}`).join(', '));
 
             // Update livePositions
+            // For large leagues with partial data, use API ranks to avoid incorrect positioning
+            const useApiRanks = leagueTotalPlayers > 0 && allPlayers.length < leagueTotalPlayers;
+
             livePositions = {};
             currentRankings.forEach((item, idx) => {
-                const newRank = idx + 1;
+                const player = allPlayers.find(p => p.entry === item.entry);
+                const newRank = useApiRanks ? (player?.rank || idx + 1) : (idx + 1);
                 const movement = item.oldRank - newRank;
                 livePositions[item.entry] = {
                     position: newRank,
-                    movement: movement,
+                    movement: useApiRanks ? 0 : movement, // Don't show movement for partial data
                     currentTotal: item.total,
                     gwPoints: item.gwPoints
                 };
@@ -4155,10 +4159,14 @@
             });
             console.log('Current rankings (GW' + currentGameweek + '):', rankDebug);
 
+            // For large leagues with partial data, use API ranks to avoid incorrect positioning
+            const useApiRanks = leagueTotalPlayers > 0 && allPlayers.length < leagueTotalPlayers;
+
             livePositions = {};
             currentRankings.forEach((item, idx) => {
-                const newRank = idx + 1;
-                const movement = item.oldRank - newRank;
+                const player = allPlayers.find(p => p.entry === item.entry);
+                const newRank = useApiRanks ? (player?.rank || idx + 1) : (idx + 1);
+                const movement = useApiRanks ? 0 : (item.oldRank - newRank);
                 livePositions[item.entry] = {
                     position: newRank,
                     movement: movement,
