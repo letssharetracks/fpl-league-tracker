@@ -1415,6 +1415,9 @@
 
         <!-- Table View (shown by default - LIVE mode) -->
         <div id="tableView" class="table-view">
+            <div id="leagueNotice" style="display: none; text-align: center; padding: 8px; background: rgba(4,245,255,0.1); border-radius: 6px; margin-bottom: 10px; font-size: 11px; color: #04f5ff;">
+                Showing <span id="loadedCount">0</span> of <span id="totalCount">0</span> managers. Scroll for more.
+            </div>
             <table class="league-table">
                 <thead>
                     <tr>
@@ -1501,6 +1504,13 @@
         let weekRangeStart = 1;
         let weekRangeEnd = 38;
         let topOverallTotal = null; // #1 overall's total points
+
+        // Pagination state for large leagues
+        let leagueTotalPlayers = 0;     // Total managers in league
+        let loadedPages = new Set();    // Which pages we've loaded
+        let hasMorePages = true;        // Are there more pages to load?
+        let isLoadingMore = false;      // Currently loading more?
+        let userLeagueRank = null;      // User's rank in current league
 
         // Match status tracking
         let matchesInProgress = false;  // Are any matches currently live?
@@ -2798,30 +2808,204 @@
             '#10B981', // Emerald
         ];
 
-        async function fetchLeagueStandings() {
-            console.log('fetchLeagueStandings for LEAGUE_ID:', LEAGUE_ID);
+        // Fetch specific pages of league standings
+        async function fetchLeaguePages(pagesToLoad) {
+            console.log('fetchLeaguePages for LEAGUE_ID:', LEAGUE_ID, 'pages:', pagesToLoad);
             const players = [];
-            let page = 1;
-            let hasNext = true;
 
-            while (hasNext) {
+            for (const page of pagesToLoad) {
+                if (loadedPages.has(page)) continue; // Skip already loaded pages
+
                 const url = `https://fantasy.premierleague.com/api/leagues-classic/${LEAGUE_ID}/standings/?page_standings=${page}`;
                 const response = await fetchWithFallback(url);
                 const data = await response.json();
 
-                // Get league name from first page
-                if (page === 1 && data.league) {
+                // Get league info from first page response
+                if (data.league) {
                     leagueName = data.league.name;
-                    console.log('League name from API:', leagueName);
                     document.title = 'FPL Tracker - ' + leagueName;
                 }
 
                 players.push(...data.standings.results);
-                hasNext = data.standings.has_next;
-                page++;
+                loadedPages.add(page);
+                hasMorePages = data.standings.has_next || page < Math.ceil(leagueTotalPlayers / 50);
             }
 
             return players;
+        }
+
+        // Get user's rank in a specific league
+        async function fetchUserLeagueRank(leagueId, teamId) {
+            try {
+                const url = `https://fantasy.premierleague.com/api/entry/${teamId}/`;
+                const response = await fetchWithFallback(url);
+                const data = await response.json();
+
+                // Find user's rank in this specific league
+                const classicLeagues = data.leagues?.classic || [];
+                const league = classicLeagues.find(l => l.id === parseInt(leagueId));
+
+                if (league) {
+                    return {
+                        rank: league.entry_rank,
+                        lastRank: league.entry_last_rank,
+                        leagueCount: league.total_entries || 0
+                    };
+                }
+                return null;
+            } catch (e) {
+                console.error('Failed to fetch user league rank:', e);
+                return null;
+            }
+        }
+
+        // Smart initial load: top 50 + user's area
+        async function fetchLeagueStandings() {
+            console.log('fetchLeagueStandings (smart) for LEAGUE_ID:', LEAGUE_ID);
+
+            // Reset pagination state
+            loadedPages = new Set();
+            hasMorePages = true;
+            userLeagueRank = null;
+
+            // First, get user's rank and league size
+            if (userTeamId) {
+                const rankInfo = await fetchUserLeagueRank(LEAGUE_ID, userTeamId);
+                if (rankInfo) {
+                    userLeagueRank = rankInfo.rank;
+                    leagueTotalPlayers = rankInfo.leagueCount;
+                    console.log(`User rank: ${userLeagueRank} of ${leagueTotalPlayers}`);
+                }
+            }
+
+            // Determine which pages to load
+            const pagesToLoad = [1, 2]; // Always load top 100 (pages 1-2)
+
+            // If user is outside top 100, load their area too
+            if (userLeagueRank && userLeagueRank > 100) {
+                const userPage = Math.ceil(userLeagueRank / 50);
+                // Load user's page and one before/after for context
+                const surroundingPages = [userPage - 1, userPage, userPage + 1].filter(p => p > 2);
+                pagesToLoad.push(...surroundingPages);
+            }
+
+            // For small leagues, just load everything
+            if (leagueTotalPlayers > 0 && leagueTotalPlayers <= 100) {
+                pagesToLoad.length = 0;
+                for (let i = 1; i <= Math.ceil(leagueTotalPlayers / 50); i++) {
+                    pagesToLoad.push(i);
+                }
+            }
+
+            console.log('Loading pages:', [...new Set(pagesToLoad)].sort((a,b) => a-b));
+
+            const players = await fetchLeaguePages([...new Set(pagesToLoad)].sort((a,b) => a-b));
+
+            // Sort by rank and remove duplicates
+            const uniquePlayers = [...new Map(players.map(p => [p.entry, p])).values()];
+            uniquePlayers.sort((a, b) => a.rank - b.rank);
+
+            return uniquePlayers;
+        }
+
+        // Load more managers (for infinite scroll)
+        async function loadMoreManagers(direction = 'down') {
+            if (isLoadingMore || !hasMorePages) return;
+
+            isLoadingMore = true;
+            showLoadingMore(true);
+
+            try {
+                // Find next pages to load
+                const maxLoadedPage = Math.max(...loadedPages, 0);
+                const minLoadedPage = Math.min(...loadedPages, 999);
+
+                let pagesToLoad = [];
+                if (direction === 'down') {
+                    pagesToLoad = [maxLoadedPage + 1, maxLoadedPage + 2];
+                } else {
+                    pagesToLoad = [minLoadedPage - 1, minLoadedPage - 2].filter(p => p > 0);
+                }
+
+                // Filter out already loaded pages
+                pagesToLoad = pagesToLoad.filter(p => !loadedPages.has(p));
+
+                if (pagesToLoad.length === 0) {
+                    isLoadingMore = false;
+                    showLoadingMore(false);
+                    return;
+                }
+
+                console.log('Loading more pages:', pagesToLoad);
+                const newPlayers = await fetchLeaguePages(pagesToLoad);
+
+                if (newPlayers.length > 0) {
+                    // Merge with existing players
+                    const allEntries = new Map(allPlayers.map(p => [p.entry, p]));
+                    newPlayers.forEach(p => allEntries.set(p.entry, p));
+                    allPlayers = [...allEntries.values()].sort((a, b) => a.rank - b.rank);
+
+                    // Fetch histories for new players
+                    await fetchHistoriesForPlayers(newPlayers);
+
+                    // Re-render
+                    updateTableView();
+                    renderPlayerToggles();
+                    updateLeagueNotice();
+                }
+            } catch (e) {
+                console.error('Error loading more:', e);
+            }
+
+            isLoadingMore = false;
+            showLoadingMore(false);
+        }
+
+        // Fetch histories for a subset of players
+        async function fetchHistoriesForPlayers(players) {
+            const batchPromises = players.map(async (player) => {
+                if (playerHistories[player.entry]) return; // Already have it
+                try {
+                    const history = await fetchPlayerHistory(player.entry);
+                    if (history && Array.isArray(history) && history.length > 0) {
+                        playerHistories[player.entry] = history;
+                    }
+                } catch (e) {
+                    console.error(`Failed to fetch history for ${player.entry}`);
+                }
+            });
+            await Promise.all(batchPromises);
+        }
+
+        // Update league notice for large leagues
+        function updateLeagueNotice() {
+            const notice = document.getElementById('leagueNotice');
+            const loadedCount = document.getElementById('loadedCount');
+            const totalCount = document.getElementById('totalCount');
+
+            if (notice && leagueTotalPlayers > 100 && allPlayers.length < leagueTotalPlayers) {
+                loadedCount.textContent = allPlayers.length;
+                totalCount.textContent = leagueTotalPlayers.toLocaleString();
+                notice.style.display = 'block';
+            } else if (notice) {
+                notice.style.display = 'none';
+            }
+        }
+
+        // Show/hide loading more indicator
+        function showLoadingMore(show) {
+            let indicator = document.getElementById('loadingMoreIndicator');
+            if (!indicator && show) {
+                indicator = document.createElement('div');
+                indicator.id = 'loadingMoreIndicator';
+                indicator.style.cssText = 'text-align: center; padding: 15px; color: #04f5ff; font-size: 12px;';
+                indicator.innerHTML = 'Loading more managers...';
+                const tableContainer = document.querySelector('.table-view');
+                if (tableContainer) tableContainer.appendChild(indicator);
+            }
+            if (indicator) {
+                indicator.style.display = show ? 'block' : 'none';
+            }
         }
 
         async function fetchPlayerHistory(entryId, retries = 2) {
@@ -4157,6 +4341,7 @@
                 renderPlayerToggles();
                 if (currentFilter) filterPlayers(currentFilter);
                 updateChart();
+                updateLeagueNotice();
                 hideStatus();
 
                 // Auto-fetch live data for current gameweek
@@ -4991,8 +5176,49 @@
             }, 150);
         });
 
+        // Infinite scroll detection for large leagues
+        let scrollTimeout;
+        function setupScrollListener() {
+            const tableContainer = document.getElementById('tableView');
+            if (!tableContainer) return;
+
+            tableContainer.addEventListener('scroll', () => {
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    // Check if near bottom
+                    const scrollTop = tableContainer.scrollTop;
+                    const scrollHeight = tableContainer.scrollHeight;
+                    const clientHeight = tableContainer.clientHeight;
+
+                    if (scrollTop + clientHeight >= scrollHeight - 200) {
+                        // Near bottom, load more
+                        if (hasMorePages && !isLoadingMore && leagueTotalPlayers > allPlayers.length) {
+                            loadMoreManagers('down');
+                        }
+                    }
+                }, 100);
+            });
+        }
+
+        // Also detect window scroll for non-scrollable containers
+        window.addEventListener('scroll', () => {
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                const scrollTop = window.scrollY;
+                const scrollHeight = document.documentElement.scrollHeight;
+                const clientHeight = window.innerHeight;
+
+                if (scrollTop + clientHeight >= scrollHeight - 300) {
+                    if (hasMorePages && !isLoadingMore && leagueTotalPlayers > allPlayers.length) {
+                        loadMoreManagers('down');
+                    }
+                }
+            }, 100);
+        });
+
         // Start app
         initApp();
+        setupScrollListener();
     </script>
     <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "55d4f204731e4a7ebdf5456cc84d2154"}'></script><!-- End Cloudflare Web Analytics -->
 </body>
