@@ -1384,7 +1384,7 @@
                 <button class="btn btn-top-10" onclick="loadNewLeague()">Load</button>
                 <button class="btn btn-clear-all" onclick="clearAllCaches()" title="Clear all cached data">Reset</button>
                 <button class="btn btn-select-all" id="refreshLiveBtn" onclick="refreshLiveData()" title="Refresh live gameweek data">Refresh</button>
-                <button class="btn btn-select-all" onclick="findMyTeam()" title="Jump to your team in the table" style="background: linear-gradient(135deg, #00ff85, #04f5ff);">Find Me</button>
+                <button class="btn btn-select-all" onclick="findMyTeam()" title="Jump to your team in the table" style="background: linear-gradient(135deg, #00ff85, #04f5ff);">⭐ Find Me</button>
                 <button class="btn btn-clear-all" onclick="changeTeam()" title="Go back and enter a different Team ID">Change</button>
             </div>
             <div class="control-group">
@@ -2696,7 +2696,7 @@
 
             // Now load their area
             if (userLeagueRank) {
-                loadMyArea();
+                await loadMyArea();
             }
         }
 
@@ -3128,6 +3128,7 @@
             // Reset pagination state
             loadedPages = new Set();
             hasMorePages = false;
+            viewingMyArea = false;  // Reset when loading new league
             userLeagueRank = null;
 
             // Get user's rank in this league (for Find Me feature)
