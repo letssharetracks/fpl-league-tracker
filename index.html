@@ -4202,26 +4202,23 @@
                     let statusText = '';
                     let goalScorers = '';
 
-                    // Get goal scorers - check match key first, then individual teams
+                    // Get goal scorers and DEDUPLICATE by player+time
                     const homeNorm = normalizeTeamName(home).toLowerCase();
                     const awayNorm = normalizeTeamName(away).toLowerCase();
-                    const matchKey = `${homeNorm}-${awayNorm}`;
 
-                    // Try match-based lookup first (avoids duplicates)
-                    let allMatchGoals = cachedGoalScorers[matchKey] || [];
+                    const homeGoalsRaw = cachedGoalScorers[homeNorm] || [];
+                    const awayGoalsRaw = cachedGoalScorers[awayNorm] || [];
 
-                    // Fall back to team-based lookup if no match key (but deduplicate)
-                    if (allMatchGoals.length === 0) {
-                        const homeGoalsRaw = cachedGoalScorers[homeNorm] || [];
-                        const awayGoalsRaw = cachedGoalScorers[awayNorm] || [];
-                        // Only add away goals if they're different from home goals
-                        const homeGoals = homeGoalsRaw.map(g => ({ ...g, isHome: true, team: home }));
-                        const awayGoals = awayGoalsRaw === homeGoalsRaw ? [] : awayGoalsRaw.map(g => ({ ...g, isHome: false, team: away }));
-                        allMatchGoals = [...homeGoals, ...awayGoals];
-                    }
-                    const homeGoals = allMatchGoals.filter(g => g.isHome !== false);
-                    const awayGoals = allMatchGoals.filter(g => g.isHome === false);
-                    const allGoals = [...homeGoals, ...awayGoals].sort((a, b) => (a.time?.elapsed || 0) - (b.time?.elapsed || 0));
+                    // Deduplicate: combine all goals and remove duplicates by player+time
+                    const seen = new Set();
+                    const allGoals = [...homeGoalsRaw, ...awayGoalsRaw]
+                        .filter(g => {
+                            const key = `${g.player?.name || ''}-${g.time?.elapsed || 0}`;
+                            if (seen.has(key)) return false;
+                            seen.add(key);
+                            return true;
+                        })
+                        .sort((a, b) => (a.time?.elapsed || 0) - (b.time?.elapsed || 0));
 
                     if (allGoals.length > 0) {
                         goalScorers = allGoals
@@ -4229,9 +4226,8 @@
                                 const scorer = g.player?.name || '?';
                                 const time = g.time?.elapsed || '?';
                                 const assist = g.assist?.name ? ` (${g.assist.name})` : '';
-                                // Color: home team = cyan, away team = yellow
-                                const color = g.isHome ? '#04f5ff' : '#ffaa00';
-                                return `<span style="color:${color}">⚽ ${scorer} ${time}'${assist}</span>`;
+                                // Use cyan color for all goals (simplified)
+                                return `<span style="color:#04f5ff">⚽ ${scorer} ${time}'${assist}</span>`;
                             })
                             .join(' <span style="color:#666">│</span> ');
                     }
