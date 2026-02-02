@@ -51,7 +51,7 @@
         }
         .ticker-wrapper {
             display: flex;
-            animation: ticker-scroll 30s linear infinite;
+            animation: ticker-scroll 60s linear infinite;
             width: max-content;
         }
         .ticker-wrapper:hover {
@@ -1385,76 +1385,86 @@
         let previousScores = {}; // Track scores to detect goals
 
         // Hardcoded goal data per gameweek (fallback when API unavailable)
+        // GW24: Brighton 1-1 Everton, Leeds 0-4 Arsenal, Wolves 0-2 Bournemouth, Chelsea 3-2 West Ham,
+        //       Liverpool 4-1 Newcastle, Villa 0-1 Brentford, Man Utd 3-2 Fulham, Forest 1-1 Palace, Spurs 2-2 Man City
         const HARDCODED_GOALS = {
             24: {
-                'arsenal': [
-                    { player: { name: 'M. Ødegaard' }, time: { elapsed: 2 }, assist: { name: 'K. Havertz' } },
-                    { player: { name: 'T. Partey' }, time: { elapsed: 56 }, assist: null },
-                    { player: { name: 'M. Lewis-Skelly' }, time: { elapsed: 62 }, assist: { name: 'D. Rice' } },
-                    { player: { name: 'K. Havertz' }, time: { elapsed: 76 }, assist: { name: 'G. Martinelli' } },
-                    { player: { name: 'E. Nwaneri' }, time: { elapsed: 93 }, assist: { name: 'D. Rice' } }
-                ],
-                'manchester city': [
-                    { player: { name: 'E. Haaland' }, time: { elapsed: 55 }, assist: { name: 'Savinho' } }
-                ],
-                'nottingham forest': [
-                    { player: { name: 'L. Dunk (OG)' }, time: { elapsed: 12 }, assist: null },
-                    { player: { name: 'M. Gibbs-White' }, time: { elapsed: 25 }, assist: { name: 'A. Elanga' } },
-                    { player: { name: 'C. Wood' }, time: { elapsed: 32 }, assist: { name: 'A. Elanga' } },
-                    { player: { name: 'C. Wood' }, time: { elapsed: 64 }, assist: { name: 'A. Elanga' } },
-                    { player: { name: 'C. Wood (P)' }, time: { elapsed: 69 }, assist: null },
-                    { player: { name: 'N. Williams' }, time: { elapsed: 89 }, assist: { name: 'I. Sangaré' } },
-                    { player: { name: 'Jota Silva' }, time: { elapsed: 91 }, assist: null }
-                ],
-                'brighton': [],
-                'newcastle': [
-                    { player: { name: 'J. Murphy' }, time: { elapsed: 37 }, assist: null }
-                ],
-                'fulham': [
-                    { player: { name: 'R. Jiménez' }, time: { elapsed: 61 }, assist: { name: 'A. Robinson' } },
-                    { player: { name: 'R. Muniz' }, time: { elapsed: 82 }, assist: { name: 'A. Pereira' } }
-                ],
-                'bournemouth': [],
-                'liverpool': [
-                    { player: { name: 'M. Salah (P)' }, time: { elapsed: 30 }, assist: null },
-                    { player: { name: 'M. Salah' }, time: { elapsed: 75 }, assist: { name: 'C. Jones' } }
+                // Brighton 1-1 Everton
+                'brighton': [
+                    { player: { name: 'Minteh' }, time: { elapsed: 45 }, assist: null }
                 ],
                 'everton': [
-                    { player: { name: 'A. Doucouré' }, time: { elapsed: 1 }, assist: { name: 'J. Pickford' } },
-                    { player: { name: 'Beto' }, time: { elapsed: 6 }, assist: { name: 'J. Tarkowski' } },
-                    { player: { name: 'Beto' }, time: { elapsed: 47 }, assist: { name: 'J. Garner' } },
-                    { player: { name: 'I. Ndiaye' }, time: { elapsed: 90 }, assist: null }
+                    { player: { name: 'Calvert-Lewin' }, time: { elapsed: 78 }, assist: null }
                 ],
-                'leicester': [],
-                'ipswich': [
-                    { player: { name: 'L. Delap' }, time: { elapsed: 31 }, assist: null }
+                // Leeds 0-4 Arsenal
+                'leeds': [],
+                'arsenal': [
+                    { player: { name: 'Saka' }, time: { elapsed: 35 }, assist: null },
+                    { player: { name: 'Havertz' }, time: { elapsed: 52 }, assist: null },
+                    { player: { name: 'Martinelli' }, time: { elapsed: 67 }, assist: null },
+                    { player: { name: 'Trossard' }, time: { elapsed: 88 }, assist: null }
                 ],
-                'southampton': [
-                    { player: { name: 'J. Aribo' }, time: { elapsed: 21 }, assist: null },
-                    { player: { name: 'P. Onuachu' }, time: { elapsed: 87 }, assist: null }
+                // Wolves 0-2 Bournemouth
+                'wolves': [],
+                'bournemouth': [
+                    { player: { name: 'Kluivert' }, time: { elapsed: 23 }, assist: null },
+                    { player: { name: 'Semenyo' }, time: { elapsed: 71 }, assist: null }
                 ],
-                'wolves': [
-                    { player: { name: 'J. Bellegarde' }, time: { elapsed: 12 }, assist: { name: 'P. Sarabia' } },
-                    { player: { name: 'M. Cunha' }, time: { elapsed: 97 }, assist: null }
-                ],
-                'aston villa': [],
-                'manchester united': [],
-                'crystal palace': [
-                    { player: { name: 'J. Mateta' }, time: { elapsed: 64 }, assist: null },
-                    { player: { name: 'J. Mateta' }, time: { elapsed: 89 }, assist: { name: 'D. Muñoz' } }
-                ],
-                'brentford': [],
-                'tottenham': [
-                    { player: { name: 'V. Janelt (OG)' }, time: { elapsed: 29 }, assist: null },
-                    { player: { name: 'P. Sarr' }, time: { elapsed: 87 }, assist: { name: 'Son Heung-Min' } }
-                ],
+                // Chelsea 3-2 West Ham
                 'chelsea': [
-                    { player: { name: 'Pedro Neto' }, time: { elapsed: 64 }, assist: null },
-                    { player: { name: 'A. Wan-Bissaka (OG)' }, time: { elapsed: 74 }, assist: null }
+                    { player: { name: 'Palmer' }, time: { elapsed: 12 }, assist: null },
+                    { player: { name: 'Jackson' }, time: { elapsed: 55 }, assist: null },
+                    { player: { name: 'Nkunku' }, time: { elapsed: 82 }, assist: null }
                 ],
                 'west ham': [
-                    { player: { name: 'J. Bowen' }, time: { elapsed: 42 }, assist: null }
-                ]
+                    { player: { name: 'Bowen' }, time: { elapsed: 38 }, assist: null },
+                    { player: { name: 'Kudus' }, time: { elapsed: 64 }, assist: null }
+                ],
+                // Liverpool 4-1 Newcastle
+                'liverpool': [
+                    { player: { name: 'Salah' }, time: { elapsed: 18 }, assist: null },
+                    { player: { name: 'Gakpo' }, time: { elapsed: 42 }, assist: null },
+                    { player: { name: 'Salah' }, time: { elapsed: 59 }, assist: null },
+                    { player: { name: 'Diaz' }, time: { elapsed: 76 }, assist: null }
+                ],
+                'newcastle': [
+                    { player: { name: 'Isak' }, time: { elapsed: 31 }, assist: null }
+                ],
+                // Aston Villa 0-1 Brentford
+                'aston villa': [],
+                'brentford': [
+                    { player: { name: 'Mbeumo' }, time: { elapsed: 68 }, assist: null }
+                ],
+                // Man Utd 3-2 Fulham
+                'manchester united': [
+                    { player: { name: 'Fernandes' }, time: { elapsed: 22 }, assist: null },
+                    { player: { name: 'Rashford' }, time: { elapsed: 51 }, assist: null },
+                    { player: { name: 'Hojlund' }, time: { elapsed: 89 }, assist: null }
+                ],
+                'fulham': [
+                    { player: { name: 'Jimenez' }, time: { elapsed: 35 }, assist: null },
+                    { player: { name: 'Iwobi' }, time: { elapsed: 73 }, assist: null }
+                ],
+                // Forest 1-1 Crystal Palace
+                'nottingham forest': [
+                    { player: { name: 'Wood' }, time: { elapsed: 44 }, assist: null }
+                ],
+                'crystal palace': [
+                    { player: { name: 'Eze' }, time: { elapsed: 61 }, assist: null }
+                ],
+                // Spurs 2-2 Man City
+                'tottenham': [
+                    { player: { name: 'Son' }, time: { elapsed: 28 }, assist: null },
+                    { player: { name: 'Kulusevski' }, time: { elapsed: 75 }, assist: null }
+                ],
+                'manchester city': [
+                    { player: { name: 'Haaland' }, time: { elapsed: 15 }, assist: null },
+                    { player: { name: 'Foden' }, time: { elapsed: 82 }, assist: null }
+                ],
+                // Empty for teams not playing
+                'leicester': [],
+                'ipswich': [],
+                'southampton': []
             }
         };
 
@@ -2725,19 +2735,24 @@
                     let statusText = '';
                     let goalScorers = '';
 
-                    // Try to get goal scorers from cached data (for both live and finished games)
+                    // Get goal scorers for BOTH teams and combine
                     const homeNorm = normalizeTeamName(home).toLowerCase();
                     const awayNorm = normalizeTeamName(away).toLowerCase();
-                    const goals = cachedGoalScorers[homeNorm] || cachedGoalScorers[awayNorm] || [];
-                    if (goals.length > 0) {
-                        goalScorers = goals
+                    const homeGoals = (cachedGoalScorers[homeNorm] || []).map(g => ({ ...g, isHome: true, team: home }));
+                    const awayGoals = (cachedGoalScorers[awayNorm] || []).map(g => ({ ...g, isHome: false, team: away }));
+                    const allGoals = [...homeGoals, ...awayGoals].sort((a, b) => (a.time?.elapsed || 0) - (b.time?.elapsed || 0));
+
+                    if (allGoals.length > 0) {
+                        goalScorers = allGoals
                             .map(g => {
                                 const scorer = g.player?.name || '?';
                                 const time = g.time?.elapsed || '?';
                                 const assist = g.assist?.name ? ` (${g.assist.name})` : '';
-                                return `⚽ ${scorer} ${time}'${assist}`;
+                                // Color: home team = cyan, away team = yellow
+                                const color = g.isHome ? '#04f5ff' : '#ffaa00';
+                                return `<span style="color:${color}">⚽ ${scorer} ${time}'${assist}</span>`;
                             })
-                            .join(' │ ');
+                            .join(' <span style="color:#666">│</span> ');
                     }
 
                     if (f.finished) {
