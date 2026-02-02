@@ -3169,9 +3169,11 @@
             const loadedCount2 = document.getElementById('loadedCount2');
             const totalCount2 = document.getElementById('totalCount2');
 
-            // Show "Load More" if there are more pages OR we have more players than loaded
-            const showMore = hasMorePages || (leagueTotalPlayers > 0 && allPlayers.length < leagueTotalPlayers);
+            // Only show "Load More" when viewing "My Area" AND there are more pages
+            const showMore = viewingMyArea && hasMorePages;
             const totalDisplay = leagueTotalPlayers > 0 ? leagueTotalPlayers.toLocaleString() : (hasMorePages ? '...' : allPlayers.length);
+
+            console.log('updateLeagueNotice: viewingMyArea=', viewingMyArea, 'hasMorePages=', hasMorePages, 'showMore=', showMore);
 
             if (notice) {
                 if (showMore) {
