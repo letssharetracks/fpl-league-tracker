@@ -4202,11 +4202,25 @@
                     let statusText = '';
                     let goalScorers = '';
 
-                    // Get goal scorers for BOTH teams and combine
+                    // Get goal scorers - check match key first, then individual teams
                     const homeNorm = normalizeTeamName(home).toLowerCase();
                     const awayNorm = normalizeTeamName(away).toLowerCase();
-                    const homeGoals = (cachedGoalScorers[homeNorm] || []).map(g => ({ ...g, isHome: true, team: home }));
-                    const awayGoals = (cachedGoalScorers[awayNorm] || []).map(g => ({ ...g, isHome: false, team: away }));
+                    const matchKey = `${homeNorm}-${awayNorm}`;
+
+                    // Try match-based lookup first (avoids duplicates)
+                    let allMatchGoals = cachedGoalScorers[matchKey] || [];
+
+                    // Fall back to team-based lookup if no match key (but deduplicate)
+                    if (allMatchGoals.length === 0) {
+                        const homeGoalsRaw = cachedGoalScorers[homeNorm] || [];
+                        const awayGoalsRaw = cachedGoalScorers[awayNorm] || [];
+                        // Only add away goals if they're different from home goals
+                        const homeGoals = homeGoalsRaw.map(g => ({ ...g, isHome: true, team: home }));
+                        const awayGoals = awayGoalsRaw === homeGoalsRaw ? [] : awayGoalsRaw.map(g => ({ ...g, isHome: false, team: away }));
+                        allMatchGoals = [...homeGoals, ...awayGoals];
+                    }
+                    const homeGoals = allMatchGoals.filter(g => g.isHome !== false);
+                    const awayGoals = allMatchGoals.filter(g => g.isHome === false);
                     const allGoals = [...homeGoals, ...awayGoals].sort((a, b) => (a.time?.elapsed || 0) - (b.time?.elapsed || 0));
 
                     if (allGoals.length > 0) {
