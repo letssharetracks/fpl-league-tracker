@@ -288,6 +288,16 @@
             .control-group-league {
                 flex: 1 1 auto;
             }
+            .controls {
+                flex-wrap: nowrap;
+            }
+        }
+        /* Responsive text - hide on mobile, show on desktop */
+        .hide-mobile { display: inline; }
+        .show-mobile { display: none; }
+        @media (max-width: 768px) {
+            .hide-mobile { display: none; }
+            .show-mobile { display: inline; }
         }
         .main-content {
             display: grid;
@@ -1385,7 +1395,7 @@
                 <button class="btn btn-clear-all" onclick="clearAllCaches()" title="Clear all cached data">Reset</button>
                 <button class="btn btn-select-all" id="refreshLiveBtn" onclick="refreshLiveData()" title="Refresh live gameweek data">Refresh</button>
                 <button class="btn btn-select-all" onclick="findMyTeam()" title="Jump to your team in the table" style="background: linear-gradient(135deg, #00ff85, #04f5ff);">⭐ Find Me</button>
-                <button class="btn btn-clear-all" onclick="changeTeam()" title="Go back and enter a different Team ID">Change</button>
+                <button class="btn btn-clear-all" onclick="changeTeam()" title="Go back and enter a different Team ID"><span class="hide-mobile">Change Team</span><span class="show-mobile">Change</span></button>
             </div>
             <div class="control-group">
                 <label>Mode:</label>
@@ -2780,23 +2790,26 @@
 
         // Switch back to top 100 view
         async function showTop100() {
+            showStatus('Loading top 100...');
             if (top100Players && top100Players.length > 0) {
                 allPlayers = [...top100Players];
                 viewingMyArea = false;
                 hasMorePages = false; // Top 100 doesn't need Load More
+                await refreshLiveData(); // Reload live stats
                 updateTableView();
                 renderPlayerToggles();
                 updateViewToggle();
                 updateLeagueNotice();
+                hideStatus();
             } else {
                 // Reload top 100
-                showStatus('Loading top 100...');
                 loadedPages = new Set();
                 hasMorePages = false;
                 const players = await fetchLeaguePages([1, 2]);
                 allPlayers = players.sort((a, b) => a.rank - b.rank);
                 viewingMyArea = false;
                 await fetchHistoriesForPlayers(players);
+                await refreshLiveData(); // Reload live stats
                 updateTableView();
                 renderPlayerToggles();
                 updateViewToggle();
