@@ -2313,7 +2313,12 @@
             });
 
             // Sort based on sortColumn and sortDirection
+            // When viewing partial data (My Area), always sort by position to maintain correct order
             playerData.sort((a, b) => {
+                if (viewingMyArea) {
+                    // Always sort by position when viewing partial data
+                    return a.position - b.position;
+                }
                 let comparison = 0;
                 if (sortColumn === 'gw') {
                     comparison = b.gwPoints - a.gwPoints;
@@ -2334,6 +2339,7 @@
             // Build table HTML
             let tableHtml = [];
             let prevPosition = 0;
+            let separatorShown = false;
 
             playerData.forEach((data, idx) => {
                 const player = data.player;
@@ -2342,8 +2348,9 @@
                 const position = posData?.position || player.rank;
                 const movement = posData?.movement || 0;
 
-                // Add separator if there's a large gap (jumped to different area)
-                if (prevPosition > 0 && position - prevPosition > 50) {
+                // Add separator ONCE when jumping from top 100 to user's area
+                if (!separatorShown && prevPosition > 0 && prevPosition <= 100 && position > 100) {
+                    separatorShown = true;
                     tableHtml.push(`
                         <tr class="jump-separator">
                             <td colspan="13" style="
@@ -4597,6 +4604,7 @@
             // Build HTML
             let htmlParts = [];
             let prevRank = 0;
+            let separatorShown = false;
 
             sortedPlayers.forEach((player, idx) => {
                 const isSelected = selectedEntries.has(player.entry);
@@ -4606,8 +4614,9 @@
                 const posData = livePositions[player.entry];
                 const currentRank = posData ? posData.position : player.rank;
 
-                // Add separator if there's a large gap (jumped to different area)
-                if (prevRank > 0 && currentRank - prevRank > 50) {
+                // Add separator ONCE when jumping from top 100 to user's area
+                if (!separatorShown && prevRank > 0 && prevRank <= 100 && currentRank > 100) {
+                    separatorShown = true;
                     htmlParts.push(`
                         <div style="
                             text-align: center;
