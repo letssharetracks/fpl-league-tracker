@@ -4002,6 +4002,69 @@
             }
         }
 
+        // Fetch goal scorers from Sky Sports live scores
+        async function fetchSkySportsGoals() {
+            try {
+                // Sky Sports live scores JSON feed (via CORS proxy)
+                const skyUrl = 'https://www.skysports.com/live-scores/football';
+                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(skyUrl)}`;
+
+                const response = await fetch(proxyUrl, { timeout: 8000 });
+                const html = await response.text();
+
+                // Parse HTML to extract goal scorers
+                const goals = {};
+
+                // Match pattern: team names and scorers from Sky Sports HTML
+                // Sky Sports uses data attributes and specific classes for match data
+                const matchRegex = /<div[^>]*class="[^"]*fixres__item[^"]*"[^>]*>([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/gi;
+                const teamRegex = /class="[^"]*swap-text--bp30[^"]*"[^>]*>([^<]+)/gi;
+                const scorerRegex = /class="[^"]*fixres__scorers[^"]*"[^>]*>([\s\S]*?)<\/p>/gi;
+
+                let match;
+                while ((match = matchRegex.exec(html)) !== null) {
+                    const block = match[1];
+
+                    // Extract teams
+                    const teams = [];
+                    let teamMatch;
+                    const teamRe = /swap-text--bp30[^>]*>([^<]+)/gi;
+                    while ((teamMatch = teamRe.exec(block)) !== null) {
+                        teams.push(teamMatch[1].trim().toLowerCase());
+                    }
+
+                    // Extract scorers
+                    const scorerMatch = /fixres__scorers[^>]*>([\s\S]*?)<\/p>/gi.exec(block);
+                    if (scorerMatch && teams.length >= 2) {
+                        const scorerText = scorerMatch[1].replace(/<[^>]+>/g, ' ').trim();
+                        const scorerParts = scorerText.split(/\s*,\s*/);
+
+                        const teamGoals = scorerParts.map(s => {
+                            const timeMatch = s.match(/(\d+)/);
+                            const nameMatch = s.match(/([A-Za-z\s\-']+)/);
+                            return {
+                                player: { name: nameMatch ? nameMatch[1].trim() : s },
+                                time: { elapsed: timeMatch ? parseInt(timeMatch[1]) : 0 },
+                                type: 'Goal'
+                            };
+                        }).filter(g => g.player.name);
+
+                        if (teamGoals.length > 0) {
+                            teams.forEach(team => {
+                                goals[team] = teamGoals;
+                            });
+                        }
+                    }
+                }
+
+                console.log('Sky Sports: parsed goals for', Object.keys(goals).length, 'teams');
+                return goals;
+            } catch (e) {
+                console.warn('Sky Sports fetch failed:', e);
+                return {};
+            }
+        }
+
         // Map FPL team names to API-Football team names for matching
         function normalizeTeamName(name) {
             const mappings = {
@@ -4068,42 +4131,51 @@
                 // Check if there are existing goals on first load
                 const hasExistingGoals = liveFixtures.some(f => (f.team_h_score || 0) + (f.team_a_score || 0) > 0);
 
-                // Fetch API-Football if: new goal detected OR first load with existing goals
+                // Fetch goal scorers when: new goal detected OR first load with existing goals
                 const shouldFetchScorers = goalsDetected || (isFirstLoad && hasExistingGoals);
                 if (shouldFetchScorers) {
+                    console.log(`Fetching goal scorers (goal=${goalsDetected}, firstLoad=${isFirstLoad})`);
                     try {
-                        const liveMatches = await fetchLiveFootballMatches();
-                        // Only fetch events for matches WITH goals (reduces API calls)
-                        const matchesWithGoals = liveMatches.filter(m =>
-                            (m.goals?.home || 0) + (m.goals?.away || 0) > 0
-                        );
-                        console.log(`Fetched ${liveMatches.length} live PL matches, ${matchesWithGoals.length} have goals`);
+                        // Try Sky Sports first (more reliable for PL)
+                        const skyGoals = await fetchSkySportsGoals();
 
-                        // Fetch all events in PARALLEL (one API call per match with goals)
-                        const eventPromises = matchesWithGoals.map(async (match) => {
-                            const homeTeam = match.teams?.home?.name?.toLowerCase() || '';
-                            const awayTeam = match.teams?.away?.name?.toLowerCase() || '';
-                            const fixtureId = match.fixture?.id;
-                            if (!fixtureId) return null;
+                        if (Object.keys(skyGoals).length > 0) {
+                            // Merge Sky Sports data into cache
+                            Object.entries(skyGoals).forEach(([team, goals]) => {
+                                cachedGoalScorers[team] = goals;
+                            });
+                            console.log('Sky Sports: cached goals for', Object.keys(skyGoals).length, 'teams');
+                        } else {
+                            // Fallback to API-Football if Sky Sports fails
+                            console.log('Sky Sports returned no data, trying API-Football...');
+                            const liveMatches = await fetchLiveFootballMatches();
+                            const matchesWithGoals = liveMatches.filter(m =>
+                                (m.goals?.home || 0) + (m.goals?.away || 0) > 0
+                            );
 
-                            try {
-                                const events = await fetchMatchEvents(fixtureId);
-                                const goals = events.filter(e => e.type === 'Goal');
-                                console.log(`  ${homeTeam} vs ${awayTeam}: ${goals.length} goals`);
-                                return { homeTeam, awayTeam, goals };
-                            } catch (e) {
-                                console.warn(`Failed to fetch events for ${homeTeam}:`, e);
-                                return null;
-                            }
-                        });
+                            const eventPromises = matchesWithGoals.map(async (match) => {
+                                const homeTeam = match.teams?.home?.name?.toLowerCase() || '';
+                                const awayTeam = match.teams?.away?.name?.toLowerCase() || '';
+                                const fixtureId = match.fixture?.id;
+                                if (!fixtureId) return null;
 
-                        const results = await Promise.all(eventPromises);
-                        results.forEach(r => {
-                            if (r && r.goals.length > 0) {
-                                cachedGoalScorers[r.homeTeam] = r.goals;
-                                cachedGoalScorers[r.awayTeam] = r.goals;
-                            }
-                        });
+                                try {
+                                    const events = await fetchMatchEvents(fixtureId);
+                                    const goals = events.filter(e => e.type === 'Goal');
+                                    return { homeTeam, awayTeam, goals };
+                                } catch (e) {
+                                    return null;
+                                }
+                            });
+
+                            const results = await Promise.all(eventPromises);
+                            results.forEach(r => {
+                                if (r && r.goals.length > 0) {
+                                    cachedGoalScorers[r.homeTeam] = r.goals;
+                                    cachedGoalScorers[r.awayTeam] = r.goals;
+                                }
+                            });
+                        }
                         // Save to localStorage for persistence
                         saveGoalScorersToStorage();
                     } catch (e) {
