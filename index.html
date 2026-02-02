@@ -334,11 +334,11 @@
             color: #ffaa00;
             font-weight: 500;
         }
-        .league-table .manager-name {
+        .league-table .team-name {
             font-weight: 500;
             color: #fff;
         }
-        .league-table .team-name {
+        .league-table .manager-name {
             font-size: 11px;
             color: #888;
         }
@@ -393,7 +393,7 @@
             .league-table .col-name {
                 min-width: 80px;
             }
-            .league-table .team-name {
+            .league-table .manager-name {
                 display: none;
             }
         }
@@ -518,8 +518,8 @@
             .league-table .col-defcon { max-width: 60px; overflow: hidden; text-overflow: ellipsis; }
             .league-table .col-status { width: 45px; }
             .league-table .col-or { width: 50px; }
-            .league-table .team-name { display: none; }
-            .league-table .manager-name { font-size: 9px; }
+            .league-table .manager-name { display: none; }
+            .league-table .team-name { font-size: 9px; }
             .table-view { padding: 5px; margin: 0; }
             .controls { padding: 5px; gap: 5px; }
             .control-group { padding: 5px 8px; }
@@ -2262,9 +2262,9 @@
                     <tr class="${rowClass}" onclick="toggleRowDetails(${player.entry})">
                         <td class="col-rank">${position}</td>
                         <td class="col-move">${moveHtml}</td>
-                        <td class="col-name" title="${player.player_name} - ${player.entry_name}">
-                            <div class="manager-name">${player.player_name.length > 16 ? player.player_name.substring(0, 16) + '...' : player.player_name}</div>
-                            <div class="team-name">${player.entry_name}</div>
+                        <td class="col-name" title="${player.entry_name} - ${player.player_name}">
+                            <div class="team-name">${player.entry_name.length > 18 ? player.entry_name.substring(0, 18) + '...' : player.entry_name}</div>
+                            <div class="manager-name">${player.player_name}</div>
                         </td>
                         <td class="col-gw">${gwPoints} ${hitDisplay}</td>
                         <td class="col-total">${totalDisplay.toLocaleString()}</td>
@@ -3181,15 +3181,21 @@
                     const playerInfo = players ? players[pick.element] : null;
                     const playerLiveData = livePlayerData ? livePlayerData[pick.element] : null;
 
-                    // Only count provisional bonus from liveBonusMap
+                    // Track provisional bonus (live matches) AND confirmed bonus (finished matches)
                     const provisionalBonus = liveBonusMap[pick.element] || 0;
-                    if (provisionalBonus > 0) {
+                    const confirmedBonus = playerLiveData?.bonus || 0;
+
+                    // Show provisional if available (live), otherwise show confirmed (finished)
+                    const displayBonus = provisionalBonus > 0 ? provisionalBonus : confirmedBonus;
+                    if (displayBonus > 0) {
                         bpsPlayers.push({
                             name: playerInfo?.name || 'Unknown',
-                            bonus: provisionalBonus,
-                            bps: playerLiveData?.bps || 0
+                            bonus: displayBonus,
+                            bps: playerLiveData?.bps || 0,
+                            isConfirmed: provisionalBonus === 0 && confirmedBonus > 0
                         });
                     }
+                    // Only add provisional to liveBonus (confirmed already in total_points)
                     liveBonus += provisionalBonus;
 
                     // Sum DEFCON points for active players
@@ -3202,15 +3208,24 @@
                     }
                 });
 
-                // Also count DEFCON for auto-subbed players
+                // Also count DEFCON and BPS for auto-subbed players
                 autoSubs.forEach(sub => {
                     const playerLiveData = livePlayerData ? livePlayerData[sub.in] : null;
+                    const playerInfo = players ? players[sub.in] : null;
                     if (playerLiveData && playerLiveData.defcon) {
                         totalDefcon += playerLiveData.defcon;
-                        const playerInfo = players ? players[sub.in] : null;
                         defconPlayers.push({
                             name: playerInfo?.name || 'Unknown',
                             points: playerLiveData.defcon
+                        });
+                    }
+                    // Auto-subbed players can also have bonus points
+                    if (playerLiveData && playerLiveData.bonus > 0) {
+                        bpsPlayers.push({
+                            name: playerInfo?.name || 'Unknown',
+                            bonus: playerLiveData.bonus,
+                            bps: playerLiveData.bps || 0,
+                            isConfirmed: true
                         });
                     }
                 });
