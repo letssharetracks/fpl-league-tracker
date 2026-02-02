@@ -2702,8 +2702,14 @@
 
         // Load and display 100 managers around user's position
         async function loadMyArea() {
-            if (!userLeagueRank) return;
+            if (!userLeagueRank) {
+                console.log('loadMyArea: no userLeagueRank set');
+                showStatus('Could not determine your position');
+                setTimeout(hideStatus, 2000);
+                return;
+            }
 
+            console.log('loadMyArea: userLeagueRank=', userLeagueRank, 'userTeamId=', userTeamId);
             showStatus('Loading your position...');
 
             // Cache current top 100 for switching back
@@ -2714,11 +2720,13 @@
             // Calculate pages to load (100 managers around user)
             const userPage = Math.ceil(userLeagueRank / 50);
             const pagesToLoad = [userPage - 1, userPage].filter(p => p > 0);
+            console.log('loadMyArea: userPage=', userPage, 'pagesToLoad=', pagesToLoad);
 
             try {
                 // Clear current loaded pages to force reload
                 loadedPages = new Set();
                 const newPlayers = await fetchLeaguePages(pagesToLoad);
+                console.log('loadMyArea: fetched', newPlayers.length, 'players');
 
                 if (newPlayers.length > 0) {
                     // Replace current view with user's area
@@ -2745,17 +2753,28 @@
                     // Scroll to user's row after render
                     setTimeout(() => {
                         const myRow = document.querySelector(`tr[data-entry="${userTeamId}"]`);
+                        console.log('loadMyArea: looking for row with entry', userTeamId, 'found:', !!myRow);
                         if (myRow) {
                             myRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             myRow.style.transition = 'background-color 0.3s';
                             myRow.style.backgroundColor = 'rgba(0, 255, 133, 0.3)';
                             setTimeout(() => { myRow.style.backgroundColor = ''; }, 2000);
+                        } else {
+                            // User's row not found in loaded data - show message
+                            showStatus('Your position loaded but row not found');
+                            setTimeout(hideStatus, 2000);
                         }
                     }, 100);
+                } else {
+                    // No players returned - API issue or invalid pages
+                    console.error('loadMyArea: no players returned from pages', pagesToLoad);
+                    showStatus('Could not load your position');
+                    setTimeout(hideStatus, 2000);
                 }
             } catch (e) {
                 console.error('Error loading my area:', e);
-                hideStatus();
+                showStatus('Error loading your position');
+                setTimeout(hideStatus, 2000);
             }
         }
 
