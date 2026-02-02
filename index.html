@@ -2233,8 +2233,8 @@
                 let autoSubHtml = '';
                 if (live && live.autoSubs && live.autoSubs.length > 0) {
                     autoSubHtml = live.autoSubs.map(sub => {
-                        // Shorten name: "Ndiaye" stays, "B.Fernandes" -> "B.Fern.."
-                        const shortName = sub.inName.length > 7 ? sub.inName.substring(0, 7) + '..' : sub.inName;
+                        // Show more of the name - truncate at 12 chars
+                        const shortName = sub.inName.length > 12 ? sub.inName.substring(0, 11) + '..' : sub.inName;
                         return `<span class="autosub-info">${shortName} <span style="color:#ffaa00;">+${sub.pointsGained}</span></span>`;
                     }).join('<br>');
                 }
