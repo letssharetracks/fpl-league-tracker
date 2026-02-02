@@ -1595,6 +1595,7 @@
         let currentChartType = 'total';
         let currentDisplayMode = 'table'; // Default to LIVE view
         let hoveredEntry = null;
+        let highlightedEntry = null; // Persistent highlight for "Find Me"
         let currentGameweek = null;
         let gameweekFinished = true;
         let livePoints = {};
@@ -2601,7 +2602,9 @@
 
                 // Highlight user's team
                 const isMyTeam = player.entry === userTeamId;
+                const isHighlighted = player.entry === highlightedEntry;
                 const rowClass = isMyTeam ? 'my-team' : '';
+                const highlightStyle = isHighlighted ? 'background-color: rgba(0, 255, 133, 0.25);' : '';
 
                 // Build detail data for mobile modal
                 const detailData = JSON.stringify({
@@ -2723,7 +2726,7 @@
                 }
 
                 tableHtml.push(`
-                    <tr class="${rowClass}" data-entry="${player.entry}" onclick="toggleRowDetails(${player.entry})">
+                    <tr class="${rowClass}" data-entry="${player.entry}" style="${highlightStyle}" onclick="toggleRowDetails(${player.entry})">
                         <td class="col-rank">${position.toLocaleString()}</td>
                         <td class="col-move">${moveHtml}</td>
                         <td class="col-name" title="${player.entry_name} - ${player.player_name}">
@@ -2780,12 +2783,10 @@
                 // Scroll to the row
                 myRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-                // Highlight it briefly
+                // Set persistent highlight
+                highlightedEntry = userTeamId;
                 myRow.style.transition = 'background-color 0.3s';
-                myRow.style.backgroundColor = 'rgba(0, 255, 133, 0.3)';
-                setTimeout(() => {
-                    myRow.style.backgroundColor = '';
-                }, 2000);
+                myRow.style.backgroundColor = 'rgba(0, 255, 133, 0.25)';
                 return;
             }
 
@@ -2849,9 +2850,9 @@
                 const myRow = document.querySelector(`tr[data-entry="${userTeamId}"]`);
                 if (myRow) {
                     myRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    highlightedEntry = userTeamId;
                     myRow.style.transition = 'background-color 0.3s';
-                    myRow.style.backgroundColor = 'rgba(0, 255, 133, 0.3)';
-                    setTimeout(() => { myRow.style.backgroundColor = ''; }, 2000);
+                    myRow.style.backgroundColor = 'rgba(0, 255, 133, 0.25)';
                 }
                 return;
             }
@@ -2860,9 +2861,9 @@
             const existingRow = document.querySelector(`tr[data-entry="${userTeamId}"]`);
             if (existingRow) {
                 existingRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                highlightedEntry = userTeamId;
                 existingRow.style.transition = 'background-color 0.3s';
-                existingRow.style.backgroundColor = 'rgba(0, 255, 133, 0.3)';
-                setTimeout(() => { existingRow.style.backgroundColor = ''; }, 2000);
+                existingRow.style.backgroundColor = 'rgba(0, 255, 133, 0.25)';
                 return;
             }
 
@@ -2916,6 +2917,9 @@
                     // RENDER IMMEDIATELY (don't wait for data)
                     updateTableView();
                     renderPlayerToggles();
+                    // Set persistent highlight BEFORE rendering
+                    highlightedEntry = userTeamId;
+
                     updateViewToggle();
                     updateLeagueNotice();
 
@@ -2924,9 +2928,6 @@
                         const myRow = document.querySelector(`tr[data-entry="${userTeamId}"]`);
                         if (myRow) {
                             myRow.scrollIntoView({ behavior: 'auto', block: 'center' });
-                            myRow.style.transition = 'background-color 0.5s';
-                            myRow.style.backgroundColor = 'rgba(0, 255, 133, 0.4)';
-                            setTimeout(() => { myRow.style.backgroundColor = ''; }, 2500);
                         }
                     });
 
@@ -2937,7 +2938,7 @@
                         fetchHistoriesForPlayers(newPlayers),
                         refreshLiveDataForPlayers(newPlayers)
                     ]).then(() => {
-                        updateTableView(); // Re-render with full data
+                        updateTableView(); // Re-render with full data (highlight preserved via highlightedEntry)
                         // Re-scroll in case table shifted
                         const myRow = document.querySelector(`tr[data-entry="${userTeamId}"]`);
                         if (myRow) {
@@ -3065,6 +3066,7 @@
             loadedPages = new Set();
             top100Players = null;
             userLeagueRank = null;
+            highlightedEntry = null;
 
             if (selectedValue === 'elite') {
                 // Elite mode - load elite managers
@@ -3125,6 +3127,7 @@
             leagueTotalPlayers = 0;
             isLoadingMyArea = false;
             isLoadingMore = false;
+            highlightedEntry = null; // Clear Find Me highlight
 
             // Clear all view state UI
             clearViewStateUI();
