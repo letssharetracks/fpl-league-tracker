@@ -2331,9 +2331,8 @@
             // Pre-calculate totals for gap calculation (use sorted order)
             const playerTotals = playerData.map(d => d.totalDisplay);
 
-            // Build table HTML with gap separators for non-contiguous rankings
+            // Build table HTML
             let tableHtml = [];
-            let prevPosition = 0;
 
             playerData.forEach((data, idx) => {
                 const player = data.player;
@@ -2341,29 +2340,6 @@
                 const posData = livePositions[player.entry];
                 const position = posData?.position || player.rank;
                 const movement = posData?.movement || 0;
-
-                // Add gap separator if there's a large gap in rankings (more than 10 positions)
-                if (prevPosition > 0 && position - prevPosition > 10) {
-                    const gapSize = position - prevPosition - 1;
-                    tableHtml.push(`
-                        <tr class="gap-separator-row">
-                            <td colspan="13" style="
-                                text-align: center;
-                                padding: 15px 10px;
-                                background: linear-gradient(90deg, rgba(4,245,255,0.05), rgba(4,245,255,0.15), rgba(4,245,255,0.05));
-                                color: #888;
-                                font-size: 12px;
-                                border-top: 1px dashed rgba(4,245,255,0.3);
-                                border-bottom: 1px dashed rgba(4,245,255,0.3);
-                            ">
-                                <span style="color: #04f5ff;">⋮</span>
-                                <strong>${gapSize.toLocaleString()}</strong> managers not shown (positions ${(prevPosition + 1).toLocaleString()} - ${(position - 1).toLocaleString()})
-                                <span style="color: #04f5ff;">⋮</span>
-                            </td>
-                        </tr>
-                    `);
-                }
-                prevPosition = position;
 
                 // Use pre-calculated values
                 let gwPoints = data.gwPoints;
@@ -2607,6 +2583,10 @@
             tbody.innerHTML = tableHtml.join('');
         }
 
+        // Track if viewing "my area" vs top 100
+        let viewingMyArea = false;
+        let top100Players = null; // Cache top 100 for switching back
+
         // Find and scroll to user's team in the table
         function findMyTeam() {
             if (!userTeamId) {
@@ -2626,29 +2606,112 @@
                 setTimeout(() => {
                     myRow.style.backgroundColor = '';
                 }, 2000);
-            } else {
-                // Team might not be loaded yet - need to load their area
-                if (userLeagueRank && leagueTotalPlayers > allPlayers.length) {
-                    // Load the user's area
-                    const userPage = Math.ceil(userLeagueRank / 50);
-                    if (!loadedPages.has(userPage)) {
-                        showStatus('Loading your position...');
-                        fetchLeaguePages([userPage - 1, userPage, userPage + 1].filter(p => p > 0)).then(newPlayers => {
-                            if (newPlayers.length > 0) {
-                                const allEntries = new Map(allPlayers.map(p => [p.entry, p]));
-                                newPlayers.forEach(p => allEntries.set(p.entry, p));
-                                allPlayers = [...allEntries.values()].sort((a, b) => a.rank - b.rank);
-                                fetchHistoriesForPlayers(newPlayers).then(() => {
-                                    updateTableView();
-                                    updateLeagueNotice();
-                                    hideStatus();
-                                    // Try again after loading
-                                    setTimeout(findMyTeam, 100);
-                                });
-                            }
-                        });
-                    }
+            } else if (userLeagueRank && userLeagueRank > 100) {
+                // User not in top 100 - switch to viewing their area
+                loadMyArea();
+            }
+        }
+
+        // Load and display 100 managers around user's position
+        async function loadMyArea() {
+            if (!userLeagueRank) return;
+
+            showStatus('Loading your position...');
+
+            // Cache current top 100 for switching back
+            if (!viewingMyArea && allPlayers.length > 0) {
+                top100Players = [...allPlayers];
+            }
+
+            // Calculate pages to load (100 managers around user)
+            const userPage = Math.ceil(userLeagueRank / 50);
+            const pagesToLoad = [userPage - 1, userPage].filter(p => p > 0);
+
+            try {
+                // Clear current loaded pages to force reload
+                loadedPages = new Set();
+                const newPlayers = await fetchLeaguePages(pagesToLoad);
+
+                if (newPlayers.length > 0) {
+                    // Replace current view with user's area
+                    allPlayers = newPlayers.sort((a, b) => a.rank - b.rank);
+                    viewingMyArea = true;
+
+                    // Fetch histories for these players
+                    await fetchHistoriesForPlayers(newPlayers);
+
+                    // Update displays
+                    updateTableView();
+                    renderPlayerToggles();
+                    updateViewToggle();
+                    updateLeagueNotice();
+                    hideStatus();
+
+                    // Scroll to user's row after render
+                    setTimeout(() => {
+                        const myRow = document.querySelector(`tr[data-entry="${userTeamId}"]`);
+                        if (myRow) {
+                            myRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            myRow.style.transition = 'background-color 0.3s';
+                            myRow.style.backgroundColor = 'rgba(0, 255, 133, 0.3)';
+                            setTimeout(() => { myRow.style.backgroundColor = ''; }, 2000);
+                        }
+                    }, 100);
                 }
+            } catch (e) {
+                console.error('Error loading my area:', e);
+                hideStatus();
+            }
+        }
+
+        // Switch back to top 100 view
+        async function showTop100() {
+            if (top100Players && top100Players.length > 0) {
+                allPlayers = [...top100Players];
+                viewingMyArea = false;
+                hasMorePages = false; // Top 100 doesn't need Load More
+                updateTableView();
+                renderPlayerToggles();
+                updateViewToggle();
+                updateLeagueNotice();
+            } else {
+                // Reload top 100
+                showStatus('Loading top 100...');
+                loadedPages = new Set();
+                hasMorePages = false;
+                const players = await fetchLeaguePages([1, 2]);
+                allPlayers = players.sort((a, b) => a.rank - b.rank);
+                viewingMyArea = false;
+                await fetchHistoriesForPlayers(players);
+                updateTableView();
+                renderPlayerToggles();
+                updateViewToggle();
+                updateLeagueNotice();
+                hideStatus();
+            }
+        }
+
+        // Update view toggle buttons
+        function updateViewToggle() {
+            const findMeBtn = document.querySelector('button[onclick="findMyTeam()"]');
+            const viewNotice = document.getElementById('viewingNotice');
+
+            if (viewingMyArea && userLeagueRank) {
+                // Show "viewing my area" notice and back button
+                if (!viewNotice) {
+                    const notice = document.createElement('div');
+                    notice.id = 'viewingNotice';
+                    notice.style.cssText = 'text-align: center; padding: 8px; background: rgba(4,245,255,0.1); border-radius: 8px; margin-bottom: 10px; font-size: 12px;';
+                    notice.innerHTML = `
+                        <span style="color: #04f5ff;">Viewing positions around #${userLeagueRank.toLocaleString()}</span>
+                        <button onclick="showTop100()" style="margin-left: 10px; padding: 4px 12px; background: #37003c; border: 1px solid #04f5ff; color: #04f5ff; border-radius: 4px; cursor: pointer; font-size: 11px;">Back to Top 100</button>
+                    `;
+                    const tableContainer = document.querySelector('.table-view') || document.getElementById('playerToggles');
+                    if (tableContainer) tableContainer.parentNode.insertBefore(notice, tableContainer);
+                }
+            } else {
+                // Remove notice when viewing top 100
+                if (viewNotice) viewNotice.remove();
             }
         }
 
@@ -2963,16 +3026,16 @@
             }
         }
 
-        // Smart initial load: top 50 + user's area
+        // Initial load: top 100 only
         async function fetchLeagueStandings() {
-            console.log('fetchLeagueStandings (smart) for LEAGUE_ID:', LEAGUE_ID);
+            console.log('fetchLeagueStandings for LEAGUE_ID:', LEAGUE_ID);
 
             // Reset pagination state
             loadedPages = new Set();
-            hasMorePages = true;
+            hasMorePages = false;
             userLeagueRank = null;
 
-            // First, get user's rank and league size
+            // Get user's rank in this league (for Find Me feature)
             if (userTeamId) {
                 const rankInfo = await fetchUserLeagueRank(LEAGUE_ID, userTeamId);
                 if (rankInfo) {
@@ -2982,18 +3045,10 @@
                 }
             }
 
-            // Determine which pages to load
-            const pagesToLoad = [1, 2]; // Always load top 100 (pages 1-2)
+            // Only load top 100 (pages 1-2) initially
+            const pagesToLoad = [1, 2];
 
-            // If user is outside top 100, load their area too
-            if (userLeagueRank && userLeagueRank > 100) {
-                const userPage = Math.ceil(userLeagueRank / 50);
-                // Load user's page and one before/after for context
-                const surroundingPages = [userPage - 1, userPage, userPage + 1].filter(p => p > 2);
-                pagesToLoad.push(...surroundingPages);
-            }
-
-            // For small leagues, just load everything
+            // For small leagues (<=100), just load everything
             if (leagueTotalPlayers > 0 && leagueTotalPlayers <= 100) {
                 pagesToLoad.length = 0;
                 for (let i = 1; i <= Math.ceil(leagueTotalPlayers / 50); i++) {
@@ -3001,9 +3056,9 @@
                 }
             }
 
-            console.log('Loading pages:', [...new Set(pagesToLoad)].sort((a,b) => a-b));
+            console.log('Loading pages:', pagesToLoad);
 
-            const players = await fetchLeaguePages([...new Set(pagesToLoad)].sort((a,b) => a-b));
+            const players = await fetchLeaguePages(pagesToLoad);
 
             // Sort by rank and remove duplicates
             const uniquePlayers = [...new Map(players.map(p => [p.entry, p])).values()];
@@ -3012,31 +3067,33 @@
             return uniquePlayers;
         }
 
-        // Load more managers (for infinite scroll)
+        // Load more managers (200 at a time = 4 pages)
         async function loadMoreManagers(direction = 'down') {
-            if (isLoadingMore || !hasMorePages) return;
+            if (isLoadingMore) return;
 
             isLoadingMore = true;
             showLoadingMore(true);
 
             try {
-                // Find next pages to load
+                // Find next pages to load (4 pages = 200 managers)
                 const maxLoadedPage = Math.max(...loadedPages, 0);
                 const minLoadedPage = Math.min(...loadedPages, 999);
 
                 let pagesToLoad = [];
                 if (direction === 'down') {
-                    pagesToLoad = [maxLoadedPage + 1, maxLoadedPage + 2];
+                    pagesToLoad = [maxLoadedPage + 1, maxLoadedPage + 2, maxLoadedPage + 3, maxLoadedPage + 4];
                 } else {
-                    pagesToLoad = [minLoadedPage - 1, minLoadedPage - 2].filter(p => p > 0);
+                    pagesToLoad = [minLoadedPage - 1, minLoadedPage - 2, minLoadedPage - 3, minLoadedPage - 4].filter(p => p > 0);
                 }
 
                 // Filter out already loaded pages
                 pagesToLoad = pagesToLoad.filter(p => !loadedPages.has(p));
 
                 if (pagesToLoad.length === 0) {
+                    hasMorePages = false;
                     isLoadingMore = false;
                     showLoadingMore(false);
+                    updateLeagueNotice();
                     return;
                 }
 
@@ -4513,9 +4570,8 @@
             // Get leader's total for gap calculation
             const leaderTotal = sortedPlayers.length > 0 ? sortedPlayers[0].total : 0;
 
-            // Build HTML with gap separators for non-contiguous rankings
+            // Build HTML
             let htmlParts = [];
-            let prevRank = 0;
 
             sortedPlayers.forEach((player, idx) => {
                 const isSelected = selectedEntries.has(player.entry);
@@ -4523,29 +4579,6 @@
                 const color = colors[originalIndex % colors.length];
                 const live = livePoints[player.entry];
                 const posData = livePositions[player.entry];
-                const currentRank = posData ? posData.position : player.rank;
-
-                // Add gap separator if there's a large gap in rankings (more than 10 positions)
-                if (prevRank > 0 && currentRank - prevRank > 10) {
-                    const gapSize = currentRank - prevRank - 1;
-                    htmlParts.push(`
-                        <div class="gap-separator" style="
-                            text-align: center;
-                            padding: 12px 10px;
-                            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-                            color: #888;
-                            font-size: 11px;
-                            margin: 8px 0;
-                            border-top: 1px dashed rgba(255,255,255,0.2);
-                            border-bottom: 1px dashed rgba(255,255,255,0.2);
-                        ">
-                            <span style="color: #04f5ff;">⋮</span>
-                            ${gapSize.toLocaleString()} managers not shown (positions ${prevRank + 1} - ${currentRank - 1})
-                            <span style="color: #04f5ff;">⋮</span>
-                        </div>
-                    `);
-                }
-                prevRank = currentRank;
 
                 // Get previous GW total for calculating GW points
                 const history = playerHistories[player.entry] || [];
