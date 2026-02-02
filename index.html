@@ -2756,11 +2756,11 @@
                     allPlayers = [...combinedMap.values()].sort((a, b) => a.rank - b.rank);
                     viewingMyArea = true;
 
-                    // Ensure hasMorePages is set correctly
-                    const maxLoadedPage = Math.max(...pagesToLoad, 2);
+                    // Ensure hasMorePages is set correctly based on all loaded pages
+                    const maxLoadedPage = Math.max(...loadedPages);
                     const totalPages = Math.ceil(leagueTotalPlayers / 50);
                     hasMorePages = maxLoadedPage < totalPages;
-                    console.log('loadMyArea: combined', allPlayers.length, 'players (top 100 + area)');
+                    console.log('loadMyArea: combined', allPlayers.length, 'players, maxPage=', maxLoadedPage, 'totalPages=', totalPages, 'hasMorePages=', hasMorePages);
 
                     // Fetch histories and live data for the new players only
                     await fetchHistoriesForPlayers(newPlayers);
@@ -5558,8 +5558,10 @@
                     const clientHeight = tableContainer.clientHeight;
 
                     if (scrollTop + clientHeight >= scrollHeight - 200) {
-                        // Near bottom, load more
+                        // Near bottom, load more if we can
+                        console.log('Scroll near bottom (container):', { hasMorePages, isLoadingMore, total: leagueTotalPlayers, loaded: allPlayers.length });
                         if (hasMorePages && !isLoadingMore && leagueTotalPlayers > allPlayers.length) {
+                            console.log('Triggering loadMoreManagers from container scroll');
                             loadMoreManagers('down');
                         }
                     }
@@ -5576,7 +5578,9 @@
                 const clientHeight = window.innerHeight;
 
                 if (scrollTop + clientHeight >= scrollHeight - 300) {
+                    console.log('Scroll near bottom (window):', { hasMorePages, isLoadingMore, total: leagueTotalPlayers, loaded: allPlayers.length });
                     if (hasMorePages && !isLoadingMore && leagueTotalPlayers > allPlayers.length) {
+                        console.log('Triggering loadMoreManagers from window scroll');
                         loadMoreManagers('down');
                     }
                 }
