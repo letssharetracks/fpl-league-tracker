@@ -2461,17 +2461,11 @@
                 // Calculate total consistently for ALL players
                 const totalDisplay = prevGwTotal + gwPoints;
 
-                // Determine position: for users outside top 100, always use API rank (most reliable)
-                // Only use livePositions for top 100 where we have recalculated live standings
-                const isInTop100 = player.rank <= 100;
-                const livePos = livePositions[player.entry]?.position;
-                const displayPosition = (isInTop100 && livePos) ? livePos : player.rank;
-
                 return {
                     player,
                     gwPoints,
                     totalDisplay,
-                    position: displayPosition
+                    position: null // Will be assigned after sorting
                 };
             });
 
@@ -2487,13 +2481,30 @@
                     comparison = b.totalDisplay - a.totalDisplay;
                     if (comparison === 0) comparison = a.player.rank - b.player.rank;
                 } else {
-                    // Default: sort by position, then API rank as tiebreaker
-                    comparison = a.position - b.position;
+                    // Default: sort by total (live standings), then API rank as tiebreaker
+                    comparison = b.totalDisplay - a.totalDisplay;
                     if (comparison === 0) comparison = a.player.rank - b.player.rank;
                 }
                 return sortDirection === 'asc' ? -comparison : comparison;
             });
 
+            // Assign positions AFTER sorting
+            // For small leagues or top 100: use sorted index (1, 2, 3...)
+            // For large leagues viewing "my area": use API rank for non-top-100 players
+            const isSmallLeague = !viewingMyArea && allPlayers.length <= 100;
+
+            playerData.forEach((data, idx) => {
+                if (isSmallLeague || data.player.rank <= 100) {
+                    // Small league or top 100: assign position based on sorted order
+                    data.position = idx + 1;
+                    // Calculate movement: old rank - new position (positive = moved up)
+                    data.movement = (data.player.last_rank || data.player.rank) - (idx + 1);
+                } else {
+                    // Large league, outside top 100: use API rank (can't recalculate global position)
+                    data.position = data.player.rank;
+                    data.movement = 0;
+                }
+            });
 
             // Extract sorted players and totals
             const sortedPlayers = playerData.map(d => d.player);
@@ -2509,10 +2520,9 @@
             playerData.forEach((data, idx) => {
                 const player = data.player;
                 const live = livePoints[player.entry];
-                const posData = livePositions[player.entry];
-                // Use pre-calculated position from data (respects viewingMyArea)
+                // Use calculated position and movement
                 const position = data.position;
-                const movement = posData?.movement || 0;
+                const movement = data.movement || 0;
 
                 // Add separator ONCE when jumping from top 100 to user's area
                 if (!separatorShown && prevPosition > 0 && prevPosition <= 100 && position > 100) {
