@@ -1417,7 +1417,8 @@
         <!-- Table View (shown by default - LIVE mode) -->
         <div id="tableView" class="table-view">
             <div id="leagueNotice" style="display: none; text-align: center; padding: 8px; background: rgba(4,245,255,0.1); border-radius: 6px; margin-bottom: 10px; font-size: 11px; color: #04f5ff;">
-                Showing <span id="loadedCount">0</span> of <span id="totalCount">0</span> managers. Scroll for more.
+                Showing <span id="loadedCount">0</span> of <span id="totalCount">0</span> managers.
+                <button onclick="loadMoreManagers('down')" style="margin-left: 10px; padding: 4px 12px; background: #04f5ff; color: #37003c; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600;">Load More</button>
             </div>
             <table class="league-table">
                 <thead>
@@ -1440,6 +1441,10 @@
                 <tbody id="leagueTableBody">
                 </tbody>
             </table>
+            <div id="loadMoreSection" style="display: none; text-align: center; padding: 15px;">
+                <button onclick="loadMoreManagers('down')" style="padding: 10px 25px; background: linear-gradient(135deg, #04f5ff, #00ff85); color: #37003c; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">Load More Managers</button>
+                <div style="margin-top: 8px; font-size: 11px; color: #888;">Showing <span id="loadedCount2">0</span> of <span id="totalCount2">0</span></div>
+            </div>
         </div>
 
         <!-- Footer -->
@@ -3028,13 +3033,30 @@
             const notice = document.getElementById('leagueNotice');
             const loadedCount = document.getElementById('loadedCount');
             const totalCount = document.getElementById('totalCount');
+            const loadMoreSection = document.getElementById('loadMoreSection');
+            const loadedCount2 = document.getElementById('loadedCount2');
+            const totalCount2 = document.getElementById('totalCount2');
 
-            if (notice && leagueTotalPlayers > 100 && allPlayers.length < leagueTotalPlayers) {
-                loadedCount.textContent = allPlayers.length;
-                totalCount.textContent = leagueTotalPlayers.toLocaleString();
-                notice.style.display = 'block';
-            } else if (notice) {
-                notice.style.display = 'none';
+            const showMore = leagueTotalPlayers > 100 && allPlayers.length < leagueTotalPlayers;
+
+            if (notice) {
+                if (showMore) {
+                    loadedCount.textContent = allPlayers.length;
+                    totalCount.textContent = leagueTotalPlayers.toLocaleString();
+                    notice.style.display = 'block';
+                } else {
+                    notice.style.display = 'none';
+                }
+            }
+
+            if (loadMoreSection) {
+                if (showMore) {
+                    loadedCount2.textContent = allPlayers.length;
+                    totalCount2.textContent = leagueTotalPlayers.toLocaleString();
+                    loadMoreSection.style.display = 'block';
+                } else {
+                    loadMoreSection.style.display = 'none';
+                }
             }
         }
 
