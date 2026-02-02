@@ -1502,7 +1502,7 @@
         <div id="tableView" class="table-view">
             <div id="leagueNotice" style="display: none; text-align: center; padding: 8px; background: rgba(4,245,255,0.1); border-radius: 6px; margin-bottom: 10px; font-size: 11px; color: #04f5ff;">
                 Showing <span id="loadedCount">0</span> of <span id="totalCount">0</span> managers.
-                <button onclick="loadMoreManagers('down')" style="margin-left: 10px; padding: 4px 12px; background: #04f5ff; color: #37003c; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600;">Load More</button>
+                <button ontouchend="event.preventDefault(); loadMoreManagers('down');" onclick="loadMoreManagers('down')" style="margin-left: 10px; padding: 6px 14px; background: #04f5ff; color: #37003c; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; touch-action: manipulation;">Load More</button>
             </div>
             <table class="league-table">
                 <thead>
@@ -1526,7 +1526,7 @@
                 </tbody>
             </table>
             <div id="loadMoreSection" style="display: none; text-align: center; padding: 15px;">
-                <button onclick="loadMoreManagers('down')" style="padding: 10px 25px; background: linear-gradient(135deg, #04f5ff, #00ff85); color: #37003c; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">Load More Managers</button>
+                <button ontouchend="event.preventDefault(); loadMoreManagers('down');" onclick="loadMoreManagers('down')" style="padding: 12px 28px; background: linear-gradient(135deg, #04f5ff, #00ff85); color: #37003c; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; touch-action: manipulation; -webkit-tap-highlight-color: transparent;">Load More Managers</button>
                 <div style="margin-top: 8px; font-size: 11px; color: #888;">Showing <span id="loadedCount2">0</span> of <span id="totalCount2">0</span></div>
             </div>
         </div>
@@ -1574,6 +1574,18 @@
         function scrollToTop() {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
+
+        // Add touch support for back-to-top button
+        document.addEventListener('DOMContentLoaded', () => {
+            const backToTopBtn = document.getElementById('backToTop');
+            if (backToTopBtn) {
+                backToTopBtn.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    scrollToTop();
+                });
+            }
+        });
+
         window.addEventListener('scroll', () => {
             const btn = document.getElementById('backToTop');
             if (btn && window.innerWidth <= 768) {
@@ -2503,7 +2515,7 @@
                     const pagesAboveTop100 = [...loadedPages].filter(p => p > 2);
                     const canLoadPrev = pagesAboveTop100.length > 0 && Math.min(...pagesAboveTop100) > 3;
                     const loadPrevBtn = canLoadPrev
-                        ? `<button onclick="loadMoreManagers('up')" style="margin-left: 15px; padding: 4px 12px; background: #04f5ff; color: #37003c; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600;">↑ Load Previous 100</button>`
+                        ? `<button data-action="load-prev" ontouchend="event.preventDefault(); loadMoreManagers('up');" onclick="loadMoreManagers('up')" style="margin-left: 15px; padding: 8px 16px; background: #04f5ff; color: #37003c; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; touch-action: manipulation; -webkit-tap-highlight-color: transparent;">↑ Load Previous 100</button>`
                         : '';
                     tableHtml.push(`
                         <tr class="jump-separator">
