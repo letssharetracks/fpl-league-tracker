@@ -643,6 +643,40 @@
             h1 { font-size: 1.2rem; margin-bottom: 5px; }
         }
 
+        /* Landscape mode on mobile - fill the screen */
+        @media (max-width: 900px) and (orientation: landscape) {
+            body {
+                padding: 5px;
+            }
+            .table-view {
+                width: 100vw;
+                margin-left: -5px;
+                margin-right: -5px;
+                padding: 5px;
+                border-radius: 0;
+                max-height: calc(100vh - 60px);
+                overflow-y: auto;
+            }
+            .league-table {
+                width: 100%;
+                min-width: unset;
+            }
+            .controls {
+                padding: 3px 5px;
+                gap: 5px;
+            }
+            .control-group {
+                padding: 5px 8px;
+            }
+            h1 {
+                font-size: 1rem;
+                margin-bottom: 3px;
+            }
+            .control-group label {
+                display: none;
+            }
+        }
+
         /* Footer styles */
         .site-footer {
             margin-top: 40px;
