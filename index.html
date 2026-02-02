@@ -1910,7 +1910,7 @@
                 let currentTotal, gwPoints;
                 if (live) {
                     // Use basePoints or predictedPoints based on auto-subs toggle
-                    const liveGwPoints = autoSubsEnabled ? live.predictedPoints : live.basePoints;
+                    const liveGwPoints = autoSubsEnabled ? live.predictedPoints : (live.basePoints ?? live.predictedPoints);
                     const bpsTotal = live.bpsPlayers ? live.bpsPlayers.reduce((sum, bp) => sum + bp.bonus, 0) : 0;
                     gwPoints = liveGwPoints + bpsTotal;
                     currentTotal = prevTotal + gwPoints;
@@ -1979,7 +1979,7 @@
                 let gwPoints;
                 if (live) {
                     // Use basePoints or predictedPoints based on auto-subs toggle
-                    const liveGwPoints = autoSubsEnabled ? live.predictedPoints : live.basePoints;
+                    const liveGwPoints = autoSubsEnabled ? live.predictedPoints : (live.basePoints ?? live.predictedPoints);
                     const bpsTotal = live.bpsPlayers ? live.bpsPlayers.reduce((sum, p) => sum + p.bonus, 0) : 0;
                     gwPoints = liveGwPoints + bpsTotal;
                 } else {
@@ -3323,7 +3323,7 @@
 
                 if (live) {
                     // Use basePoints or predictedPoints based on auto-subs toggle
-                    const liveGwPoints = autoSubsEnabled ? live.predictedPoints : live.basePoints;
+                    const liveGwPoints = autoSubsEnabled ? live.predictedPoints : (live.basePoints ?? live.predictedPoints);
                     const bpsTotal = live.bpsPlayers ? live.bpsPlayers.reduce((sum, bp) => sum + bp.bonus, 0) : 0;
                     gwPoints = liveGwPoints + bpsTotal;
                     currentTotal = prevTotal + gwPoints;
