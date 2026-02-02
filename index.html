@@ -2763,7 +2763,16 @@
                 return;
             }
 
-            console.log('findMyTeam: userTeamId=', userTeamId, 'userLeagueRank=', userLeagueRank);
+            // If already loading, don't allow another click
+            if (isLoadingMyArea) {
+                console.log('findMyTeam: already loading, please wait');
+                showStatus('Loading in progress...');
+                setTimeout(hideStatus, 1500);
+                return;
+            }
+
+            const targetLeague = LEAGUE_ID; // Capture current league
+            console.log('findMyTeam: userTeamId=', userTeamId, 'userLeagueRank=', userLeagueRank, 'league=', targetLeague);
 
             // Find the row with the user's team
             const myRow = document.querySelector(`tr[data-entry="${userTeamId}"]`);
@@ -2783,7 +2792,15 @@
             // User not in current view - need to fetch their rank and load their area
             if (!userLeagueRank) {
                 showStatus('Finding your position...');
-                const rankInfo = await fetchUserLeagueRank(LEAGUE_ID, userTeamId);
+                const rankInfo = await fetchUserLeagueRank(targetLeague, userTeamId);
+
+                // Check if league changed during fetch
+                if (LEAGUE_ID !== targetLeague) {
+                    console.log('findMyTeam: league changed during fetch, aborting');
+                    hideStatus();
+                    return;
+                }
+
                 if (rankInfo) {
                     userLeagueRank = rankInfo.rank;
                     leagueTotalPlayers = rankInfo.leagueCount || leagueTotalPlayers;
@@ -2794,6 +2811,13 @@
                     setTimeout(hideStatus, 2000);
                     return;
                 }
+            }
+
+            // Final check before loading area
+            if (LEAGUE_ID !== targetLeague) {
+                console.log('findMyTeam: league changed, aborting');
+                hideStatus();
+                return;
             }
 
             // Now load their area
@@ -2817,6 +2841,8 @@
                 setTimeout(hideStatus, 2000);
                 return;
             }
+
+            const targetLeague = LEAGUE_ID; // Capture current league for checks
 
             // If user is in top 100, just scroll to them
             if (userLeagueRank <= 100) {
@@ -2865,6 +2891,13 @@
             try {
                 const newPlayers = await fetchLeaguePages(pagesToLoad);
                 console.log('loadMyArea: fetched', newPlayers.length, 'players');
+
+                // Check if league changed during fetch
+                if (LEAGUE_ID !== targetLeague) {
+                    console.log('loadMyArea: league changed during fetch, aborting');
+                    hideStatus();
+                    return;
+                }
 
                 if (newPlayers.length > 0) {
                     // COMBINE top 100 with user's area (don't replace)
@@ -2982,6 +3015,11 @@
         function loadNewLeague() {
             const newId = document.getElementById('leagueId').value.trim();
             if (newId && !isNaN(newId)) {
+                // FORCE REFRESH: Clear everything immediately
+                clearViewStateUI();
+                const leagueTable = document.getElementById('leagueTable');
+                if (leagueTable) leagueTable.innerHTML = '';
+
                 LEAGUE_ID = parseInt(newId);
                 updateDefaultLeagueButton();
                 resetAndLoad();
@@ -2991,10 +3029,42 @@
         // Track if we're in elite mode
         let isEliteMode = false;
 
+        // Helper to aggressively clear all view state notices
+        function clearViewStateUI() {
+            // Remove viewing notice
+            const viewNotice = document.getElementById('viewingNotice');
+            if (viewNotice) viewNotice.remove();
+            // Hide league notice
+            const leagueNotice = document.getElementById('leagueNotice');
+            if (leagueNotice) leagueNotice.style.display = 'none';
+            // Hide load more section
+            const loadMoreSection = document.getElementById('loadMoreSection');
+            if (loadMoreSection) loadMoreSection.style.display = 'none';
+            // Remove any jump separators in table
+            document.querySelectorAll('.jump-separator').forEach(el => el.remove());
+        }
+
         function selectLeague() {
             const select = document.getElementById('leagueSelect');
             const selectedValue = select.value;
             console.log('Selected league from dropdown:', selectedValue, select.options[select.selectedIndex].text);
+
+            // FORCE REFRESH: Clear everything immediately
+            clearViewStateUI();
+
+            // Clear table immediately - show loading state
+            const leagueTable = document.getElementById('leagueTable');
+            if (leagueTable) leagueTable.innerHTML = '';
+            document.getElementById('playerToggles').innerHTML = '<div class="loading"><div id="loadingText">Loading...</div><div style="margin-top: 10px;"><div id="loadingPercent" style="font-size: 20px; color: #00ff88;">0%</div></div></div>';
+
+            // Reset ALL loading/state flags
+            isLoadingMyArea = false;
+            isLoadingMore = false;
+            viewingMyArea = false;
+            hasMorePages = false;
+            loadedPages = new Set();
+            top100Players = null;
+            userLeagueRank = null;
 
             if (selectedValue === 'elite') {
                 // Elite mode - load elite managers
@@ -3056,13 +3126,8 @@
             isLoadingMyArea = false;
             isLoadingMore = false;
 
-            // Hide stale notices
-            const viewNotice = document.getElementById('viewingNotice');
-            if (viewNotice) viewNotice.remove();
-            const leagueNotice = document.getElementById('leagueNotice');
-            if (leagueNotice) leagueNotice.style.display = 'none';
-            const loadMoreSection = document.getElementById('loadMoreSection');
-            if (loadMoreSection) loadMoreSection.style.display = 'none';
+            // Clear all view state UI
+            clearViewStateUI();
 
             if (chart) chart.destroy();
             chart = null;
