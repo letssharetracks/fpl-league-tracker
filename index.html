@@ -4064,13 +4064,27 @@
                     try {
                         const liveMatches = await fetchLiveFootballMatches();
                         console.log(`Fetched ${liveMatches.length} live matches from API-Football${isFirstLoad ? ' (first load)' : ''}`);
-                        liveMatches.forEach(match => {
+
+                        // Fetch events for each live match (goals, assists are in events endpoint)
+                        for (const match of liveMatches) {
                             const homeTeam = match.teams?.home?.name?.toLowerCase() || '';
                             const awayTeam = match.teams?.away?.name?.toLowerCase() || '';
-                            const goals = match.events?.filter(e => e.type === 'Goal') || [];
-                            cachedGoalScorers[homeTeam] = goals;
-                            cachedGoalScorers[awayTeam] = goals;
-                        });
+                            const fixtureId = match.fixture?.id;
+
+                            if (fixtureId) {
+                                try {
+                                    const events = await fetchMatchEvents(fixtureId);
+                                    const goals = events.filter(e => e.type === 'Goal');
+                                    console.log(`  ${homeTeam} vs ${awayTeam}: ${goals.length} goals`);
+                                    if (goals.length > 0) {
+                                        cachedGoalScorers[homeTeam] = goals;
+                                        cachedGoalScorers[awayTeam] = goals;
+                                    }
+                                } catch (e) {
+                                    console.warn(`Failed to fetch events for fixture ${fixtureId}:`, e);
+                                }
+                            }
+                        }
                         // Save to localStorage for persistence
                         saveGoalScorersToStorage();
                     } catch (e) {
