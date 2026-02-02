@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Use - FPL League Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'PremierSans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(180deg, #37003c 0%, #2d0032 50%, #1a001d 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2rem;
+            background: linear-gradient(135deg, #00ff85 0%, #04f5ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #04f5ff;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .section {
+            background: rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 20px 25px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        h2 {
+            color: #00ff85;
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        h3 {
+            color: #04f5ff;
+            font-size: 1.1rem;
+            margin: 15px 0 10px 0;
+        }
+        p {
+            margin-bottom: 12px;
+            color: #ccc;
+        }
+        ul, ol {
+            margin-left: 20px;
+            margin-bottom: 12px;
+            color: #ccc;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .highlight {
+            color: #00ff85;
+            font-weight: 600;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .feature-item {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 3px solid #00ff85;
+        }
+        .feature-item h4 {
+            color: #fff;
+            margin-bottom: 5px;
+            font-size: 0.95rem;
+        }
+        .feature-item p {
+            font-size: 0.85rem;
+            margin: 0;
+        }
+        .tip {
+            background: rgba(4, 245, 255, 0.1);
+            border-left: 3px solid #04f5ff;
+            padding: 12px 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .tip strong {
+            color: #04f5ff;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .badge-green { background: #00ff85; color: #37003c; }
+        .badge-cyan { background: #04f5ff; color: #37003c; }
+        .badge-orange { background: #ffaa00; color: #37003c; }
+        .badge-purple { background: #e056fd; color: #fff; }
+        .badge-red { background: #ff4757; color: #fff; }
+
+        .screenshot-placeholder {
+            background: rgba(0,0,0,0.3);
+            border: 2px dashed rgba(255,255,255,0.2);
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            color: #666;
+            margin: 15px 0;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 15px;
+            }
+            h1 {
+                font-size: 1.5rem;
+            }
+            .section {
+                padding: 15px;
+            }
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            color: #666;
+        }
+        .footer a {
+            color: #04f5ff;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← Back to Tracker</a>
+
+        <h1>How to Use FPL League Tracker</h1>
+        <p class="subtitle">Track your Fantasy Premier League mini-leagues like a pro</p>
+
+        <!-- Getting Started -->
+        <div class="section">
+            <h2>🚀 Getting Started</h2>
+            <ol>
+                <li><strong>Find your Team ID</strong> - Go to the FPL website, click your team, and look at the URL. It will be something like <code>fantasy.premierleague.com/entry/<span class="highlight">123456</span>/event/1</code>. The number is your Team ID.</li>
+                <li><strong>Enter your Team ID</strong> - Paste it into the input box and click "Find Leagues"</li>
+                <li><strong>Select a league</strong> - Choose from your mini-leagues in the dropdown</li>
+                <li><strong>Done!</strong> - Your league data will load automatically</li>
+            </ol>
+            <div class="tip">
+                <strong>💡 Tip:</strong> Your Team ID is saved automatically. Next time you visit, you'll go straight to your leagues!
+            </div>
+        </div>
+
+        <!-- Live View -->
+        <div class="section">
+            <h2>📊 Live View</h2>
+            <p>The default view shows your league standings with live gameweek data.</p>
+
+            <h3>Column Guide</h3>
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <h4>GW</h4>
+                    <p>Gameweek points (red number = hit taken)</p>
+                </div>
+                <div class="feature-item">
+                    <h4>Gap</h4>
+                    <p>Points difference to player above</p>
+                </div>
+                <div class="feature-item">
+                    <h4>Cpt</h4>
+                    <p>Captain chosen this week</p>
+                </div>
+                <div class="feature-item">
+                    <h4>Chip</h4>
+                    <p>Active chip (BB, TC, FH, WC)</p>
+                </div>
+                <div class="feature-item">
+                    <h4>Auto-Sub</h4>
+                    <p>Predicted bench players coming on</p>
+                </div>
+                <div class="feature-item">
+                    <h4>BPS</h4>
+                    <p>Bonus points (confirmed or provisional)</p>
+                </div>
+                <div class="feature-item">
+                    <h4>DEFCON</h4>
+                    <p>Clean sheet points at risk</p>
+                </div>
+                <div class="feature-item">
+                    <h4>Status</h4>
+                    <p>Players still to play / playing</p>
+                </div>
+            </div>
+
+            <h3>Tap a Row for More Details</h3>
+            <p>Click/tap any row to expand and see full breakdown including:</p>
+            <ul>
+                <li>Captain points with multiplier</li>
+                <li>All bonus point earners</li>
+                <li>Transfer hits</li>
+                <li>Gap to 1st place</li>
+                <li>GW and Overall rank</li>
+            </ul>
+        </div>
+
+        <!-- Auto-Subs Toggle -->
+        <div class="section">
+            <h2>🔄 Auto-Subs Toggle</h2>
+            <p>The floating <span class="badge badge-green">Auto-Subs</span> button in the bottom-right corner lets you toggle predicted auto-substitutions on/off.</p>
+            <ul>
+                <li><strong>ON (green):</strong> Points include predicted bench players coming on for non-playing starters</li>
+                <li><strong>OFF:</strong> Shows raw points without auto-sub predictions</li>
+            </ul>
+            <div class="tip">
+                <strong>💡 Tip:</strong> Auto-subs are predictions based on current match status. They may change as games progress!
+            </div>
+        </div>
+
+        <!-- Charts View -->
+        <div class="section">
+            <h2>📈 Charts View</h2>
+            <p>Click <span class="badge badge-cyan">CHARTS</span> to see visual analysis of your league.</p>
+
+            <h3>Chart Types</h3>
+            <ul>
+                <li><strong>Total:</strong> Cumulative points over the season</li>
+                <li><strong>Weekly:</strong> Points scored each gameweek</li>
+                <li><strong>Position:</strong> League position changes over time</li>
+            </ul>
+
+            <h3>Controls</h3>
+            <ul>
+                <li><strong>Toggle players:</strong> Click names in the sidebar to show/hide on chart</li>
+                <li><strong>Top 10 / All / Clear:</strong> Quick select buttons</li>
+                <li><strong>GW range:</strong> Filter to specific gameweeks</li>
+                <li><strong>Search:</strong> Find specific players</li>
+            </ul>
+        </div>
+
+        <!-- Mobile Usage -->
+        <div class="section">
+            <h2>📱 Using on Mobile</h2>
+            <p>The tracker is fully responsive and works great on phones!</p>
+
+            <h3>Portrait Mode</h3>
+            <ul>
+                <li>Simplified table with key columns</li>
+                <li>Tap any row to see full details</li>
+                <li>Floating Auto-Subs toggle always accessible</li>
+            </ul>
+
+            <h3>Landscape Mode</h3>
+            <ul>
+                <li>More columns visible</li>
+                <li>Manager names shown under team names</li>
+            </ul>
+
+            <div class="tip">
+                <strong>💡 Tip:</strong> Add to your home screen for app-like experience! On iPhone: Share → Add to Home Screen. On Android: Menu → Add to Home Screen.
+            </div>
+        </div>
+
+        <!-- Features Explained -->
+        <div class="section">
+            <h2>📚 Features Explained</h2>
+
+            <h3><span class="badge badge-orange">BPS</span> Bonus Points</h3>
+            <p>Shows which of your players are earning bonus points. During matches, these are provisional based on BPS scores. After matches finish, they become confirmed.</p>
+
+            <h3><span class="badge badge-purple">DEFCON</span> Points at Risk</h3>
+            <p>Shows clean sheet points that could be lost if a goal is conceded. Helps you see how much your defenders/goalkeepers have "at risk" in ongoing matches.</p>
+
+            <h3><span class="badge badge-red">Live</span> Status</h3>
+            <p>During active matches, you'll see live indicators showing how many players are currently playing or yet to play.</p>
+
+            <h3>⭐ Your Team</h3>
+            <p>Your team is marked with a star so you can easily spot yourself in the league table.</p>
+        </div>
+
+        <!-- Tips -->
+        <div class="section">
+            <h2>💡 Pro Tips</h2>
+            <ul>
+                <li><strong>Refresh button:</strong> Click to fetch latest live data during matches</li>
+                <li><strong>Star a league:</strong> Click ☆ next to a league to set it as your default</li>
+                <li><strong>Sort columns:</strong> Click GW or Total headers to sort</li>
+                <li><strong>Reset:</strong> Click Reset to clear all cached data if something seems wrong</li>
+                <li><strong>Multiple leagues:</strong> Switch between leagues using the dropdown</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p>Built for FPL managers who want more than just a table.</p>
+            <p><a href="index.html">← Back to FPL League Tracker</a></p>
+        </div>
+    </div>
+</body>
+</html>
