@@ -1383,7 +1383,81 @@
         const API_FOOTBALL_WORKER = 'https://api-football-proxy.dom-mackie.workers.dev';
         let previousScores = {}; // Track scores to detect goals
 
-        // Load cached goal scorers from localStorage (persists across page loads)
+        // Hardcoded goal data per gameweek (fallback when API unavailable)
+        const HARDCODED_GOALS = {
+            24: {
+                'arsenal': [
+                    { player: { name: 'M. Ødegaard' }, time: { elapsed: 2 }, assist: { name: 'K. Havertz' } },
+                    { player: { name: 'T. Partey' }, time: { elapsed: 56 }, assist: null },
+                    { player: { name: 'M. Lewis-Skelly' }, time: { elapsed: 62 }, assist: { name: 'D. Rice' } },
+                    { player: { name: 'K. Havertz' }, time: { elapsed: 76 }, assist: { name: 'G. Martinelli' } },
+                    { player: { name: 'E. Nwaneri' }, time: { elapsed: 93 }, assist: { name: 'D. Rice' } }
+                ],
+                'manchester city': [
+                    { player: { name: 'E. Haaland' }, time: { elapsed: 55 }, assist: { name: 'Savinho' } }
+                ],
+                'nottingham forest': [
+                    { player: { name: 'L. Dunk (OG)' }, time: { elapsed: 12 }, assist: null },
+                    { player: { name: 'M. Gibbs-White' }, time: { elapsed: 25 }, assist: { name: 'A. Elanga' } },
+                    { player: { name: 'C. Wood' }, time: { elapsed: 32 }, assist: { name: 'A. Elanga' } },
+                    { player: { name: 'C. Wood' }, time: { elapsed: 64 }, assist: { name: 'A. Elanga' } },
+                    { player: { name: 'C. Wood (P)' }, time: { elapsed: 69 }, assist: null },
+                    { player: { name: 'N. Williams' }, time: { elapsed: 89 }, assist: { name: 'I. Sangaré' } },
+                    { player: { name: 'Jota Silva' }, time: { elapsed: 91 }, assist: null }
+                ],
+                'brighton': [],
+                'newcastle': [
+                    { player: { name: 'J. Murphy' }, time: { elapsed: 37 }, assist: null }
+                ],
+                'fulham': [
+                    { player: { name: 'R. Jiménez' }, time: { elapsed: 61 }, assist: { name: 'A. Robinson' } },
+                    { player: { name: 'R. Muniz' }, time: { elapsed: 82 }, assist: { name: 'A. Pereira' } }
+                ],
+                'bournemouth': [],
+                'liverpool': [
+                    { player: { name: 'M. Salah (P)' }, time: { elapsed: 30 }, assist: null },
+                    { player: { name: 'M. Salah' }, time: { elapsed: 75 }, assist: { name: 'C. Jones' } }
+                ],
+                'everton': [
+                    { player: { name: 'A. Doucouré' }, time: { elapsed: 1 }, assist: { name: 'J. Pickford' } },
+                    { player: { name: 'Beto' }, time: { elapsed: 6 }, assist: { name: 'J. Tarkowski' } },
+                    { player: { name: 'Beto' }, time: { elapsed: 47 }, assist: { name: 'J. Garner' } },
+                    { player: { name: 'I. Ndiaye' }, time: { elapsed: 90 }, assist: null }
+                ],
+                'leicester': [],
+                'ipswich': [
+                    { player: { name: 'L. Delap' }, time: { elapsed: 31 }, assist: null }
+                ],
+                'southampton': [
+                    { player: { name: 'J. Aribo' }, time: { elapsed: 21 }, assist: null },
+                    { player: { name: 'P. Onuachu' }, time: { elapsed: 87 }, assist: null }
+                ],
+                'wolves': [
+                    { player: { name: 'J. Bellegarde' }, time: { elapsed: 12 }, assist: { name: 'P. Sarabia' } },
+                    { player: { name: 'M. Cunha' }, time: { elapsed: 97 }, assist: null }
+                ],
+                'aston villa': [],
+                'manchester united': [],
+                'crystal palace': [
+                    { player: { name: 'J. Mateta' }, time: { elapsed: 64 }, assist: null },
+                    { player: { name: 'J. Mateta' }, time: { elapsed: 89 }, assist: { name: 'D. Muñoz' } }
+                ],
+                'brentford': [],
+                'tottenham': [
+                    { player: { name: 'V. Janelt (OG)' }, time: { elapsed: 29 }, assist: null },
+                    { player: { name: 'P. Sarr' }, time: { elapsed: 87 }, assist: { name: 'Son Heung-Min' } }
+                ],
+                'chelsea': [
+                    { player: { name: 'Pedro Neto' }, time: { elapsed: 64 }, assist: null },
+                    { player: { name: 'A. Wan-Bissaka (OG)' }, time: { elapsed: 74 }, assist: null }
+                ],
+                'west ham': [
+                    { player: { name: 'J. Bowen' }, time: { elapsed: 42 }, assist: null }
+                ]
+            }
+        };
+
+        // Load cached goal scorers from localStorage, merge with hardcoded data
         let cachedGoalScorers = {};
         try {
             const stored = localStorage.getItem('fpl_goal_scorers');
@@ -1395,6 +1469,14 @@
                     console.log('Loaded goal scorers from localStorage');
                 }
             }
+            // Merge hardcoded data as fallback (localStorage/API takes priority)
+            const hardcodedForGw = HARDCODED_GOALS[currentGameweek] || {};
+            Object.keys(hardcodedForGw).forEach(team => {
+                if (!cachedGoalScorers[team] || cachedGoalScorers[team].length === 0) {
+                    cachedGoalScorers[team] = hardcodedForGw[team];
+                }
+            });
+            console.log('Merged hardcoded goal data for GW', currentGameweek);
         } catch (e) {
             console.warn('Could not load cached goal scorers:', e);
         }
