@@ -4723,7 +4723,7 @@
                     ? `<span class="elite-badge ${player.eliteCategory}" title="${player.eliteAchievement || ''}">${player.eliteCategory.toUpperCase()}</span>`
                     : '';
 
-                return `
+                htmlParts.push(`
                 <div class="player-wrapper">
                     <label class="player-toggle ${isSelected ? 'selected' : ''} ${eliteClass}" id="toggle-${player.entry}"
                            onmouseenter="hoverPlayer(${player.entry})"
