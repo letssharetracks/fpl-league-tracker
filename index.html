@@ -1444,7 +1444,11 @@
                     </button>
                 </div>
             </div>
-            <div class="control-group chart-controls" id="chartTypeControls" style="display: none;">
+        </div>
+
+        <!-- Chart controls on separate row -->
+        <div class="controls chart-controls-row" id="chartControlsRow" style="display: none;">
+            <div class="control-group" id="chartTypeControls">
                 <label>Chart:</label>
                 <div class="view-btns">
                     <button class="view-btn active" id="btn-total" onclick="setChartType('total')">Total</button>
@@ -1452,7 +1456,7 @@
                     <button class="view-btn" id="btn-rank" onclick="setChartType('rank')">Position</button>
                 </div>
             </div>
-            <div class="control-group chart-controls" id="weekControls" style="display: none;">
+            <div class="control-group" id="weekControls">
                 <label>GW:</label>
                 <select id="weekStart" onchange="updateWeekRange()" class="week-select">
                 </select>
@@ -2227,11 +2231,11 @@
             const mainContent = document.querySelector('.main-content');
             const tableView = document.getElementById('tableView');
 
-            // Toggle chart-specific controls visibility
-            const chartControls = document.querySelectorAll('.chart-controls');
-            chartControls.forEach(el => {
-                el.style.display = mode === 'chart' ? 'flex' : 'none';
-            });
+            // Toggle chart controls row visibility
+            const chartControlsRow = document.getElementById('chartControlsRow');
+            if (chartControlsRow) {
+                chartControlsRow.style.display = mode === 'chart' ? 'flex' : 'none';
+            }
 
             if (mode === 'chart') {
                 mainContent.style.display = 'grid';
@@ -2324,9 +2328,14 @@
                     entry: p.entry,
                     total: currentTotal,
                     oldRank: prevPositions[p.entry] || p.rank,
-                    gwPoints: gwPoints
+                    gwPoints: gwPoints,
+                    apiRank: p.rank // Preserve API rank for tiebreaker
                 };
-            }).sort((a, b) => b.total - a.total);
+            }).sort((a, b) => {
+                // Sort by total; for ties preserve API order (official tiebreaker: fewest transfers)
+                if (b.total !== a.total) return b.total - a.total;
+                return a.apiRank - b.apiRank;
+            });
 
             // Debug: log ranking order
             console.log('Ranking order (top 30):', currentRankings.slice(0, 30).map((r, i) => `#${i+1}: ${r.total}`).join(', '));
@@ -2346,7 +2355,13 @@
                     const player = allPlayers.find(p => p.entry === r.entry);
                     return player && player.rank <= 100;
                 })
-                .sort((a, b) => b.total - a.total);
+                .sort((a, b) => {
+                    // Sort by total points; for ties preserve API order (official tiebreaker: fewest transfers)
+                    if (b.total !== a.total) return b.total - a.total;
+                    const playerA = allPlayers.find(p => p.entry === a.entry);
+                    const playerB = allPlayers.find(p => p.entry === b.entry);
+                    return (playerA?.rank || 0) - (playerB?.rank || 0);
+                });
 
             const top100Positions = {};
             top100Entries.forEach((item, idx) => {
@@ -2423,24 +2438,23 @@
                     player,
                     gwPoints,
                     totalDisplay,
-                    // When viewing partial data (My Area), always use API rank for correct ordering
-                    position: viewingMyArea ? player.rank : (livePositions[player.entry]?.position || player.rank)
+                    // Use recalculated position when available (respects auto-subs toggle)
+                    // Only fall back to API rank for large leagues with partial data outside top 100
+                    position: livePositions[player.entry]?.position || player.rank
                 };
             });
 
             // Sort based on sortColumn and sortDirection
-            // When viewing partial data (My Area), always sort by position to maintain correct order
             playerData.sort((a, b) => {
-                if (viewingMyArea) {
-                    // Always sort by position when viewing partial data
-                    return a.position - b.position;
-                }
                 let comparison = 0;
                 if (sortColumn === 'gw') {
                     comparison = b.gwPoints - a.gwPoints;
+                } else if (sortColumn === 'total') {
+                    // Sort by total, then GW points as tiebreaker
+                    comparison = b.totalDisplay - a.totalDisplay || b.gwPoints - a.gwPoints;
                 } else {
-                    // Default: sort by total
-                    comparison = b.totalDisplay - a.totalDisplay;
+                    // Default: sort by position (which respects auto-subs toggle)
+                    comparison = a.position - b.position;
                 }
                 return sortDirection === 'asc' ? -comparison : comparison;
             });
@@ -2463,7 +2477,7 @@
                 const posData = livePositions[player.entry];
                 // Use pre-calculated position from data (respects viewingMyArea)
                 const position = data.position;
-                const movement = viewingMyArea ? 0 : (posData?.movement || 0);
+                const movement = posData?.movement || 0;
 
                 // Add separator ONCE when jumping from top 100 to user's area
                 if (!separatorShown && prevPosition > 0 && prevPosition <= 100 && position > 100) {
@@ -2472,7 +2486,7 @@
                     const pagesAboveTop100 = [...loadedPages].filter(p => p > 2);
                     const canLoadPrev = pagesAboveTop100.length > 0 && Math.min(...pagesAboveTop100) > 3;
                     const loadPrevBtn = canLoadPrev
-                        ? `<button onclick="loadMoreManagers('up')" style="margin-left: 15px; padding: 4px 12px; background: #04f5ff; color: #37003c; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600;">↑ Load Previous 200</button>`
+                        ? `<button onclick="loadMoreManagers('up')" style="margin-left: 15px; padding: 4px 12px; background: #04f5ff; color: #37003c; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600;">↑ Load Previous 100</button>`
                         : '';
                     tableHtml.push(`
                         <tr class="jump-separator">
@@ -2866,18 +2880,13 @@
                     hasMorePages = maxLoadedPage < totalPages;
                     console.log('loadMyArea: combined', allPlayers.length, 'players, maxPage=', maxLoadedPage, 'totalPages=', totalPages);
 
-                    // Fetch histories and live data
-                    await fetchHistoriesForPlayers(newPlayers);
-                    await refreshLiveData();
-
-                    // Update displays
+                    // RENDER IMMEDIATELY (don't wait for data)
                     updateTableView();
                     renderPlayerToggles();
                     updateViewToggle();
                     updateLeagueNotice();
-                    hideStatus();
 
-                    // Scroll to user's row (instant to avoid jumping)
+                    // Scroll to user's row NOW (before data loads)
                     requestAnimationFrame(() => {
                         const myRow = document.querySelector(`tr[data-entry="${userTeamId}"]`);
                         if (myRow) {
@@ -2885,8 +2894,21 @@
                             myRow.style.transition = 'background-color 0.5s';
                             myRow.style.backgroundColor = 'rgba(0, 255, 133, 0.4)';
                             setTimeout(() => { myRow.style.backgroundColor = ''; }, 2500);
-                        } else {
-                            console.warn('loadMyArea: user row not found after render, entry:', userTeamId);
+                        }
+                    });
+
+                    hideStatus();
+
+                    // Fetch histories and live data in BACKGROUND (non-blocking)
+                    Promise.all([
+                        fetchHistoriesForPlayers(newPlayers),
+                        refreshLiveDataForPlayers(newPlayers)
+                    ]).then(() => {
+                        updateTableView(); // Re-render with full data
+                        // Re-scroll in case table shifted
+                        const myRow = document.querySelector(`tr[data-entry="${userTeamId}"]`);
+                        if (myRow) {
+                            myRow.scrollIntoView({ behavior: 'auto', block: 'center' });
                         }
                     });
                 } else {
@@ -3023,6 +3045,25 @@
             livePoints = {};
             livePositions = {};
             livePlayerScores = null; // Reset live scores cache
+
+            // Reset view state for new league
+            viewingMyArea = false;
+            hasMorePages = false;
+            loadedPages = new Set();
+            top100Players = null;
+            userLeagueRank = null; // Will be fetched fresh for new league
+            leagueTotalPlayers = 0;
+            isLoadingMyArea = false;
+            isLoadingMore = false;
+
+            // Hide stale notices
+            const viewNotice = document.getElementById('viewingNotice');
+            if (viewNotice) viewNotice.remove();
+            const leagueNotice = document.getElementById('leagueNotice');
+            if (leagueNotice) leagueNotice.style.display = 'none';
+            const loadMoreSection = document.getElementById('loadMoreSection');
+            if (loadMoreSection) loadMoreSection.style.display = 'none';
+
             if (chart) chart.destroy();
             chart = null;
             document.getElementById('playerToggles').innerHTML = '<div class="loading"><div id="loadingText">Loading...</div><div style="margin-top: 10px;"><div id="loadingPercent" style="font-size: 20px; color: #00ff88;">0%</div></div></div>';
@@ -3319,7 +3360,7 @@
             return uniquePlayers;
         }
 
-        // Load more managers (200 at a time = 4 pages)
+        // Load more managers (100 at a time = 2 pages for speed)
         async function loadMoreManagers(direction = 'down') {
             if (isLoadingMore) return;
 
@@ -3327,7 +3368,7 @@
             showLoadingMore(true);
 
             try {
-                // Find next pages to load (4 pages = 200 managers)
+                // Find next pages to load (2 pages = 100 managers for speed)
                 const maxLoadedPage = Math.max(...loadedPages, 0);
                 // For 'up' direction, find min page that's not in top 100 (pages 1-2)
                 const pagesAboveTop100 = [...loadedPages].filter(p => p > 2);
@@ -3335,10 +3376,10 @@
 
                 let pagesToLoad = [];
                 if (direction === 'down') {
-                    pagesToLoad = [maxLoadedPage + 1, maxLoadedPage + 2, maxLoadedPage + 3, maxLoadedPage + 4];
+                    pagesToLoad = [maxLoadedPage + 1, maxLoadedPage + 2];
                 } else {
                     // Load pages before user's area (not top 100)
-                    pagesToLoad = [minUserAreaPage - 1, minUserAreaPage - 2, minUserAreaPage - 3, minUserAreaPage - 4].filter(p => p > 2);
+                    pagesToLoad = [minUserAreaPage - 1, minUserAreaPage - 2].filter(p => p > 2);
                 }
 
                 // Filter out already loaded pages
@@ -3361,14 +3402,20 @@
                     newPlayers.forEach(p => allEntries.set(p.entry, p));
                     allPlayers = [...allEntries.values()].sort((a, b) => a.rank - b.rank);
 
+                    // Update hasMorePages based on what we've loaded
+                    const newMaxPage = Math.max(...loadedPages, 0);
+                    const totalPages = leagueTotalPlayers > 0 ? Math.ceil(leagueTotalPlayers / 50) : 999;
+                    hasMorePages = newMaxPage < totalPages;
+                    console.log('After load: maxPage=', newMaxPage, 'totalPages=', totalPages, 'hasMorePages=', hasMorePages);
+
                     // Re-render immediately (don't wait for data)
                     updateTableView();
                     renderPlayerToggles();
                     updateLeagueNotice();
 
-                    // Fetch live data and histories in parallel (non-blocking)
+                    // Fetch live data ONLY for new players (much faster than refreshing all)
                     Promise.all([
-                        refreshLiveData(),
+                        refreshLiveDataForPlayers(newPlayers),
                         fetchHistoriesForPlayers(newPlayers)
                     ]).then(() => {
                         updateTableView(); // Re-render with full data
@@ -4518,9 +4565,14 @@
                     total: currentTotal,
                     oldRank: prevPositions[p.entry] || p.rank,
                     gwPoints: gwPoints,
-                    transferCost: live ? live.transferCost : 0
+                    transferCost: live ? live.transferCost : 0,
+                    apiRank: p.rank
                 };
-            }).sort((a, b) => b.total - a.total);
+            }).sort((a, b) => {
+                // Sort by total; for ties preserve API order (official tiebreaker: fewest transfers)
+                if (b.total !== a.total) return b.total - a.total;
+                return a.apiRank - b.apiRank;
+            });
 
             // Debug: show current rankings
             const rankDebug = currentRankings.slice(0, 10).map((r, i) => {
@@ -4581,6 +4633,115 @@
             }
         }
 
+        // Optimized function to fetch live data for ONLY specific players (used when loading more managers)
+        async function refreshLiveDataForPlayers(players) {
+            if (!currentGameweek || players.length === 0) {
+                console.log('refreshLiveDataForPlayers skipped: no players or gameweek');
+                return;
+            }
+
+            console.log('Fetching live data for', players.length, 'new players only');
+            const startTime = Date.now();
+
+            try {
+                // Fetch shared data once (use cached if available)
+                const [fixtureStatus, sharedData] = await Promise.all([
+                    fetchFixtureStatus(currentGameweek),
+                    prefetchSharedData(currentGameweek)
+                ]);
+
+                // Fetch live data for all new players in parallel (aggressive batching)
+                const BATCH_SIZE = 50;
+                const totalBatches = Math.ceil(players.length / BATCH_SIZE);
+                const newPlayerLivePoints = {};
+
+                for (let batchIdx = 0; batchIdx < totalBatches; batchIdx++) {
+                    const batch = players.slice(batchIdx * BATCH_SIZE, (batchIdx + 1) * BATCH_SIZE);
+
+                    const batchResults = await Promise.all(
+                        batch.map(async (player) => {
+                            const live = await fetchLivePoints(player.entry, currentGameweek, sharedData);
+                            return { entry: player.entry, live, apiTotal: player.total };
+                        })
+                    );
+
+                    batchResults.forEach(({ entry, live, apiTotal }) => {
+                        if (live) {
+                            const history = playerHistories[entry] || [];
+                            const prevGwIndex = currentGameweek - 2;
+                            const prevGwData = prevGwIndex >= 0 && history[prevGwIndex] ? history[prevGwIndex] : null;
+                            const prevGwTotal = prevGwData ? prevGwData.total_points : 0;
+                            const gwPointsFromApi = apiTotal - prevGwTotal;
+
+                            newPlayerLivePoints[entry] = {
+                                points: live.points,
+                                netPoints: live.netPoints,
+                                transferCost: live.transferCost,
+                                totalPoints: live.totalPoints,
+                                chip: live.chip,
+                                isLive: fixtureStatus.matchesLive,
+                                isBonusPending: fixtureStatus.bonusPending,
+                                gwPointsFromApi: gwPointsFromApi,
+                                apiTotal: apiTotal,
+                                playersYetToPlay: live.playersYetToPlay,
+                                playersPlaying: live.playersPlaying,
+                                predictedPoints: live.predictedPoints,
+                                autoSubs: live.autoSubs,
+                                vcActivated: live.vcActivated,
+                                vcName: live.vcName,
+                                liveBonus: live.liveBonus,
+                                bpsPlayers: live.bpsPlayers,
+                                defconPoints: live.defconPoints,
+                                defconPlayers: live.defconPlayers,
+                                overallRank: live.overallRank,
+                                gwRank: live.gwRank,
+                                captainName: live.captainName,
+                                captainPoints: live.captainPoints,
+                                isTripleCaptain: live.isTripleCaptain
+                            };
+                        }
+                    });
+                }
+
+                // MERGE new data with existing livePoints (don't replace)
+                Object.assign(livePoints, newPlayerLivePoints);
+
+                // Update livePositions for new players only (use API rank)
+                players.forEach(player => {
+                    const live = livePoints[player.entry];
+                    const history = playerHistories[player.entry] || [];
+                    const prevGwIndex = currentGameweek - 2;
+                    const prevGwData = prevGwIndex >= 0 && history[prevGwIndex] ? history[prevGwIndex] : null;
+                    const prevTotal = prevGwData ? prevGwData.total_points : 0;
+
+                    let currentTotal, gwPoints;
+                    if (live) {
+                        const autoSubBonus = live.autoSubs ? live.autoSubs.reduce((sum, s) => sum + (s.pointsGained || 0), 0) : 0;
+                        const basePoints = live.basePoints ?? (live.predictedPoints - autoSubBonus);
+                        gwPoints = autoSubsEnabled ? live.predictedPoints : basePoints;
+                        const bpsTotal = live.bpsPlayers ? live.bpsPlayers.reduce((sum, bp) => sum + bp.bonus, 0) : 0;
+                        gwPoints += bpsTotal;
+                        currentTotal = prevTotal + gwPoints;
+                    } else {
+                        gwPoints = player.total - prevTotal;
+                        currentTotal = player.total;
+                    }
+
+                    livePositions[player.entry] = {
+                        position: player.rank, // Use API rank for large leagues
+                        movement: 0,
+                        currentTotal: currentTotal,
+                        gwPoints: gwPoints
+                    };
+                });
+
+                console.log('Live data for new players fetched in', Date.now() - startTime, 'ms');
+
+            } catch (error) {
+                console.error('Error fetching live data for players:', error);
+            }
+        }
+
         async function loadAllData() {
             const targetLeague = LEAGUE_ID;
             isLoading = true;
@@ -4623,6 +4784,17 @@
                         console.log('Auto-fetching live data for GW', currentGameweek, gameweekFinished ? '(finished)' : '(in progress)');
                         showStatus('Fetching live scores...');
                         refreshLiveData().then(hideStatus);
+                    }
+
+                    // Auto-fetch user's position in background (so Find Me is ready)
+                    if (userTeamId) {
+                        fetchUserLeagueRank(targetLeague, userTeamId).then(rankInfo => {
+                            if (rankInfo && LEAGUE_ID === targetLeague) {
+                                userLeagueRank = rankInfo.rank;
+                                leagueTotalPlayers = rankInfo.leagueCount || leagueTotalPlayers;
+                                console.log('User position pre-fetched:', userLeagueRank, 'of', leagueTotalPlayers);
+                            }
+                        }).catch(e => console.warn('Could not pre-fetch user position:', e));
                     }
 
                     // Refresh in background
@@ -4796,6 +4968,18 @@
                     console.log('Auto-fetching live data after fresh load for GW', currentGameweek);
                     showStatus('Fetching live scores...');
                     refreshLiveData().then(hideStatus);
+                }
+
+                // Auto-fetch user's position in background (for large leagues or unknown size)
+                if (userTeamId && (leagueTotalPlayers > 100 || leagueTotalPlayers === 0)) {
+                    console.log('Auto-fetching user position in background...');
+                    fetchUserLeagueRank(fetchingLeagueId, userTeamId).then(rankInfo => {
+                        if (rankInfo && LEAGUE_ID === fetchingLeagueId) {
+                            userLeagueRank = rankInfo.rank;
+                            leagueTotalPlayers = rankInfo.leagueCount || leagueTotalPlayers;
+                            console.log('User position fetched:', userLeagueRank, 'of', leagueTotalPlayers);
+                        }
+                    }).catch(e => console.warn('Could not fetch user position:', e));
                 }
 
             } catch (error) {
@@ -5733,6 +5917,36 @@
         // Start app
         initApp();
         setupScrollListener();
+
+        // Event delegation for table buttons (fixes mobile touch issues)
+        function handleLoadButtonClick(e) {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+
+            // Handle Load Previous button
+            if (btn.textContent.includes('Load Previous')) {
+                e.preventDefault();
+                e.stopPropagation();
+                loadMoreManagers('up');
+            }
+            // Handle Load More button
+            if (btn.textContent.includes('Load More') || btn.textContent.includes('Load Next')) {
+                e.preventDefault();
+                e.stopPropagation();
+                loadMoreManagers('down');
+            }
+        }
+        // Add to table (for jump separator button)
+        const leagueTable = document.querySelector('.league-table');
+        leagueTable.addEventListener('click', handleLoadButtonClick);
+        leagueTable.addEventListener('touchend', handleLoadButtonClick);
+
+        // Add to loadMoreSection (for bottom button)
+        const loadMoreSection = document.getElementById('loadMoreSection');
+        if (loadMoreSection) {
+            loadMoreSection.addEventListener('click', handleLoadButtonClick);
+            loadMoreSection.addEventListener('touchend', handleLoadButtonClick);
+        }
     </script>
     <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "55d4f204731e4a7ebdf5456cc84d2154"}'></script><!-- End Cloudflare Web Analytics -->
 </body>
