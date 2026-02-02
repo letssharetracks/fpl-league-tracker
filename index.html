@@ -126,21 +126,67 @@
         .controls {
             display: flex;
             gap: 20px;
+            margin-bottom: 20px;
             flex-wrap: wrap;
             justify-content: center;
+        }
+
+        /* Floating Auto-Subs toggle */
+        .floating-toggle {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 100;
-            background: #37003c;
-            padding: 15px 20px;
-            border-bottom: 1px solid rgba(255,255,255,0.15);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(55, 0, 60, 0.95);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 25px;
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            cursor: pointer;
+            transition: all 0.2s;
         }
-        .controls-spacer {
-            height: 90px;
+        .floating-toggle:hover {
+            background: rgba(55, 0, 60, 1);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.5);
         }
+        .floating-toggle.active {
+            border-color: #00ff85;
+        }
+        .floating-toggle .toggle-icon {
+            width: 36px;
+            height: 20px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            position: relative;
+            transition: background 0.2s;
+        }
+        .floating-toggle.active .toggle-icon {
+            background: #00ff85;
+        }
+        .floating-toggle .toggle-icon::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s;
+        }
+        .floating-toggle.active .toggle-icon::after {
+            transform: translateX(16px);
+        }
+        .floating-toggle span {
+            color: #fff;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
         .control-group {
             background: rgba(255,255,255,0.08);
             padding: 15px 20px;
@@ -392,13 +438,13 @@
             font-size: 11px;
         }
         .league-table .col-autosub {
-            min-width: 110px;
-            max-width: 140px;
+            min-width: 80px;
+            max-width: 100px;
             font-size: 10px;
         }
         .league-table .col-bps {
-            min-width: 80px;
-            max-width: 100px;
+            min-width: 120px;
+            max-width: 150px;
             font-size: 10px;
         }
         .league-table .col-or {
@@ -755,11 +801,7 @@
             }
             .controls {
                 flex-direction: column;
-                gap: 8px;
-                padding: 10px;
-            }
-            .controls-spacer {
-                height: 180px;
+                gap: 10px;
             }
             .control-group {
                 width: 100%;
@@ -1327,6 +1369,12 @@
 
     <!-- Main App -->
     <div id="mainApp" class="container" style="display: none;">
+        <!-- Floating Auto-Subs Toggle -->
+        <div class="floating-toggle active" id="floatingAutoSub" onclick="toggleAutoSubs()" title="Toggle Auto-Subs">
+            <div class="toggle-icon"></div>
+            <span>Auto-Subs</span>
+        </div>
+
         <h1>FPL League Tracker</h1>
 
         <div class="fixture-ticker" id="fixtureTicker" style="display: none;">
@@ -1341,7 +1389,7 @@
                 <select id="leagueSelect" onchange="selectLeague()">
                 </select>
                 <button class="btn-star" id="defaultLeagueBtn" onclick="toggleDefaultLeague()" title="Set as default league">☆</button>
-                <span class="elite-info" data-tooltip="Select '⭐ vs The Best' to compare against elite FPL managers & creators!">?</span>
+                <!-- <span class="elite-info" data-tooltip="Select '⭐ vs The Best' to compare against elite FPL managers & creators!">?</span> -->
                 <span class="separator">or</span>
                 <input type="text" id="leagueId" placeholder="League ID" class="league-id-input">
                 <button class="btn btn-top-10" onclick="loadNewLeague()">Load</button>
@@ -1369,7 +1417,7 @@
                 </div>
             </div>
             <div class="control-group chart-controls" id="weekControls" style="display: none;">
-                <label>Weeks:</label>
+                <label>GW:</label>
                 <select id="weekStart" onchange="updateWeekRange()" class="week-select">
                 </select>
                 <span class="separator">to</span>
@@ -1378,7 +1426,6 @@
                 <button class="btn btn-top-10" onclick="resetWeekRange()">All</button>
             </div>
         </div>
-        <div class="controls-spacer"></div>
 
         <div id="statusBar" style="display: none; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
             <span id="statusText" style="color: #04f5ff;">Loading...</span>
@@ -1962,9 +2009,9 @@
                 `<option value="${league.id}">${league.name}</option>`
             ).join('');
 
-            // Add separator and "vs The Best" option
-            options += `<option disabled>──────────────</option>`;
-            options += `<option value="elite" title="Compare yourself against elite FPL managers, content creators & legends!">⭐ vs The Best</option>`;
+            // Add separator and "vs The Best" option (commented out for now)
+            // options += `<option disabled>──────────────</option>`;
+            // options += `<option value="elite" title="Compare yourself against elite FPL managers, content creators & legends!">⭐ vs The Best</option>`;
 
             select.innerHTML = options;
 
@@ -2146,8 +2193,11 @@
 
         function toggleAutoSubs() {
             autoSubsEnabled = !autoSubsEnabled;
+            // Update both toggles
             const toggle = document.getElementById('autoSubToggle');
+            const floatingToggle = document.getElementById('floatingAutoSub');
             toggle.classList.toggle('active', autoSubsEnabled);
+            if (floatingToggle) floatingToggle.classList.toggle('active', autoSubsEnabled);
 
             // Recalculate positions and update views immediately
             if (Object.keys(livePoints).length > 0) {
@@ -2359,12 +2409,11 @@
                     }).join('<br>');
                 }
 
-                // Bonus display - show all players
+                // Bonus display - show all players with full names
                 let bonusHtml = '';
                 if (live && live.bpsPlayers && live.bpsPlayers.length > 0) {
                     bonusHtml = live.bpsPlayers.map(p => {
-                        const shortName = p.name.length > 10 ? p.name.substring(0, 10) + '..' : p.name;
-                        return `<span class="bps-pts">${shortName} +${p.bonus}</span>`;
+                        return `<span class="bps-pts">${p.name} +${p.bonus}</span>`;
                     }).join('<br>');
                 }
 
@@ -2388,12 +2437,11 @@
                     orHtml = live.overallRank.toLocaleString();
                 }
 
-                // DEFCON points - show all players
+                // DEFCON points - show all players with full names
                 let defconHtml = '';
                 if (live && live.defconPlayers && live.defconPlayers.length > 0) {
                     defconHtml = live.defconPlayers.map(p => {
-                        const shortName = p.name.length > 10 ? p.name.substring(0, 10) + '..' : p.name;
-                        return `<span class="defcon-pts">${shortName} +${p.points}</span>`;
+                        return `<span class="defcon-pts">${p.name} +${p.points}</span>`;
                     }).join('<br>');
                 }
 
@@ -2504,11 +2552,18 @@
                     // Total (with separator)
                     mobileDetailsHtml += `<div class="detail-item" style="border-top: 1px solid rgba(255,255,255,0.2); margin-top: 5px; padding-top: 8px;"><span class="detail-label">Total:</span><span style="font-weight: bold;">${totalDisplay.toLocaleString()}</span></div>`;
 
+                    // Gap to 1st in league
+                    if (idx > 0) {
+                        const leaderTotal = playerTotals[0];
+                        const gapTo1st = totalDisplay - leaderTotal;
+                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Gap to 1st:</span><span style="color: ${gapTo1st >= 0 ? '#00ff85' : '#ff6b6b'};">${gapTo1st}</span></div>`;
+                    }
+
+                    // GW Rank (moved above Overall Rank)
+                    if (live.gwRank) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">GW Rank:</span><span style="color: #888;">${live.gwRank.toLocaleString()}</span></div>`;
+
                     // Overall Rank
                     if (live.overallRank) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Overall Rank:</span><span style="color: #888;">${live.overallRank.toLocaleString()}</span></div>`;
-
-                    // GW Rank
-                    if (live.gwRank) mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">GW Rank:</span><span style="color: #888;">${live.gwRank.toLocaleString()}</span></div>`;
 
                     mobileDetailsHtml += '</div>';
                 }
@@ -2518,7 +2573,7 @@
                         <td class="col-rank">${position}</td>
                         <td class="col-move">${moveHtml}</td>
                         <td class="col-name" title="${player.entry_name} - ${player.player_name}">
-                            <div class="team-name">${player.entry_name.length > 18 ? player.entry_name.substring(0, 18) + '...' : player.entry_name}</div>
+                            <div class="team-name">${isMyTeam ? '⭐ ' : ''}${player.entry_name.length > 18 ? player.entry_name.substring(0, 18) + '...' : player.entry_name}</div>
                             <div class="manager-name">${player.player_name}</div>
                         </td>
                         <td class="col-gw">${gwPoints} ${hitDisplay}</td>
@@ -3920,6 +3975,7 @@
 
             renderPlayerToggles();
             if (currentFilter) filterPlayers(currentFilter);
+            updateTableView();
             updateChart();
 
             } catch (error) {
@@ -4179,7 +4235,10 @@
                 return posA - posB;
             });
 
-            container.innerHTML = sortedPlayers.map((player) => {
+            // Get leader's total for gap calculation
+            const leaderTotal = sortedPlayers.length > 0 ? sortedPlayers[0].total : 0;
+
+            container.innerHTML = sortedPlayers.map((player, idx) => {
                 const isSelected = selectedEntries.has(player.entry);
                 const originalIndex = allPlayers.findIndex(p => p.entry === player.entry);
                 const color = colors[originalIndex % colors.length];
@@ -4347,18 +4406,20 @@
                         ${playersStatusHtml}
                         ${live.chip ? `<div class="detail-row"><span>Chip:</span><span style="color: #04f5ff;">${chipAbbrevFull[live.chip] || live.chip}</span></div>` : ''}
                         <div class="detail-row" style="border-top: 1px solid rgba(255,255,255,0.2); margin-top: 5px; padding-top: 8px;"><span>Total:</span><span style="font-weight: bold;">${pointsDisplay}</span></div>
-                        ${live.overallRank ? `<div class="detail-row"><span>Overall Rank:</span><span style="color: #888;">${live.overallRank.toLocaleString()}</span></div>` : ''}
+                        ${idx > 0 ? `<div class="detail-row"><span>Gap to 1st:</span><span style="color: ${pointsDisplay - leaderTotal >= 0 ? '#00ff85' : '#ff6b6b'};">${pointsDisplay - leaderTotal}</span></div>` : ''}
                         ${live.gwRank ? `<div class="detail-row"><span>GW${currentGameweek} Rank:</span><span style="color: #888;">${live.gwRank.toLocaleString()}</span></div>` : ''}
+                        ${live.overallRank ? `<div class="detail-row"><span>Overall Rank:</span><span style="color: #888;">${live.overallRank.toLocaleString()}</span></div>` : ''}
                     </div>`;
                 }
 
-                // Elite styling
+                // Elite styling & user identification
                 const isElite = player.isElite;
-                const isUser = player.isUser;
+                const isUser = player.isUser || player.entry === userTeamId;
                 const eliteClass = isUser ? 'user-player' : (isElite ? 'elite-player' : '');
+                const userStar = isUser ? '⭐ ' : '';
                 const eliteBadge = player.eliteCategory && player.eliteCategory !== 'you'
                     ? `<span class="elite-badge ${player.eliteCategory}" title="${player.eliteAchievement || ''}">${player.eliteCategory.toUpperCase()}</span>`
-                    : (isUser ? '<span class="elite-badge you">YOU</span>' : '');
+                    : '';
 
                 return `
                 <div class="player-wrapper">
@@ -4373,7 +4434,7 @@
                                onchange="togglePlayer(${player.entry}, this.checked)">
                         <span class="rank">#${displayRank} ${movementIndicator}</span>
                         <span class="color-dot" style="background: ${color}; box-shadow: 0 0 4px ${color};"></span>
-                        <span class="player-name" title="${player.player_name} - ${player.entry_name}${player.eliteAchievement ? ' | ' + player.eliteAchievement : ''}">${player.player_name}${eliteBadge}</span>
+                        <span class="player-name" title="${player.player_name} - ${player.entry_name}${player.eliteAchievement ? ' | ' + player.eliteAchievement : ''}">${userStar}${player.player_name}${eliteBadge}</span>
                         <span class="points">${pointsDisplay}${liveIndicator}</span>
                         ${live ? '<span class="expand-icon">ℹ️</span>' : ''}
                     </label>
