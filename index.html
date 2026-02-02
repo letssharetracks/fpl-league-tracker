@@ -2780,6 +2780,23 @@
                 `);
             });
 
+            // Add "Load Next 100" row at the end when viewing user's area and there are more pages
+            if (viewingMyArea && hasMorePages) {
+                tableHtml.push(`
+                    <tr class="load-more-row">
+                        <td colspan="13" style="
+                            text-align: center;
+                            padding: 15px;
+                            background: linear-gradient(90deg, transparent, rgba(0,255,133,0.15), transparent);
+                            border-top: 2px solid #00ff85;
+                        ">
+                            <button data-action="load-next" ontouchend="event.preventDefault(); loadMoreManagers('down');" onclick="loadMoreManagers('down')" style="padding: 10px 20px; background: linear-gradient(135deg, #00ff85, #04f5ff); color: #37003c; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; touch-action: manipulation; -webkit-tap-highlight-color: transparent;">↓ Load Next 100</button>
+                            <div style="margin-top: 8px; font-size: 11px; color: #888;">Showing ${allPlayers.length.toLocaleString()} of ${leagueTotalPlayers > 0 ? leagueTotalPlayers.toLocaleString() : '...'}</div>
+                        </td>
+                    </tr>
+                `);
+            }
+
             tbody.innerHTML = tableHtml.join('');
         }
 
@@ -2938,11 +2955,13 @@
                     allPlayers = [...combinedMap.values()].sort((a, b) => a.rank - b.rank);
                     viewingMyArea = true;
 
-                    // Calculate hasMorePages safely
+                    // Calculate hasMorePages - use both calculation and API value
                     const maxLoadedPage = loadedPages.size > 0 ? Math.max(...loadedPages) : 0;
                     const totalPages = leagueTotalPlayers > 0 ? Math.ceil(leagueTotalPlayers / 50) : 999;
-                    hasMorePages = maxLoadedPage < totalPages;
-                    console.log('loadMyArea: combined', allPlayers.length, 'players, maxPage=', maxLoadedPage, 'totalPages=', totalPages);
+                    const calculatedHasMore = maxLoadedPage < totalPages;
+                    // hasMorePages was also set by fetchLeaguePages from API's has_next - use either
+                    hasMorePages = calculatedHasMore || hasMorePages;
+                    console.log('loadMyArea: combined', allPlayers.length, 'players, maxPage=', maxLoadedPage, 'totalPages=', totalPages, 'leagueTotalPlayers=', leagueTotalPlayers, 'hasMorePages=', hasMorePages);
 
                     // RENDER IMMEDIATELY (don't wait for data)
                     updateTableView();
