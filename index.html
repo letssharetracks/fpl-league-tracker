@@ -3302,13 +3302,16 @@
             try {
                 // Find next pages to load (4 pages = 200 managers)
                 const maxLoadedPage = Math.max(...loadedPages, 0);
-                const minLoadedPage = Math.min(...loadedPages, 999);
+                // For 'up' direction, find min page that's not in top 100 (pages 1-2)
+                const pagesAboveTop100 = [...loadedPages].filter(p => p > 2);
+                const minUserAreaPage = pagesAboveTop100.length > 0 ? Math.min(...pagesAboveTop100) : 999;
 
                 let pagesToLoad = [];
                 if (direction === 'down') {
                     pagesToLoad = [maxLoadedPage + 1, maxLoadedPage + 2, maxLoadedPage + 3, maxLoadedPage + 4];
                 } else {
-                    pagesToLoad = [minLoadedPage - 1, minLoadedPage - 2, minLoadedPage - 3, minLoadedPage - 4].filter(p => p > 0);
+                    // Load pages before user's area (not top 100)
+                    pagesToLoad = [minUserAreaPage - 1, minUserAreaPage - 2, minUserAreaPage - 3, minUserAreaPage - 4].filter(p => p > 2);
                 }
 
                 // Filter out already loaded pages
@@ -5639,9 +5642,13 @@
         // Infinite scroll detection for large leagues (both up and down)
         let scrollTimeout;
         function canLoadUp() {
-            // Can load up if there are unloaded pages below page 3 (pages 1-2 are top 100)
-            const minLoaded = Math.min(...loadedPages, 999);
-            return minLoaded > 3 && !isLoadingMore;
+            // Can load up if there are unloaded pages between top 100 (pages 1-2) and user's area
+            // Find minimum page > 2 (i.e., first page after top 100)
+            const pagesAboveTop100 = [...loadedPages].filter(p => p > 2);
+            if (pagesAboveTop100.length === 0) return false;
+            const minUserPage = Math.min(...pagesAboveTop100);
+            // Can load up if there are pages between 2 and minUserPage
+            return minUserPage > 3 && !isLoadingMore;
         }
 
         function setupScrollListener() {
