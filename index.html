@@ -2333,6 +2333,7 @@
 
             // Build table HTML
             let tableHtml = [];
+            let prevPosition = 0;
 
             playerData.forEach((data, idx) => {
                 const player = data.player;
@@ -2340,6 +2341,27 @@
                 const posData = livePositions[player.entry];
                 const position = posData?.position || player.rank;
                 const movement = posData?.movement || 0;
+
+                // Add separator if there's a large gap (jumped to different area)
+                if (prevPosition > 0 && position - prevPosition > 50) {
+                    tableHtml.push(`
+                        <tr class="jump-separator">
+                            <td colspan="13" style="
+                                text-align: center;
+                                padding: 12px;
+                                background: linear-gradient(90deg, transparent, rgba(4,245,255,0.2), transparent);
+                                color: #04f5ff;
+                                font-size: 12px;
+                                font-weight: 600;
+                                border-top: 2px solid #04f5ff;
+                                border-bottom: 2px solid #04f5ff;
+                            ">
+                                ↓ Jumped to position ${position.toLocaleString()} ↓
+                            </td>
+                        </tr>
+                    `);
+                }
+                prevPosition = position;
 
                 // Use pre-calculated values
                 let gwPoints = data.gwPoints;
@@ -4572,6 +4594,7 @@
 
             // Build HTML
             let htmlParts = [];
+            let prevRank = 0;
 
             sortedPlayers.forEach((player, idx) => {
                 const isSelected = selectedEntries.has(player.entry);
@@ -4579,6 +4602,27 @@
                 const color = colors[originalIndex % colors.length];
                 const live = livePoints[player.entry];
                 const posData = livePositions[player.entry];
+                const currentRank = posData ? posData.position : player.rank;
+
+                // Add separator if there's a large gap (jumped to different area)
+                if (prevRank > 0 && currentRank - prevRank > 50) {
+                    htmlParts.push(`
+                        <div style="
+                            text-align: center;
+                            padding: 10px;
+                            margin: 8px 0;
+                            background: linear-gradient(90deg, transparent, rgba(4,245,255,0.2), transparent);
+                            color: #04f5ff;
+                            font-size: 11px;
+                            font-weight: 600;
+                            border-top: 2px solid #04f5ff;
+                            border-bottom: 2px solid #04f5ff;
+                        ">
+                            ↓ Jumped to position ${currentRank.toLocaleString()} ↓
+                        </div>
+                    `);
+                }
+                prevRank = currentRank;
 
                 // Get previous GW total for calculating GW points
                 const history = playerHistories[player.entry] || [];
