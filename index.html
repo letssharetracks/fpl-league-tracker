@@ -2461,13 +2461,17 @@
                 // Calculate total consistently for ALL players
                 const totalDisplay = prevGwTotal + gwPoints;
 
+                // Determine position: for users outside top 100, always use API rank (most reliable)
+                // Only use livePositions for top 100 where we have recalculated live standings
+                const isInTop100 = player.rank <= 100;
+                const livePos = livePositions[player.entry]?.position;
+                const displayPosition = (isInTop100 && livePos) ? livePos : player.rank;
+
                 return {
                     player,
                     gwPoints,
                     totalDisplay,
-                    // Use recalculated position when available (respects auto-subs toggle)
-                    // Only fall back to API rank for large leagues with partial data outside top 100
-                    position: livePositions[player.entry]?.position || player.rank
+                    position: displayPosition
                 };
             });
 
@@ -2923,15 +2927,26 @@
                 top100Players = [...allPlayers];
             }
 
-            // Calculate pages to load (100 managers around user)
+            // Calculate pages to load (300 managers around user: 3 pages above, user's page, 3 pages below)
             const userPage = Math.ceil(userLeagueRank / 50);
-            const pagesToLoad = [userPage - 1, userPage].filter(p => p > 0 && p > 2);
+            const totalPages = leagueTotalPlayers > 0 ? Math.ceil(leagueTotalPlayers / 50) : 999;
+            const pagesToLoad = [];
 
-            // If no pages to load (user at position 101-150), load page 3
-            if (pagesToLoad.length === 0) {
-                pagesToLoad.push(3);
+            // Load 3 pages before and 3 pages after user's page (max 7 pages = 350 players)
+            for (let i = userPage - 3; i <= userPage + 3; i++) {
+                // Skip pages 1-2 (top 100 already loaded), skip invalid pages
+                if (i > 2 && i <= totalPages) {
+                    pagesToLoad.push(i);
+                }
             }
-            console.log('loadMyArea: userPage=', userPage, 'pagesToLoad=', pagesToLoad);
+
+            // If no pages to load (user at position 101-150), load pages 3-5
+            if (pagesToLoad.length === 0) {
+                for (let i = 3; i <= Math.min(5, totalPages); i++) {
+                    pagesToLoad.push(i);
+                }
+            }
+            console.log('loadMyArea: userPage=', userPage, 'pagesToLoad=', pagesToLoad, 'totalPages=', totalPages);
 
             // Clear these pages from loadedPages to force reload
             pagesToLoad.forEach(p => loadedPages.delete(p));
@@ -2951,8 +2966,10 @@
                     // COMBINE top 100 with user's area (don't replace)
                     const top100 = top100Players || allPlayers.filter(p => p.rank <= 100);
                     const combinedMap = new Map(top100.map(p => [p.entry, p]));
+                    // New players overwrite old data to ensure fresh ranks
                     newPlayers.forEach(p => combinedMap.set(p.entry, p));
-                    allPlayers = [...combinedMap.values()].sort((a, b) => a.rank - b.rank);
+                    // Sort by API rank (guaranteed to be correct from fresh API data)
+                    allPlayers = [...combinedMap.values()].sort((a, b) => (a.rank || 999999) - (b.rank || 999999));
                     viewingMyArea = true;
 
                     // Calculate hasMorePages - use both calculation and API value
@@ -3652,10 +3669,13 @@
                 const newPlayers = await fetchLeaguePages(pagesToLoad);
 
                 if (newPlayers.length > 0) {
-                    // Merge with existing players
+                    // Merge with existing players, using NEW player data (more recent rank)
                     const allEntries = new Map(allPlayers.map(p => [p.entry, p]));
-                    newPlayers.forEach(p => allEntries.set(p.entry, p));
-                    allPlayers = [...allEntries.values()].sort((a, b) => a.rank - b.rank);
+                    newPlayers.forEach(p => {
+                        allEntries.set(p.entry, p); // New data overwrites old
+                    });
+                    // Sort by API rank (guaranteed to be set for all players)
+                    allPlayers = [...allEntries.values()].sort((a, b) => (a.rank || 999999) - (b.rank || 999999));
 
                     // Update hasMorePages based on what we've loaded
                     const newMaxPage = Math.max(...loadedPages, 0);
