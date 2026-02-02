@@ -293,13 +293,14 @@
             font-size: 11px;
         }
         .league-table .col-autosub {
-            min-width: 140px;
-            font-size: 11px;
+            min-width: 90px;
+            max-width: 120px;
+            font-size: 10px;
         }
         .league-table .col-bps {
-            width: 50px;
-            text-align: center;
-            font-size: 11px;
+            min-width: 80px;
+            max-width: 100px;
+            font-size: 10px;
         }
         .league-table .col-or {
             width: 80px;
@@ -322,9 +323,9 @@
             color: #ffaa00;
         }
         .league-table .col-defcon {
-            min-width: 130px;
-            font-size: 11px;
-            padding-left: 10px;
+            min-width: 80px;
+            max-width: 100px;
+            font-size: 10px;
         }
         .league-table .defcon-pts {
             color: #e056fd;
@@ -1457,28 +1458,35 @@
             }
         };
 
-        // Load cached goal scorers from localStorage, merge with hardcoded data
+        // Goal scorers cache - populated after gameweek is determined
         let cachedGoalScorers = {};
-        try {
-            const stored = localStorage.getItem('fpl_goal_scorers');
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                // Only use if from current gameweek (stored with gameweek number)
-                if (parsed.gameweek === currentGameweek) {
-                    cachedGoalScorers = parsed.data || {};
-                    console.log('Loaded goal scorers from localStorage');
+
+        // Merge hardcoded + localStorage goal data (called after currentGameweek is set)
+        function loadGoalScorersForGameweek(gw) {
+            try {
+                // First load from localStorage
+                const stored = localStorage.getItem('fpl_goal_scorers');
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    if (parsed.gameweek === gw) {
+                        cachedGoalScorers = parsed.data || {};
+                        console.log('Loaded goal scorers from localStorage for GW', gw);
+                    }
                 }
+                // Merge hardcoded data as fallback (localStorage/API takes priority)
+                const hardcodedForGw = HARDCODED_GOALS[gw] || {};
+                let mergedCount = 0;
+                Object.keys(hardcodedForGw).forEach(team => {
+                    if (!cachedGoalScorers[team] || cachedGoalScorers[team].length === 0) {
+                        cachedGoalScorers[team] = hardcodedForGw[team];
+                        if (hardcodedForGw[team].length > 0) mergedCount++;
+                    }
+                });
+                console.log(`Merged ${mergedCount} teams with hardcoded goal data for GW${gw}`);
+                console.log('Goal scorers available for:', Object.keys(cachedGoalScorers).filter(k => cachedGoalScorers[k].length > 0));
+            } catch (e) {
+                console.warn('Could not load goal scorers:', e);
             }
-            // Merge hardcoded data as fallback (localStorage/API takes priority)
-            const hardcodedForGw = HARDCODED_GOALS[currentGameweek] || {};
-            Object.keys(hardcodedForGw).forEach(team => {
-                if (!cachedGoalScorers[team] || cachedGoalScorers[team].length === 0) {
-                    cachedGoalScorers[team] = hardcodedForGw[team];
-                }
-            });
-            console.log('Merged hardcoded goal data for GW', currentGameweek);
-        } catch (e) {
-            console.warn('Could not load cached goal scorers:', e);
         }
 
         // Function to save goal scorers to localStorage
@@ -2154,20 +2162,30 @@
                     chipHtml = `<span class="chip-badge">${chipNames[live.chip] || live.chip}</span>`;
                 }
 
-                // Auto-sub display with points gained
+                // Auto-sub display - compact format
                 let autoSubHtml = '';
                 if (live && live.autoSubs && live.autoSubs.length > 0) {
-                    autoSubHtml = live.autoSubs.map(sub =>
-                        `<span class="autosub-info">${sub.inName} <span style="color:#ffaa00;">(+${sub.pointsGained})</span></span>`
-                    ).join('<br>');
+                    autoSubHtml = live.autoSubs.map(sub => {
+                        // Shorten name: "Ndiaye" stays, "B.Fernandes" -> "B.Fern.."
+                        const shortName = sub.inName.length > 7 ? sub.inName.substring(0, 7) + '..' : sub.inName;
+                        return `<span class="autosub-info">${shortName} <span style="color:#ffaa00;">+${sub.pointsGained}</span></span>`;
+                    }).join('<br>');
                 }
 
-                // Bonus display (live bonus during matches) - show player names like DEFCON
+                // Bonus display - compact format, limit to top 2 players
                 let bonusHtml = '';
                 if (live && live.bpsPlayers && live.bpsPlayers.length > 0) {
-                    bonusHtml = live.bpsPlayers.map(p =>
-                        `<span class="bps-pts">${p.name} (+${p.bonus})</span>`
-                    ).join('<br>');
+                    const topBps = live.bpsPlayers.slice(0, 2); // Show max 2 players
+                    const totalBps = live.bpsPlayers.reduce((sum, p) => sum + p.bonus, 0);
+                    const extraCount = live.bpsPlayers.length - 2;
+                    bonusHtml = topBps.map(p => {
+                        // Shorten name: "B.Fernandes" -> "B.Fern..."
+                        const shortName = p.name.length > 8 ? p.name.substring(0, 8) + '..' : p.name;
+                        return `<span class="bps-pts">${shortName} +${p.bonus}</span>`;
+                    }).join('<br>');
+                    if (extraCount > 0) {
+                        bonusHtml += `<br><span class="bps-pts" style="opacity:0.6">+${extraCount} more</span>`;
+                    }
                 }
 
                 // Status display
@@ -2190,12 +2208,18 @@
                     orHtml = live.overallRank.toLocaleString();
                 }
 
-                // DEFCON points with player names and individual scores
+                // DEFCON points - compact format, limit to top 2
                 let defconHtml = '';
                 if (live && live.defconPlayers && live.defconPlayers.length > 0) {
-                    defconHtml = live.defconPlayers.map(p =>
-                        `<span class="defcon-pts">${p.name} (+${p.points})</span>`
-                    ).join('<br>');
+                    const topDef = live.defconPlayers.slice(0, 2);
+                    const extraCount = live.defconPlayers.length - 2;
+                    defconHtml = topDef.map(p => {
+                        const shortName = p.name.length > 8 ? p.name.substring(0, 8) + '..' : p.name;
+                        return `<span class="defcon-pts">${shortName} +${p.points}</span>`;
+                    }).join('<br>');
+                    if (extraCount > 0) {
+                        defconHtml += `<br><span class="defcon-pts" style="opacity:0.6">+${extraCount} more</span>`;
+                    }
                 }
 
                 // Highlight user's team
@@ -2618,6 +2642,9 @@
         // Fixture ticker
         async function fetchAndUpdateTicker(gameweek) {
             try {
+                // Load goal scorers for this gameweek (merges hardcoded + localStorage)
+                loadGoalScorersForGameweek(gameweek);
+
                 // Fetch teams data dynamically (handles season changes/promotion/relegation)
                 const teamAbbr = await fetchBootstrapTeams() || {};
 
