@@ -2469,11 +2469,37 @@
                     player,
                     gwPoints,
                     totalDisplay,
-                    position: null // Will be assigned after sorting
+                    leaguePosition: null, // Actual league position based on total points
+                    movement: 0
                 };
             });
 
-            // Sort based on sortColumn and sortDirection
+            // First: Calculate ACTUAL league positions based on total points (always)
+            // This is the official FPL ranking regardless of how we're sorting the display
+            const isSmallLeague = !viewingMyArea && allPlayers.length <= 100;
+
+            // Sort by total to determine league positions
+            const positionSorted = [...playerData].sort((a, b) => {
+                let comparison = b.totalDisplay - a.totalDisplay;
+                if (comparison === 0) comparison = a.player.rank - b.player.rank;
+                return comparison;
+            });
+
+            // Assign actual league positions
+            positionSorted.forEach((data, idx) => {
+                if (isSmallLeague || data.player.rank <= 100) {
+                    // Small league or top 100: assign position based on total points order
+                    data.leaguePosition = idx + 1;
+                    // Calculate movement: old rank - new position (positive = moved up)
+                    data.movement = (data.player.last_rank || data.player.rank) - (idx + 1);
+                } else {
+                    // Large league, outside top 100: use API rank (can't recalculate global position)
+                    data.leaguePosition = data.player.rank;
+                    data.movement = 0;
+                }
+            });
+
+            // Now sort for DISPLAY based on sortColumn and sortDirection
             playerData.sort((a, b) => {
                 let comparison = 0;
                 if (sortColumn === 'gw') {
@@ -2492,24 +2518,6 @@
                 return sortDirection === 'asc' ? -comparison : comparison;
             });
 
-            // Assign positions AFTER sorting
-            // For small leagues or top 100: use sorted index (1, 2, 3...)
-            // For large leagues viewing "my area": use API rank for non-top-100 players
-            const isSmallLeague = !viewingMyArea && allPlayers.length <= 100;
-
-            playerData.forEach((data, idx) => {
-                if (isSmallLeague || data.player.rank <= 100) {
-                    // Small league or top 100: assign position based on sorted order
-                    data.position = idx + 1;
-                    // Calculate movement: old rank - new position (positive = moved up)
-                    data.movement = (data.player.last_rank || data.player.rank) - (idx + 1);
-                } else {
-                    // Large league, outside top 100: use API rank (can't recalculate global position)
-                    data.position = data.player.rank;
-                    data.movement = 0;
-                }
-            });
-
             // Extract sorted players and totals
             const sortedPlayers = playerData.map(d => d.player);
 
@@ -2524,8 +2532,8 @@
             playerData.forEach((data, idx) => {
                 const player = data.player;
                 const live = livePoints[player.entry];
-                // Use calculated position and movement
-                const position = data.position;
+                // Use actual league position (based on total points), not sorted position
+                const position = data.leaguePosition;
                 const movement = data.movement || 0;
 
                 // Add separator ONCE when jumping from top 100 to user's area
@@ -3238,6 +3246,10 @@
 
             // Save current league to memory before switching
             saveLeagueToMemory();
+
+            // Reset sort to default when changing leagues
+            sortColumn = 'total';
+            sortDirection = 'desc';
 
             // Clear UI immediately
             clearViewStateUI();
