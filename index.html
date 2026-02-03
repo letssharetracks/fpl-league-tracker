@@ -6816,8 +6816,8 @@
             endSelect.innerHTML = '';
 
             for (let i = 1; i <= maxGw; i++) {
-                startSelect.innerHTML += `<option value="${i}">GW${i}</option>`;
-                endSelect.innerHTML += `<option value="${i}">GW${i}</option>`;
+                startSelect.innerHTML += `<option value="${i}">${i}</option>`;
+                endSelect.innerHTML += `<option value="${i}">${i}</option>`;
             }
 
             // Default to last 5 gameweeks for better chart readability
