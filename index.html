@@ -1489,12 +1489,12 @@
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px; margin: 8px 0;">
                     <span style="font-size: 11px; color: #888;">1</span>
-                    <input type="range" id="topNSlider" min="1" max="100" step="1" value="10"
-                           oninput="updateSliderLabel(this.value)"
-                           onchange="selectTopN(this.value)"
-                           style="flex: 1; accent-color: #04f5ff; cursor: pointer; height: 20px;">
-                    <span style="font-size: 11px; color: #888;">100</span>
-                    <span id="sliderValue" style="font-size: 12px; color: #04f5ff; font-weight: 600; min-width: 50px;">Top 10</span>
+                    <input type="range" id="topNSlider" min="1" max="500" step="1" value="10"
+                           oninput="updateSliderLabel(this.value); this.style.accentColor='#00ff85';"
+                           onchange="selectTopN(this.value); this.style.accentColor='#04f5ff';"
+                           style="flex: 1; accent-color: #04f5ff; cursor: pointer; height: 24px;">
+                    <span id="sliderMaxLabel" style="font-size: 11px; color: #888;">All</span>
+                    <span id="sliderValue" style="font-size: 12px; color: #04f5ff; font-weight: 600; min-width: 55px; background: rgba(4,245,255,0.1); padding: 2px 6px; border-radius: 4px;">Top 10</span>
                 </div>
                 <div class="player-list" id="playerToggles">
                     <div class="loading">
@@ -6801,10 +6801,11 @@
 
         function updateSliderMax() {
             const slider = document.getElementById('topNSlider');
+            const maxLabel = document.getElementById('sliderMaxLabel');
             if (slider && allPlayers.length > 0) {
-                // Cap slider max at league size or 100, whichever is smaller
-                const maxVal = Math.min(allPlayers.length, 100);
-                slider.max = maxVal;
+                // Set slider max to loaded player count (no arbitrary cap)
+                slider.max = allPlayers.length;
+                if (maxLabel) maxLabel.textContent = `All`;
             }
         }
 
