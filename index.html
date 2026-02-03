@@ -2941,7 +2941,7 @@
             }
 
             const targetLeague = LEAGUE_ID; // Capture current league
-            console.log('findMyTeam: userTeamId=', userTeamId, 'userLeagueRank=', userLeagueRank, 'league=', targetLeague);
+            console.log('findMyTeam: userTeamId=', userTeamId, 'userLeagueRank=', userLeagueRank, 'league=', targetLeague, 'LEAGUE_ID type:', typeof LEAGUE_ID);
 
             // Find the row with the user's team
             const myRow = document.querySelector(`tr[data-entry="${userTeamId}"]`);
@@ -2956,40 +2956,36 @@
                 return;
             }
 
-            // User not in current view - need to fetch their rank and load their area
-            if (!userLeagueRank) {
-                showStatus('Finding your position...');
-                const rankInfo = await fetchUserLeagueRank(targetLeague, userTeamId);
-
-                // Check if league changed during fetch
-                if (LEAGUE_ID !== targetLeague) {
-                    console.log('findMyTeam: league changed during fetch, aborting');
-                    hideStatus();
-                    return;
-                }
-
-                if (rankInfo) {
-                    userLeagueRank = rankInfo.rank;
-                    leagueTotalPlayers = rankInfo.leagueCount || leagueTotalPlayers;
-                    console.log('Fetched rank:', userLeagueRank);
-                } else {
-                    hideStatus();
-                    showStatus('You are not a member of this league. Find Me only works in leagues you\'ve joined.');
-                    setTimeout(hideStatus, 4000);
-                    return;
-                }
+            // User not in current view - ALWAYS fetch their rank fresh to ensure accuracy
+            // Wait for any pending league load to finish
+            if (isLoading) {
+                showStatus('League still loading, please wait...');
+                setTimeout(hideStatus, 2000);
+                return;
             }
 
-            // Final check before loading area
+            showStatus('Finding your position...');
+            const rankInfo = await fetchUserLeagueRank(targetLeague, userTeamId);
+            console.log('findMyTeam: rankInfo=', rankInfo);
+
+            // Check if league changed during fetch
             if (LEAGUE_ID !== targetLeague) {
-                console.log('findMyTeam: league changed, aborting');
+                console.log('findMyTeam: league changed during fetch, aborting');
                 hideStatus();
                 return;
             }
 
-            // Now load their area
-            if (userLeagueRank) {
+            if (rankInfo) {
+                userLeagueRank = rankInfo.rank;
+                leagueTotalPlayers = rankInfo.leagueCount || leagueTotalPlayers;
+                console.log('Fetched rank:', userLeagueRank, 'of', leagueTotalPlayers);
+
+                // Now load their area
                 await loadMyArea();
+            } else {
+                hideStatus();
+                showStatus('You are not a member of this league. Find Me only works in leagues you\'ve joined.');
+                setTimeout(hideStatus, 4000);
             }
         }
 
