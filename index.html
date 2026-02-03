@@ -1503,6 +1503,14 @@
             <div id="leagueNotice" style="display: none; text-align: center; padding: 8px; background: rgba(4,245,255,0.1); border-radius: 6px; margin-bottom: 10px; font-size: 11px; color: #04f5ff;">
                 Showing <span id="loadedCount">0</span> of <span id="totalCount">0</span> managers.
                 <button ontouchend="event.preventDefault(); loadMoreManagers('down');" onclick="loadMoreManagers('down')" style="margin-left: 10px; padding: 6px 14px; background: #04f5ff; color: #37003c; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; touch-action: manipulation;">Load More</button>
+                <button id="loadAllBtn" ontouchend="event.preventDefault(); loadAllManagers();" onclick="loadAllManagers()" style="display: none; margin-left: 8px; padding: 6px 14px; background: linear-gradient(135deg, #ff6b35, #f7931e); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; touch-action: manipulation;">Load All</button>
+            </div>
+            <div id="loadAllProgress" style="display: none; text-align: center; padding: 10px; background: rgba(255,107,53,0.1); border-radius: 6px; margin-bottom: 10px;">
+                <div style="font-size: 12px; color: #ff6b35; margin-bottom: 6px;">Loading all managers... <span id="loadAllProgressText">0%</span></div>
+                <div style="background: rgba(255,255,255,0.1); border-radius: 4px; height: 6px; overflow: hidden;">
+                    <div id="loadAllProgressBar" style="background: linear-gradient(90deg, #ff6b35, #f7931e); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                </div>
+                <button onclick="cancelLoadAll()" style="margin-top: 8px; padding: 4px 12px; background: transparent; color: #ff6b35; border: 1px solid #ff6b35; border-radius: 4px; cursor: pointer; font-size: 11px;">Cancel</button>
             </div>
             <table class="league-table">
                 <thead>
@@ -1527,6 +1535,7 @@
             </table>
             <div id="loadMoreSection" style="display: none; text-align: center; padding: 15px;">
                 <button ontouchend="event.preventDefault(); loadMoreManagers('down');" onclick="loadMoreManagers('down')" style="padding: 12px 28px; background: linear-gradient(135deg, #04f5ff, #00ff85); color: #37003c; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; touch-action: manipulation; -webkit-tap-highlight-color: transparent;">Load More Managers</button>
+                <button id="loadAllBtn2" ontouchend="event.preventDefault(); loadAllManagers();" onclick="loadAllManagers()" style="display: none; margin-left: 10px; padding: 12px 28px; background: linear-gradient(135deg, #ff6b35, #f7931e); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; touch-action: manipulation; -webkit-tap-highlight-color: transparent;">Load All Managers</button>
                 <div style="margin-top: 8px; font-size: 11px; color: #888;">Showing <span id="loadedCount2">0</span> of <span id="totalCount2">0</span></div>
             </div>
         </div>
@@ -1643,6 +1652,8 @@
         let loadedPages = new Set();    // Which pages we've loaded
         let hasMorePages = true;        // Are there more pages to load?
         let isLoadingMore = false;      // Currently loading more?
+        let isLoadingAll = false;       // Currently loading all managers?
+        let loadAllCancelled = false;   // Was Load All cancelled?
         let userLeagueRank = null;      // User's rank in current league
 
         // Update Find Me button state based on whether we know user's position
@@ -3357,6 +3368,9 @@
             // Hide load more section
             const loadMoreSection = document.getElementById('loadMoreSection');
             if (loadMoreSection) loadMoreSection.style.display = 'none';
+            // Hide Load All progress bar
+            const loadAllProgress = document.getElementById('loadAllProgress');
+            if (loadAllProgress) loadAllProgress.style.display = 'none';
             // Remove any jump separators in table
             document.querySelectorAll('.jump-separator').forEach(el => el.remove());
         }
@@ -3379,6 +3393,8 @@
             // Reset loading flags
             isLoadingMyArea = false;
             isLoadingMore = false;
+            isLoadingAll = false;
+            loadAllCancelled = true; // Cancel any in-progress Load All
             highlightedEntry = null;
 
             if (selectedValue === 'elite') {
@@ -3479,6 +3495,8 @@
             leagueTotalPlayers = 0;
             isLoadingMyArea = false;
             isLoadingMore = false;
+            isLoadingAll = false;
+            loadAllCancelled = true; // Cancel any in-progress Load All
             highlightedEntry = null; // Clear Find Me highlight
             updateFindMeButton(); // Disable Find Me until position is fetched
 
@@ -3862,6 +3880,129 @@
             showLoadingMore(false);
         }
 
+        // Cancel loading all managers
+        function cancelLoadAll() {
+            loadAllCancelled = true;
+            console.log('Load All cancelled by user');
+        }
+
+        // Load ALL managers in the league (for full sorting capability)
+        async function loadAllManagers() {
+            if (isLoadingAll || isLoadingMore) {
+                console.log('Already loading, please wait');
+                return;
+            }
+
+            const targetLeague = LEAGUE_ID;
+            const totalManagers = leagueTotalPlayers || 0;
+
+            if (totalManagers === 0) {
+                showStatus('Cannot determine league size');
+                setTimeout(hideStatus, 2000);
+                return;
+            }
+
+            const totalPages = Math.ceil(totalManagers / 50);
+            const pagesToLoad = [];
+
+            // Find all pages we haven't loaded yet
+            for (let i = 1; i <= totalPages; i++) {
+                if (!loadedPages.has(i)) {
+                    pagesToLoad.push(i);
+                }
+            }
+
+            if (pagesToLoad.length === 0) {
+                showStatus('All managers already loaded!');
+                setTimeout(hideStatus, 2000);
+                return;
+            }
+
+            console.log(`Load All: ${pagesToLoad.length} pages to load (${totalManagers} managers)`);
+
+            isLoadingAll = true;
+            loadAllCancelled = false;
+
+            // Show progress UI
+            const progressDiv = document.getElementById('loadAllProgress');
+            const progressText = document.getElementById('loadAllProgressText');
+            const progressBar = document.getElementById('loadAllProgressBar');
+            const loadAllBtn = document.getElementById('loadAllBtn');
+            const loadAllBtn2 = document.getElementById('loadAllBtn2');
+
+            if (progressDiv) progressDiv.style.display = 'block';
+            if (loadAllBtn) loadAllBtn.style.display = 'none';
+            if (loadAllBtn2) loadAllBtn2.style.display = 'none';
+
+            let loadedCount = 0;
+            const BATCH_SIZE = 5; // Load 5 pages at a time (250 managers)
+            const BATCH_DELAY = 500; // 500ms between batches to avoid rate limits
+
+            try {
+                for (let i = 0; i < pagesToLoad.length; i += BATCH_SIZE) {
+                    // Check if cancelled or league changed
+                    if (loadAllCancelled || LEAGUE_ID !== targetLeague) {
+                        console.log('Load All stopped:', loadAllCancelled ? 'cancelled' : 'league changed');
+                        break;
+                    }
+
+                    const batch = pagesToLoad.slice(i, i + BATCH_SIZE);
+                    const newPlayers = await fetchLeaguePages(batch);
+
+                    if (newPlayers.length > 0) {
+                        // Merge with existing players
+                        const allEntries = new Map(allPlayers.map(p => [p.entry, p]));
+                        newPlayers.forEach(p => allEntries.set(p.entry, p));
+                        allPlayers = [...allEntries.values()].sort((a, b) => (a.rank || 999999) - (b.rank || 999999));
+                    }
+
+                    loadedCount += batch.length;
+                    const percent = Math.round((loadedCount / pagesToLoad.length) * 100);
+                    const managersLoaded = Math.min(loadedCount * 50, totalManagers);
+
+                    // Update progress
+                    if (progressText) progressText.textContent = `${percent}% (${managersLoaded.toLocaleString()} managers)`;
+                    if (progressBar) progressBar.style.width = `${percent}%`;
+
+                    // Update table every 10 batches (500 managers) for visual feedback
+                    if (loadedCount % 10 === 0 || i + BATCH_SIZE >= pagesToLoad.length) {
+                        updateTableView();
+                        updateLeagueNotice();
+                    }
+
+                    // Small delay between batches to avoid rate limiting
+                    if (i + BATCH_SIZE < pagesToLoad.length && !loadAllCancelled) {
+                        await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
+                    }
+                }
+
+                // Final render
+                hasMorePages = false;
+                updateTableView();
+                renderPlayerToggles();
+                updateLeagueNotice();
+
+                if (!loadAllCancelled && LEAGUE_ID === targetLeague) {
+                    showStatus(`Loaded all ${allPlayers.length.toLocaleString()} managers! Sorting now works on everyone.`);
+                    setTimeout(hideStatus, 3000);
+
+                    // Fetch histories for all players in background (non-blocking)
+                    console.log('Starting background history fetch for all players...');
+                    fetchHistoriesForPlayers(allPlayers);
+                }
+
+            } catch (e) {
+                console.error('Error in Load All:', e);
+                showStatus('Error loading managers. Try again.');
+                setTimeout(hideStatus, 3000);
+            } finally {
+                isLoadingAll = false;
+                loadAllCancelled = false;
+                if (progressDiv) progressDiv.style.display = 'none';
+                updateLeagueNotice(); // This will show/hide Load All button appropriately
+            }
+        }
+
         // Auto-preload additional pages in background for large leagues
         // This runs after initial render to pre-populate more data without blocking UI
         async function autoPreloadMorePages(targetLeagueId) {
@@ -3946,16 +4087,24 @@
             const loadMoreSection = document.getElementById('loadMoreSection');
             const loadedCount2 = document.getElementById('loadedCount2');
             const totalCount2 = document.getElementById('totalCount2');
+            const loadAllBtn = document.getElementById('loadAllBtn');
+            const loadAllBtn2 = document.getElementById('loadAllBtn2');
 
             // Only show "Load More" when viewing "My Area" AND there are more pages
             const showMore = viewingMyArea && hasMorePages;
             const totalDisplay = leagueTotalPlayers > 0 ? leagueTotalPlayers.toLocaleString() : (hasMorePages ? '...' : allPlayers.length);
 
-            console.log('updateLeagueNotice: viewingMyArea=', viewingMyArea, 'hasMorePages=', hasMorePages, 'showMore=', showMore);
+            // Show "Load All" when league is large and not all loaded
+            const notAllLoaded = leagueTotalPlayers > allPlayers.length;
+            const isLargeLeague = leagueTotalPlayers > 200;
+            const showLoadAll = isLargeLeague && notAllLoaded && !isLoadingAll;
+
+            console.log('updateLeagueNotice: viewingMyArea=', viewingMyArea, 'hasMorePages=', hasMorePages, 'showMore=', showMore, 'showLoadAll=', showLoadAll);
 
             if (notice) {
-                if (showMore) {
-                    loadedCount.textContent = allPlayers.length;
+                // Show notice if viewing "My Area" OR if it's a large league with partial data
+                if (showMore || (isLargeLeague && notAllLoaded)) {
+                    loadedCount.textContent = allPlayers.length.toLocaleString();
                     totalCount.textContent = totalDisplay;
                     notice.style.display = 'block';
                 } else {
@@ -3963,9 +4112,17 @@
                 }
             }
 
+            // Show/hide Load All buttons
+            if (loadAllBtn) {
+                loadAllBtn.style.display = showLoadAll ? 'inline-block' : 'none';
+            }
+            if (loadAllBtn2) {
+                loadAllBtn2.style.display = showLoadAll ? 'inline-block' : 'none';
+            }
+
             if (loadMoreSection) {
                 if (showMore) {
-                    loadedCount2.textContent = allPlayers.length;
+                    loadedCount2.textContent = allPlayers.length.toLocaleString();
                     totalCount2.textContent = totalDisplay;
                     loadMoreSection.style.display = 'block';
                 } else {
