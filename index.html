@@ -1430,7 +1430,7 @@
                 <button class="btn btn-top-10" onclick="loadNewLeague()">Load</button>
                 <button class="btn btn-clear-all" onclick="clearAllCaches()" title="Clear all cached data">Reset</button>
                 <button class="btn btn-select-all" id="refreshLiveBtn" onclick="refreshLiveData()" title="Refresh live gameweek data">Refresh</button>
-                <button class="btn btn-select-all" onclick="findMyTeam()" title="Jump to your team in the table" style="background: linear-gradient(135deg, #00ff85, #04f5ff);">⭐ Find Me</button>
+                <button class="btn btn-select-all" id="findMeBtn" onclick="findMyTeam()" title="Jump to your team in the table" style="background: linear-gradient(135deg, #00ff85, #04f5ff);" disabled>⭐ Find Me</button>
                 <button class="btn btn-clear-all" onclick="changeTeam()" title="Go back and enter a different Team ID">Change</button>
             </div>
             <div class="control-group">
@@ -1644,6 +1644,36 @@
         let hasMorePages = true;        // Are there more pages to load?
         let isLoadingMore = false;      // Currently loading more?
         let userLeagueRank = null;      // User's rank in current league
+
+        // Update Find Me button state based on whether we know user's position
+        function updateFindMeButton() {
+            const btn = document.getElementById('findMeBtn');
+            if (!btn) return;
+
+            const isReady = userLeagueRank !== null && userTeamId !== null;
+            const isMember = userLeagueRank !== null; // null means not fetched or not a member
+
+            if (isReady) {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.style.cursor = 'pointer';
+                btn.title = `Jump to your position (#${userLeagueRank.toLocaleString()})`;
+                btn.innerHTML = `⭐ Find Me`;
+            } else if (userTeamId && !isMember) {
+                // Still loading or not a member
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
+                btn.title = 'Loading your position...';
+                btn.innerHTML = `⭐ Find Me`;
+            } else {
+                // No team ID set
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
+                btn.title = 'Set your Team ID first';
+            }
+        }
 
         // Match status tracking
         let matchesInProgress = false;  // Are any matches currently live?
@@ -2030,6 +2060,7 @@
             document.getElementById('setupScreen').style.display = 'none';
             document.getElementById('mainApp').style.display = 'block';
             populateLeagueDropdown();
+            updateFindMeButton(); // Set initial Find Me button state
             if (userLeagues.length > 0 && !LEAGUE_ID) {
                 LEAGUE_ID = userLeagues[0].id;
             }
@@ -3447,6 +3478,7 @@
             isLoadingMyArea = false;
             isLoadingMore = false;
             highlightedEntry = null; // Clear Find Me highlight
+            updateFindMeButton(); // Disable Find Me until position is fetched
 
             // Clear all view state UI
             clearViewStateUI();
@@ -3721,6 +3753,7 @@
             hasMorePages = false;
             viewingMyArea = false;  // Reset when loading new league
             userLeagueRank = null;
+            updateFindMeButton(); // Disable Find Me until position fetched
 
             // Get user's rank in this league (for Find Me feature)
             if (userTeamId) {
@@ -3729,6 +3762,7 @@
                     userLeagueRank = rankInfo.rank;
                     leagueTotalPlayers = rankInfo.leagueCount;
                     console.log(`User rank: ${userLeagueRank} of ${leagueTotalPlayers}`);
+                    updateFindMeButton(); // Enable Find Me now that we have user's position
                 }
             }
 
@@ -5481,6 +5515,7 @@
                                 userLeagueRank = rankInfo.rank;
                                 leagueTotalPlayers = rankInfo.leagueCount || leagueTotalPlayers;
                                 console.log('User position pre-fetched:', userLeagueRank, 'of', leagueTotalPlayers);
+                                updateFindMeButton(); // Enable Find Me button
                             }
                         }).catch(e => console.warn('Could not pre-fetch user position:', e));
                     }
@@ -5743,6 +5778,7 @@
                             userLeagueRank = rankInfo.rank;
                             leagueTotalPlayers = rankInfo.leagueCount || leagueTotalPlayers;
                             console.log('User position fetched:', userLeagueRank, 'of', leagueTotalPlayers);
+                            updateFindMeButton(); // Enable Find Me button
 
                             // Auto-preload more pages in background for large leagues
                             // This runs after live data, so user already has a responsive UI
