@@ -1481,10 +1481,7 @@
                 <input type="text" id="playerSearch" placeholder="Search players..."
                        oninput="filterPlayers(this.value)"
                        style="width: 100%; padding: 8px 12px; margin-bottom: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(55,0,60,0.8); color: #fff; font-size: 13px;">
-                <div class="btn-group">
-                    <button class="btn btn-clear-all" onclick="clearAll()">Clear</button>
-                    <button class="btn btn-top-10" id="selectFilteredBtn" onclick="selectFiltered()" style="display: none;">Select Filtered</button>
-                </div>
+                <button class="btn btn-top-10" id="selectFilteredBtn" onclick="selectFiltered()" style="display: none;">Select Filtered</button>
                 <div style="display: flex; align-items: center; gap: 8px; margin: 8px 0;">
                     <span style="font-size: 11px; color: #888;">1</span>
                     <input type="range" id="topNSlider" min="1" max="500" step="1" value="10"
@@ -1493,6 +1490,7 @@
                            style="flex: 1; accent-color: #04f5ff; cursor: pointer; height: 24px;">
                     <span id="sliderMaxLabel" style="font-size: 11px; color: #888;">All</span>
                     <span id="sliderValue" style="font-size: 12px; color: #04f5ff; font-weight: 600; min-width: 55px; background: rgba(4,245,255,0.1); padding: 2px 6px; border-radius: 4px;">Top 10</span>
+                    <button class="btn btn-clear-all" onclick="clearAll()" style="padding: 4px 10px; font-size: 11px;">Clear</button>
                 </div>
                 <div class="player-list" id="playerToggles">
                     <div class="loading">
