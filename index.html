@@ -2217,7 +2217,11 @@
             showSetupScreen();
         }
 
-        // Cache functions
+        // Cache functions - Extended TTL with smart GW-based invalidation
+        // History data only changes when a new GW completes, so cache aggressively
+        const CACHE_TTL_HOURS = 24; // 24 hours base TTL
+        const CACHE_TTL_MS = CACHE_TTL_HOURS * 60 * 60 * 1000;
+
         function getCacheKey(leagueId) {
             return `fpl_cache_${leagueId}`;
         }
@@ -2227,16 +2231,31 @@
                 const cached = localStorage.getItem(getCacheKey(leagueId));
                 if (cached) {
                     const data = JSON.parse(cached);
-                    // Verify cache is for correct league and not expired (1 hour)
-                    if (data.timestamp && Date.now() - data.timestamp < 3600000) {
-                        // Validate league ID matches
-                        if (data.leagueId && data.leagueId !== leagueId) {
-                            console.warn('Cache league ID mismatch, clearing:', data.leagueId, 'vs', leagueId);
-                            localStorage.removeItem(getCacheKey(leagueId));
-                            return null;
-                        }
-                        console.log('Using cached data from', new Date(data.timestamp).toLocaleTimeString());
+
+                    // Validate league ID matches
+                    if (data.leagueId && data.leagueId !== leagueId) {
+                        console.warn('Cache league ID mismatch, clearing:', data.leagueId, 'vs', leagueId);
+                        localStorage.removeItem(getCacheKey(leagueId));
+                        return null;
+                    }
+
+                    // Smart invalidation: check if GW has changed
+                    const cachedGw = data.cachedGameweek || 0;
+                    const cacheAge = Date.now() - data.timestamp;
+
+                    // Cache is valid if:
+                    // 1. Same gameweek and within 24 hours, OR
+                    // 2. Different gameweek but less than 5 minutes old (allow brief overlap during GW transition)
+                    const sameGw = cachedGw === currentGameweek || currentGameweek === null;
+                    const withinTTL = cacheAge < CACHE_TTL_MS;
+                    const recentCache = cacheAge < 300000; // 5 minutes
+
+                    if ((sameGw && withinTTL) || recentCache) {
+                        const ageMinutes = Math.round(cacheAge / 60000);
+                        console.log(`Using cached data (${ageMinutes}m old, GW${cachedGw}${sameGw ? '' : ' → GW' + currentGameweek})`);
                         return data;
+                    } else {
+                        console.log(`Cache expired: GW${cachedGw} → GW${currentGameweek}, age: ${Math.round(cacheAge/3600000)}h`);
                     }
                 }
             } catch (e) {
@@ -2246,18 +2265,51 @@
             return null;
         }
 
-        function saveToCache(leagueId, players, histories) {
+        function saveToCache(leagueId, players, histories, leagueNameToSave) {
             try {
                 const data = {
                     timestamp: Date.now(),
+                    leagueId: leagueId,
+                    cachedGameweek: currentGameweek,
                     players: players,
-                    histories: histories
+                    histories: histories,
+                    leagueName: leagueNameToSave || leagueName
                 };
                 localStorage.setItem(getCacheKey(leagueId), JSON.stringify(data));
-                console.log('Data cached for league', leagueId);
+                console.log(`Data cached for league ${leagueId} (GW${currentGameweek}, ${players.length} players)`);
             } catch (e) {
-                console.warn('Cache write error:', e);
+                // localStorage quota exceeded - try to clear old caches
+                console.warn('Cache write error, attempting cleanup:', e);
+                clearOldCaches(leagueId);
+                try {
+                    const data = {
+                        timestamp: Date.now(),
+                        leagueId: leagueId,
+                        cachedGameweek: currentGameweek,
+                        players: players,
+                        histories: histories,
+                        leagueName: leagueNameToSave || leagueName
+                    };
+                    localStorage.setItem(getCacheKey(leagueId), JSON.stringify(data));
+                } catch (e2) {
+                    console.warn('Cache write failed after cleanup:', e2);
+                }
             }
+        }
+
+        // Clear old league caches to free up space
+        function clearOldCaches(exceptLeagueId) {
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('fpl_cache_') && key !== getCacheKey(exceptLeagueId)) {
+                    keysToRemove.push(key);
+                }
+            }
+            keysToRemove.forEach(key => {
+                console.log('Clearing old cache:', key);
+                localStorage.removeItem(key);
+            });
         }
 
         function setChartType(type) {
@@ -2538,12 +2590,19 @@
             // Pre-calculate totals for gap calculation (use sorted order)
             const playerTotals = playerData.map(d => d.totalDisplay);
 
-            // Build table HTML
+            // Build table HTML - with chunked rendering for large leagues
             let tableHtml = [];
             let prevPosition = 0;
             let separatorShown = false;
 
-            playerData.forEach((data, idx) => {
+            // For very large displays (300+), limit initial render for performance
+            // Users can click "Show All" to see everything
+            const INITIAL_RENDER_LIMIT = 300;
+            const isLargeTable = playerData.length > INITIAL_RENDER_LIMIT;
+            const showAllTable = !isLargeTable || window.showAllTableRows;
+            const rowsToRender = showAllTable ? playerData.length : INITIAL_RENDER_LIMIT;
+
+            playerData.slice(0, rowsToRender).forEach((data, idx) => {
                 const player = data.player;
                 const live = livePoints[player.entry];
                 // Use actual league position (based on total points), not sorted position
@@ -2819,6 +2878,26 @@
                     </tr>
                 `);
             });
+
+            // Add "Show All" row when table is truncated for performance
+            if (isLargeTable && !showAllTable) {
+                const remaining = playerData.length - INITIAL_RENDER_LIMIT;
+                tableHtml.push(`
+                    <tr class="show-all-row">
+                        <td colspan="13" style="
+                            text-align: center;
+                            padding: 15px;
+                            background: linear-gradient(90deg, transparent, rgba(255,170,0,0.15), transparent);
+                            border-top: 2px solid #ffaa00;
+                        ">
+                            <button onclick="window.showAllTableRows = true; updateTableView();" style="padding: 10px 20px; background: linear-gradient(135deg, #ffaa00, #ff6b00); color: #37003c; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
+                                Show All ${remaining.toLocaleString()} More Managers
+                            </button>
+                            <div style="margin-top: 8px; font-size: 11px; color: #888;">Showing first ${INITIAL_RENDER_LIMIT} for faster performance</div>
+                        </td>
+                    </tr>
+                `);
+            }
 
             // Add "Load Next 100" row at the end when viewing user's area and there are more pages
             if (viewingMyArea && hasMorePages) {
@@ -3742,6 +3821,66 @@
 
             isLoadingMore = false;
             showLoadingMore(false);
+        }
+
+        // Auto-preload additional pages in background for large leagues
+        // This runs after initial render to pre-populate more data without blocking UI
+        async function autoPreloadMorePages(targetLeagueId) {
+            if (isBackgroundLoading || isLoadingMore) return;
+
+            // Limit background preloading to first 500 managers (10 pages)
+            const MAX_PRELOAD_PAGES = 10;
+            const pagesLoaded = loadedPages.size;
+
+            if (pagesLoaded >= MAX_PRELOAD_PAGES) {
+                console.log('Auto-preload limit reached (10 pages)');
+                return;
+            }
+
+            console.log(`Auto-preloading pages ${pagesLoaded + 1}-${Math.min(pagesLoaded + 2, MAX_PRELOAD_PAGES)}...`);
+
+            try {
+                isBackgroundLoading = true;
+                const maxLoadedPage = Math.max(...loadedPages, 0);
+                const pagesToLoad = [maxLoadedPage + 1, maxLoadedPage + 2].filter(p => p <= MAX_PRELOAD_PAGES);
+
+                if (pagesToLoad.length === 0) {
+                    isBackgroundLoading = false;
+                    return;
+                }
+
+                // Check if league changed
+                if (LEAGUE_ID !== targetLeagueId) {
+                    isBackgroundLoading = false;
+                    return;
+                }
+
+                const newPlayers = await fetchLeaguePages(pagesToLoad);
+
+                if (newPlayers.length > 0 && LEAGUE_ID === targetLeagueId) {
+                    // Merge with existing
+                    const allEntries = new Map(allPlayers.map(p => [p.entry, p]));
+                    newPlayers.forEach(p => allEntries.set(p.entry, p));
+                    allPlayers = [...allEntries.values()].sort((a, b) => (a.rank || 999999) - (b.rank || 999999));
+
+                    // Fetch histories for new players
+                    await fetchHistoriesForPlayers(newPlayers);
+
+                    // Update cache with expanded data
+                    saveToCache(targetLeagueId, allPlayers, playerHistories, leagueName);
+
+                    console.log(`Auto-preloaded ${newPlayers.length} managers (total: ${allPlayers.length})`);
+
+                    // Continue preloading more pages if within limit
+                    if (loadedPages.size < MAX_PRELOAD_PAGES && LEAGUE_ID === targetLeagueId) {
+                        setTimeout(() => autoPreloadMorePages(targetLeagueId), 2000);
+                    }
+                }
+            } catch (e) {
+                console.warn('Auto-preload error:', e);
+            } finally {
+                isBackgroundLoading = false;
+            }
         }
 
         // Fetch histories for a subset of players
@@ -5287,6 +5426,10 @@
         async function loadAllData() {
             const targetLeague = LEAGUE_ID;
             isLoading = true;
+
+            // Reset table display state for new league
+            window.showAllTableRows = false;
+
             try {
                 showStatus('Loading league data...');
                 console.log('Loading data for league:', LEAGUE_ID);
@@ -5383,6 +5526,50 @@
             return 150;                                  // Large league: aggressive batching
         }
 
+        // Background loading state
+        let isBackgroundLoading = false;
+        let backgroundLoadProgress = 0;
+
+        // Show/hide background loading indicator
+        function updateBackgroundLoadingIndicator(show, loaded, total) {
+            let indicator = document.getElementById('backgroundLoadingIndicator');
+            if (!indicator && show) {
+                indicator = document.createElement('div');
+                indicator.id = 'backgroundLoadingIndicator';
+                indicator.style.cssText = `
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    background: rgba(0, 0, 0, 0.85);
+                    color: #04f5ff;
+                    padding: 12px 18px;
+                    border-radius: 8px;
+                    font-size: 12px;
+                    z-index: 9999;
+                    border: 1px solid #04f5ff;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                `;
+                document.body.appendChild(indicator);
+            }
+            if (indicator) {
+                if (show && total > 0) {
+                    const percent = Math.round((loaded / total) * 100);
+                    indicator.innerHTML = `
+                        <div style="width: 60px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; overflow: hidden;">
+                            <div style="width: ${percent}%; height: 100%; background: #04f5ff; transition: width 0.3s;"></div>
+                        </div>
+                        <span>Loading history: ${loaded}/${total}</span>
+                    `;
+                    indicator.style.display = 'flex';
+                } else {
+                    indicator.style.display = 'none';
+                }
+            }
+        }
+
         async function fetchFreshData() {
             const fetchingLeagueId = LEAGUE_ID;
             try {
@@ -5397,12 +5584,20 @@
                 // Dynamic batch size based on league size
                 const BATCH_SIZE = getOptimalBatchSize(freshPlayers.length);
                 const totalBatches = Math.ceil(freshPlayers.length / BATCH_SIZE);
+                const isLargeLeague = freshPlayers.length > 100;
                 console.log(`Loading ${freshPlayers.length} players in ${totalBatches} batches of ${BATCH_SIZE}`);
+
+                // For large leagues, show background indicator after first render
+                if (isLargeLeague) {
+                    isBackgroundLoading = true;
+                }
 
                 for (let batchIdx = 0; batchIdx < totalBatches; batchIdx++) {
                     // Abort if league changed during loading
                     if (LEAGUE_ID !== fetchingLeagueId) {
                         console.log('League changed during load, aborting');
+                        isBackgroundLoading = false;
+                        updateBackgroundLoadingIndicator(false, 0, 0);
                         return;
                     }
 
@@ -5445,24 +5640,64 @@
                     // Wait for all in batch to complete
                     await Promise.all(batchPromises);
 
-                    // Update progress
+                    // Update progress indicators
                     const percent = Math.round((endIdx / freshPlayers.length) * 100);
                     const loadingPercent = document.getElementById('loadingPercent');
                     const loadingText = document.getElementById('loadingText');
-                    if (loadingPercent) loadingPercent.textContent = percent + '%';
-                    if (loadingText) loadingText.textContent = `Loading ${endIdx}/${freshPlayers.length}`;
 
-                    // Progressive update: show chart after first batch completes
-                    if (batchIdx === 0 && selectedEntries.size === 0) {
+                    // Progressive update: render UI immediately after first batch
+                    if (batchIdx === 0) {
+                        // Hide main loading, show the UI immediately
+                        if (loadingPercent) loadingPercent.textContent = '';
+                        if (loadingText) loadingText.textContent = '';
+                        hideStatus();
+
                         // Select top 10 immediately so user sees something
-                        freshPlayers.slice(0, Math.min(10, endIdx)).forEach(p => selectedEntries.add(p.entry));
-                        allPlayers = freshPlayers.slice(0, endIdx);
+                        if (selectedEntries.size === 0) {
+                            freshPlayers.slice(0, Math.min(10, endIdx)).forEach(p => selectedEntries.add(p.entry));
+                        }
+                        allPlayers = freshPlayers;  // Show all players in list (history loads progressively)
                         playerHistories = { ...freshHistories };
+
+                        // Populate week range selectors early
+                        weekRangeEnd = currentGameweek || 38;
+                        populateWeekSelectors();
+
                         renderPlayerToggles();
                         updateChart();
+                        updateLeagueNotice();
+
+                        // Start showing background loading indicator for large leagues
+                        if (isLargeLeague && totalBatches > 1) {
+                            updateBackgroundLoadingIndicator(true, endIdx, freshPlayers.length);
+                        }
+                    } else {
+                        // Update progress in background indicator
+                        if (loadingPercent) loadingPercent.textContent = percent + '%';
+                        if (loadingText) loadingText.textContent = `Loading ${endIdx}/${freshPlayers.length}`;
+
+                        // Update background loading indicator
+                        if (isLargeLeague) {
+                            updateBackgroundLoadingIndicator(true, endIdx, freshPlayers.length);
+                        }
+
+                        // Progressive updates: merge new histories and refresh UI periodically
+                        playerHistories = { ...playerHistories, ...freshHistories };
+
+                        // Update UI every 2 batches (or final batch) to avoid too frequent re-renders
+                        if (batchIdx % 2 === 0 || batchIdx === totalBatches - 1) {
+                            renderPlayerToggles();
+                            if (currentDisplayMode === 'chart') {
+                                updateChart();
+                            }
+                        }
                     }
                     // No delay between batches - maximize throughput
                 }
+
+                // Hide background loading indicator
+                isBackgroundLoading = false;
+                updateBackgroundLoadingIndicator(false, 0, 0);
 
                 console.log(`=== SUMMARY: Loaded ${loadedCount}/${freshPlayers.length} player histories ===`);
                 if (failedPlayers.length > 0) {
@@ -5475,33 +5710,18 @@
                     return;
                 }
 
-                // Update global state
+                // Final update of global state
                 allPlayers = freshPlayers;
                 playerHistories = freshHistories;
 
-                // Save to cache (include league ID for validation)
-                const cacheData = {
-                    timestamp: Date.now(),
-                    leagueId: fetchingLeagueId,
-                    players: allPlayers,
-                    histories: playerHistories,
-                    leagueName: leagueName
-                };
-                localStorage.setItem(getCacheKey(fetchingLeagueId), JSON.stringify(cacheData));
-                console.log('Data cached for league', fetchingLeagueId, 'with', allPlayers.length, 'players');
+                // Save to cache with smart GW-based invalidation
+                saveToCache(fetchingLeagueId, allPlayers, playerHistories, leagueName);
 
-                // If first load (no selection yet), select top 10
-                if (selectedEntries.size === 0) {
-                    allPlayers.slice(0, 10).forEach(p => selectedEntries.add(p.entry));
-                }
-
-                // Populate week range selectors
-                weekRangeEnd = currentGameweek || 38;
-                populateWeekSelectors();
-
-                renderPlayerToggles();
+                // Final render after all data loaded (already done progressively, but ensure consistency)
                 if (currentFilter) filterPlayers(currentFilter);
+                renderPlayerToggles();
                 updateChart();
+                updateTableView();
                 updateLeagueNotice();
                 hideStatus();
 
@@ -5520,6 +5740,17 @@
                             userLeagueRank = rankInfo.rank;
                             leagueTotalPlayers = rankInfo.leagueCount || leagueTotalPlayers;
                             console.log('User position fetched:', userLeagueRank, 'of', leagueTotalPlayers);
+
+                            // Auto-preload more pages in background for large leagues
+                            // This runs after live data, so user already has a responsive UI
+                            if (leagueTotalPlayers > 100 && hasMorePages && !isBackgroundLoading) {
+                                setTimeout(() => {
+                                    if (LEAGUE_ID === fetchingLeagueId && hasMorePages && !isBackgroundLoading) {
+                                        console.log('Auto-preloading additional pages in background...');
+                                        autoPreloadMorePages(fetchingLeagueId);
+                                    }
+                                }, 3000); // Wait 3 seconds after initial load before preloading
+                            }
                         }
                     }).catch(e => console.warn('Could not fetch user position:', e));
                 }
