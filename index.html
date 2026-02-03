@@ -4914,6 +4914,9 @@
             ]);
             console.log('Fixture status:', fixtureStatus);
 
+            // Build goal scorer data from FPL live stats (uses player goals/assists)
+            buildGoalDataFromFPL();
+
             const newLivePoints = {};
 
             // Prioritize selected players first, then top 20, then rest
@@ -5127,6 +5130,9 @@
                     fetchFixtureStatus(currentGameweek),
                     prefetchSharedData(currentGameweek)
                 ]);
+
+                // Build goal scorer data from FPL live stats
+                buildGoalDataFromFPL();
 
                 // Fetch live data for all new players in parallel (aggressive batching)
                 const BATCH_SIZE = 50;
