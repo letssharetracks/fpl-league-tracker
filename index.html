@@ -2974,8 +2974,8 @@
                     console.log('Fetched rank:', userLeagueRank);
                 } else {
                     hideStatus();
-                    showStatus('Could not find your team in this league');
-                    setTimeout(hideStatus, 2000);
+                    showStatus('You are not a member of this league. Find Me only works in leagues you\'ve joined.');
+                    setTimeout(hideStatus, 4000);
                     return;
                 }
             }
