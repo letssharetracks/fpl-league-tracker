@@ -3845,9 +3845,12 @@
                 }
                 console.log(`Small/medium league (${leagueTotalPlayers} managers): loading all ${totalPages} pages`);
             } else {
-                // Large league: just load top 100 initially
-                pagesToLoad.push(1, 2);
-                console.log(`Large league (${leagueTotalPlayers} managers): loading top 100 only`);
+                // Large league: load top 500 initially (10 pages)
+                const DEFAULT_PAGES = 10;
+                for (let i = 1; i <= DEFAULT_PAGES; i++) {
+                    pagesToLoad.push(i);
+                }
+                console.log(`Large league (${leagueTotalPlayers} managers): loading top 500 initially`);
             }
 
             const players = await fetchLeaguePages(pagesToLoad);
