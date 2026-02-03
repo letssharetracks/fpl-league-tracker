@@ -3123,11 +3123,12 @@
                     hasMorePages = calculatedHasMore || hasMorePages;
                     console.log('loadMyArea: combined', allPlayers.length, 'players, maxPage=', maxLoadedPage, 'totalPages=', totalPages, 'leagueTotalPlayers=', leagueTotalPlayers, 'hasMorePages=', hasMorePages);
 
+                    // Set persistent highlight BEFORE rendering so row gets green style
+                    highlightedEntry = userTeamId;
+
                     // RENDER IMMEDIATELY (don't wait for data)
                     updateTableView();
                     renderPlayerToggles();
-                    // Set persistent highlight BEFORE rendering
-                    highlightedEntry = userTeamId;
 
                     updateViewToggle();
                     updateLeagueNotice();
