@@ -4145,11 +4145,11 @@
             const isLargeLeague = leagueTotalPlayers > 200;
             const showLoadAll = isLargeLeague && notAllLoaded && !isLoadingAll;
 
-            console.log('updateLeagueNotice: viewingMyArea=', viewingMyArea, 'hasMorePages=', hasMorePages, 'showMore=', showMore, 'showLoadAll=', showLoadAll);
+            console.log('updateLeagueNotice: viewingMyArea=', viewingMyArea, 'hasMorePages=', hasMorePages, 'showMore=', showMore, 'showLoadAll=', showLoadAll, 'isLargeLeague=', isLargeLeague);
 
             if (notice) {
-                // Show notice if viewing "My Area" OR if it's a large league with partial data
-                if (showMore || (isLargeLeague && notAllLoaded)) {
+                // Show notice for large leagues (always show Load All option) OR when viewing My Area
+                if (showMore || showLoadAll || isLoadingAll) {
                     loadedCount.textContent = allPlayers.length.toLocaleString();
                     totalCount.textContent = totalDisplay;
                     notice.style.display = 'block';
@@ -4158,7 +4158,7 @@
                 }
             }
 
-            // Show/hide Load All buttons
+            // Show/hide Load All buttons - always visible for large leagues until fully loaded
             if (loadAllBtn) {
                 loadAllBtn.style.display = showLoadAll ? 'inline-block' : 'none';
             }
@@ -4167,7 +4167,8 @@
             }
 
             if (loadMoreSection) {
-                if (showMore) {
+                // Show Load More section when viewing My Area, OR show Load All for large leagues
+                if (showMore || showLoadAll) {
                     loadedCount2.textContent = allPlayers.length.toLocaleString();
                     totalCount2.textContent = totalDisplay;
                     loadMoreSection.style.display = 'block';
