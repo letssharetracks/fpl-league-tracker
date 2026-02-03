@@ -1686,24 +1686,24 @@
                 // Wolves 0-2 Bournemouth
                 'wolves': [],
                 'bournemouth': [
-                    { player: { name: 'Kroupi Jr' }, time: { elapsed: 33 }, assist: null },
-                    { player: { name: 'A. Scott' }, time: { elapsed: 91 }, assist: null }
+                    { player: { name: 'Kroupi Jr' }, time: { elapsed: 33 }, assist: { name: 'Adli' } },
+                    { player: { name: 'A. Scott' }, time: { elapsed: 91 }, assist: { name: 'Rayan' } }
                 ],
                 // Chelsea 3-2 West Ham
                 'chelsea': [
                     { player: { name: 'João Pedro' }, time: { elapsed: 57 }, assist: { name: 'Fofana' } },
-                    { player: { name: 'Cucurella' }, time: { elapsed: 70 }, assist: null },
-                    { player: { name: 'Enzo' }, time: { elapsed: 93 }, assist: null }
+                    { player: { name: 'Cucurella' }, time: { elapsed: 70 }, assist: { name: 'Delap' } },
+                    { player: { name: 'Enzo' }, time: { elapsed: 92 }, assist: { name: 'João Pedro' } }
                 ],
                 'west ham': [
-                    { player: { name: 'Bowen' }, time: { elapsed: 20 }, assist: null },
-                    { player: { name: 'Summerville' }, time: { elapsed: 35 }, assist: null }
+                    { player: { name: 'Bowen' }, time: { elapsed: 7 }, assist: null },
+                    { player: { name: 'Summerville' }, time: { elapsed: 36 }, assist: { name: 'Wan-Bissaka' } }
                 ],
                 // Liverpool 4-1 Newcastle
                 'liverpool': [
-                    { player: { name: 'Ekitiké' }, time: { elapsed: 41 }, assist: null },
-                    { player: { name: 'Ekitiké' }, time: { elapsed: 43 }, assist: null },
-                    { player: { name: 'Wirtz' }, time: { elapsed: 67 }, assist: null },
+                    { player: { name: 'Ekitiké' }, time: { elapsed: 41 }, assist: { name: 'Wirtz' } },
+                    { player: { name: 'Ekitiké' }, time: { elapsed: 43 }, assist: { name: 'Kerkez' } },
+                    { player: { name: 'Wirtz' }, time: { elapsed: 67 }, assist: { name: 'Salah' } },
                     { player: { name: 'Konaté' }, time: { elapsed: 93 }, assist: null }
                 ],
                 'newcastle': [
@@ -1712,7 +1712,7 @@
                 // Aston Villa 0-1 Brentford
                 'aston villa': [],
                 'brentford': [
-                    { player: { name: 'Ouattara' }, time: { elapsed: 46 }, assist: null }
+                    { player: { name: 'Ouattara' }, time: { elapsed: 46 }, assist: { name: 'Ajer' } }
                 ],
                 // Man Utd 3-2 Fulham
                 'manchester united': [
@@ -1733,12 +1733,12 @@
                 ],
                 // Spurs 2-2 Man City
                 'tottenham': [
-                    { player: { name: 'Solanke' }, time: { elapsed: 53 }, assist: null },
-                    { player: { name: 'Solanke' }, time: { elapsed: 70 }, assist: null }
+                    { player: { name: 'Solanke' }, time: { elapsed: 53 }, assist: { name: 'Simons' } },
+                    { player: { name: 'Solanke' }, time: { elapsed: 70 }, assist: { name: 'Gallagher' } }
                 ],
                 'manchester city': [
-                    { player: { name: 'Cherki' }, time: { elapsed: 11 }, assist: null },
-                    { player: { name: 'Semenyo' }, time: { elapsed: 44 }, assist: null }
+                    { player: { name: 'Cherki' }, time: { elapsed: 11 }, assist: { name: 'Haaland' } },
+                    { player: { name: 'Semenyo' }, time: { elapsed: 44 }, assist: { name: 'B. Silva' } }
                 ],
                 // Empty for teams not playing
                 'leicester': [],
@@ -1746,9 +1746,9 @@
                 'southampton': [],
                 // Sunderland 3-0 Burnley (Monday night game)
                 'sunderland': [
-                    { player: { name: 'Tuanzebe (OG)' }, time: { elapsed: 9 }, assist: null },
-                    { player: { name: 'Diarra' }, time: { elapsed: 32 }, assist: null },
-                    { player: { name: 'Talbi' }, time: { elapsed: 72 }, assist: null }
+                    { player: { name: 'Tuanzebe (OG)' }, time: { elapsed: 9 }, assist: { name: 'Brobbey' } },
+                    { player: { name: 'Diarra' }, time: { elapsed: 32 }, assist: { name: 'Mukiele' } },
+                    { player: { name: 'Talbi' }, time: { elapsed: 72 }, assist: { name: 'Mandava' } }
                 ],
                 'burnley': []
             }
@@ -4288,15 +4288,12 @@
                                 const assist = g.assist?.name ? ` (${g.assist.name})` : '';
 
                                 // Color coding:
-                                // - Own goals (OG): red
-                                // - Home team goals: green
-                                // - Away team goals: cyan
+                                // - Home team goals (including OGs that benefit home): green
+                                // - Away team goals (including OGs that benefit away): cyan
                                 let color = '#04f5ff'; // default cyan (away)
-                                const isOwnGoal = scorer.includes('OG)') || scorer.includes('(OG');
-                                if (isOwnGoal) {
-                                    color = '#ff4757'; // red for own goals
-                                } else if (homeGoalsRaw.some(hg => hg.player?.name === g.player?.name && hg.time?.elapsed === g.time?.elapsed)) {
-                                    color = '#00ff85'; // green for home goals
+                                const isHomeGoal = homeGoalsRaw.some(hg => hg.player?.name === g.player?.name && hg.time?.elapsed === g.time?.elapsed);
+                                if (isHomeGoal) {
+                                    color = '#00ff85'; // green for home team goals
                                 }
 
                                 return `<span style="color:${color}">⚽ ${scorer} ${time}'${assist}</span>`;
