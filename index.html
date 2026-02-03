@@ -1760,25 +1760,38 @@
         // Merge hardcoded + localStorage goal data (called after currentGameweek is set)
         function loadGoalScorersForGameweek(gw) {
             try {
-                // First load from localStorage
+                // HARDCODED data has accurate minutes - load it FIRST as primary source
+                const hardcodedForGw = HARDCODED_GOALS[gw] || {};
+                cachedGoalScorers = {};
+
+                // Load hardcoded data first (has proper minutes and assists)
+                let hardcodedCount = 0;
+                Object.keys(hardcodedForGw).forEach(team => {
+                    if (hardcodedForGw[team] && hardcodedForGw[team].length > 0) {
+                        cachedGoalScorers[team] = hardcodedForGw[team];
+                        hardcodedCount++;
+                    }
+                });
+                console.log(`Loaded ${hardcodedCount} teams from hardcoded data for GW${gw}`);
+
+                // Then merge localStorage/API data ONLY for teams not in hardcoded
                 const stored = localStorage.getItem('fpl_goal_scorers');
                 if (stored) {
                     const parsed = JSON.parse(stored);
-                    if (parsed.gameweek === gw) {
-                        cachedGoalScorers = parsed.data || {};
-                        console.log('Loaded goal scorers from localStorage for GW', gw);
+                    if (parsed.gameweek === gw && parsed.data) {
+                        let mergedCount = 0;
+                        Object.keys(parsed.data).forEach(team => {
+                            // Only use localStorage if no hardcoded data for this team
+                            if (!cachedGoalScorers[team] || cachedGoalScorers[team].length === 0) {
+                                if (parsed.data[team] && parsed.data[team].length > 0) {
+                                    cachedGoalScorers[team] = parsed.data[team];
+                                    mergedCount++;
+                                }
+                            }
+                        });
+                        console.log(`Merged ${mergedCount} additional teams from localStorage`);
                     }
                 }
-                // Merge hardcoded data as fallback (localStorage/API takes priority)
-                const hardcodedForGw = HARDCODED_GOALS[gw] || {};
-                let mergedCount = 0;
-                Object.keys(hardcodedForGw).forEach(team => {
-                    if (!cachedGoalScorers[team] || cachedGoalScorers[team].length === 0) {
-                        cachedGoalScorers[team] = hardcodedForGw[team];
-                        if (hardcodedForGw[team].length > 0) mergedCount++;
-                    }
-                });
-                console.log(`Merged ${mergedCount} teams with hardcoded goal data for GW${gw}`);
                 console.log('Goal scorers available for:', Object.keys(cachedGoalScorers).filter(k => cachedGoalScorers[k].length > 0));
             } catch (e) {
                 console.warn('Could not load goal scorers:', e);
