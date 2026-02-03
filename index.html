@@ -3832,18 +3832,23 @@
                 }
             }
 
-            // Only load top 100 (pages 1-2) initially
-            const pagesToLoad = [1, 2];
+            // For medium/small leagues (<=500), load all managers automatically
+            // For large leagues, only load top 100 initially
+            const AUTO_LOAD_THRESHOLD = 500;
+            const pagesToLoad = [];
 
-            // For small leagues (<=100), just load everything
-            if (leagueTotalPlayers > 0 && leagueTotalPlayers <= 100) {
-                pagesToLoad.length = 0;
-                for (let i = 1; i <= Math.ceil(leagueTotalPlayers / 50); i++) {
+            if (leagueTotalPlayers > 0 && leagueTotalPlayers <= AUTO_LOAD_THRESHOLD) {
+                // Small/medium league: load everything
+                const totalPages = Math.ceil(leagueTotalPlayers / 50);
+                for (let i = 1; i <= totalPages; i++) {
                     pagesToLoad.push(i);
                 }
+                console.log(`Small/medium league (${leagueTotalPlayers} managers): loading all ${totalPages} pages`);
+            } else {
+                // Large league: just load top 100 initially
+                pagesToLoad.push(1, 2);
+                console.log(`Large league (${leagueTotalPlayers} managers): loading top 100 only`);
             }
-
-            console.log('Loading pages:', pagesToLoad);
 
             const players = await fetchLeaguePages(pagesToLoad);
 
