@@ -1482,7 +1482,13 @@
                        oninput="filterPlayers(this.value)"
                        style="width: 100%; padding: 8px 12px; margin-bottom: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(55,0,60,0.8); color: #fff; font-size: 13px;">
                 <div class="btn-group">
-                    <button class="btn btn-top-10" onclick="selectTop10()">Top 10</button>
+                    <select id="topNSelect" onchange="selectTopN(this.value)" style="padding: 6px 10px; border-radius: 4px; border: none; background: linear-gradient(135deg, #04f5ff, #00d4e6); color: #37003c; font-weight: 600; cursor: pointer; font-size: 12px;">
+                        <option value="10">Top 10</option>
+                        <option value="20">Top 20</option>
+                        <option value="30">Top 30</option>
+                        <option value="40">Top 40</option>
+                        <option value="50">Top 50</option>
+                    </select>
                     <button class="btn btn-select-all" onclick="selectAll()">All</button>
                     <button class="btn btn-clear-all" onclick="clearAll()">Clear</button>
                     <button class="btn btn-top-10" id="selectFilteredBtn" onclick="selectFiltered()" style="display: none;">Select Filtered</button>
@@ -2383,6 +2389,10 @@
             if (mode === 'chart') {
                 mainContent.style.display = 'grid';
                 tableView.style.display = 'none';
+                // Default to Top 10 when switching to chart if nothing selected
+                if (selectedEntries.size === 0 && allPlayers.length > 0) {
+                    selectTopN(10);
+                }
             } else {
                 mainContent.style.display = 'none';
                 tableView.style.display = 'block';
@@ -6765,7 +6775,12 @@
         }
 
         function selectTop10() {
-            selectedEntries = new Set(allPlayers.slice(0, 10).map(p => p.entry));
+            selectTopN(10);
+        }
+
+        function selectTopN(n) {
+            n = parseInt(n) || 10;
+            selectedEntries = new Set(allPlayers.slice(0, n).map(p => p.entry));
             renderPlayerToggles();
             if (currentFilter) filterPlayers(currentFilter);
             updateChart();
