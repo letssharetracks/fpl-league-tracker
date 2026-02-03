@@ -2566,12 +2566,20 @@
                     const basePoints = live.basePoints ?? (live.predictedPoints - autoSubBonus);
                     // predictedPoints already includes bonus points - don't add again!
                     gwPoints = autoSubsEnabled ? live.predictedPoints : basePoints;
-                } else {
+                } else if (player.event_total !== undefined) {
+                    // Use API-provided GW points when no live data
+                    gwPoints = player.event_total;
+                } else if (prevGwTotal > 0) {
+                    // Calculate from history if available
                     gwPoints = player.total - prevGwTotal;
+                } else {
+                    // Last resort: use event_total or 0
+                    gwPoints = player.event_total || 0;
                 }
 
                 // Calculate total consistently for ALL players
-                const totalDisplay = prevGwTotal + gwPoints;
+                // Use API total when we have it, otherwise calculate from history
+                const totalDisplay = (prevGwTotal > 0) ? (prevGwTotal + gwPoints) : player.total;
 
                 return {
                     player,
@@ -2959,6 +2967,44 @@
             }
 
             tbody.innerHTML = tableHtml.join('');
+
+            // Fetch data for visible players missing history (lazy load)
+            fetchDataForVisiblePlayers(playerData.slice(0, rowsToRender).map(d => d.player));
+        }
+
+        // Lazy-load history and live data for visible players
+        let fetchingVisibleData = false;
+        async function fetchDataForVisiblePlayers(visiblePlayers) {
+            if (fetchingVisibleData) return;
+
+            // Find players missing history data (limit to 50 at a time)
+            const playersNeedingData = visiblePlayers
+                .filter(p => !playerHistories[p.entry])
+                .slice(0, 50);
+
+            if (playersNeedingData.length === 0) return;
+
+            console.log(`Fetching data for ${playersNeedingData.length} visible players missing history`);
+            fetchingVisibleData = true;
+
+            try {
+                await Promise.all([
+                    fetchHistoriesForPlayers(playersNeedingData),
+                    refreshLiveDataForPlayers(playersNeedingData)
+                ]);
+
+                // Re-render to show the new data (only if we actually fetched something)
+                if (playersNeedingData.length > 0) {
+                    // Small delay to batch multiple rapid calls
+                    setTimeout(() => {
+                        fetchingVisibleData = false;
+                        updateTableView();
+                    }, 100);
+                }
+            } catch (e) {
+                console.error('Error fetching visible player data:', e);
+                fetchingVisibleData = false;
+            }
         }
 
         // Track if viewing "my area" vs top 100
