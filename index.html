@@ -1482,16 +1482,19 @@
                        oninput="filterPlayers(this.value)"
                        style="width: 100%; padding: 8px 12px; margin-bottom: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(55,0,60,0.8); color: #fff; font-size: 13px;">
                 <div class="btn-group">
-                    <select id="topNSelect" onchange="selectTopN(this.value)" style="padding: 6px 10px; border-radius: 4px; border: none; background: linear-gradient(135deg, #04f5ff, #00d4e6); color: #37003c; font-weight: 600; cursor: pointer; font-size: 12px;">
-                        <option value="10">Top 10</option>
-                        <option value="20">Top 20</option>
-                        <option value="30">Top 30</option>
-                        <option value="40">Top 40</option>
-                        <option value="50">Top 50</option>
-                    </select>
+                    <button class="btn btn-top-10" onclick="selectTop10()">Top 10</button>
                     <button class="btn btn-select-all" onclick="selectAll()">All</button>
                     <button class="btn btn-clear-all" onclick="clearAll()">Clear</button>
                     <button class="btn btn-top-10" id="selectFilteredBtn" onclick="selectFiltered()" style="display: none;">Select Filtered</button>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; margin: 8px 0;">
+                    <span style="font-size: 11px; color: #888;">10</span>
+                    <input type="range" id="topNSlider" min="10" max="50" step="10" value="10"
+                           oninput="updateSliderLabel(this.value)"
+                           onchange="selectTopN(this.value)"
+                           style="flex: 1; accent-color: #04f5ff; cursor: pointer;">
+                    <span style="font-size: 11px; color: #888;">50</span>
+                    <span id="sliderValue" style="font-size: 12px; color: #04f5ff; font-weight: 600; min-width: 45px;">Top 10</span>
                 </div>
                 <div class="player-list" id="playerToggles">
                     <div class="loading">
@@ -6775,12 +6778,22 @@
         }
 
         function selectTop10() {
+            // Reset slider to 10 when clicking Top 10 button
+            const slider = document.getElementById('topNSlider');
+            if (slider) slider.value = 10;
+            updateSliderLabel(10);
             selectTopN(10);
+        }
+
+        function updateSliderLabel(n) {
+            const label = document.getElementById('sliderValue');
+            if (label) label.textContent = `Top ${n}`;
         }
 
         function selectTopN(n) {
             n = parseInt(n) || 10;
             selectedEntries = new Set(allPlayers.slice(0, n).map(p => p.entry));
+            updateSliderLabel(n);
             renderPlayerToggles();
             if (currentFilter) filterPlayers(currentFilter);
             updateChart();
