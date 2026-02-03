@@ -4006,6 +4006,20 @@
             }
         }
 
+        // Fetch today's fixtures (including finished) from API-Football
+        async function fetchTodaysFootballMatches() {
+            try {
+                const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+                const response = await fetch(`${API_FOOTBALL_WORKER}?endpoint=fixtures?date=${today}%26league=39`);
+                const data = await response.json();
+                console.log(`API-Football today's fixtures:`, data.response?.length || 0);
+                return data.response || [];
+            } catch (e) {
+                console.error('API-Football today error:', e);
+                return [];
+            }
+        }
+
         // Fetch match events (goals, assists) via Cloudflare Worker
         async function fetchMatchEvents(fixtureId) {
             try {
@@ -4153,12 +4167,23 @@
                 if (shouldFetchScorers) {
                     console.log(`Fetching goal scorers (goal=${goalsDetected}, firstLoad=${isFirstLoad})`);
                     try {
-                        // Try API-Football first (reliable, via Cloudflare Worker)
+                        // Try API-Football - check both live matches AND today's finished matches
                         console.log('Fetching goal scorers from API-Football...');
-                        const liveMatches = await fetchLiveFootballMatches();
-                        console.log('API-Football live matches:', liveMatches.length);
+                        const [liveMatches, todaysMatches] = await Promise.all([
+                            fetchLiveFootballMatches(),
+                            fetchTodaysFootballMatches()
+                        ]);
 
-                        const matchesWithGoals = liveMatches.filter(m =>
+                        // Combine and dedupe by fixture ID
+                        const seenFixtures = new Set();
+                        const allMatches = [...liveMatches, ...todaysMatches].filter(m => {
+                            if (seenFixtures.has(m.fixture?.id)) return false;
+                            seenFixtures.add(m.fixture?.id);
+                            return true;
+                        });
+                        console.log(`API-Football: ${liveMatches.length} live + ${todaysMatches.length} today = ${allMatches.length} unique`);
+
+                        const matchesWithGoals = allMatches.filter(m =>
                             (m.goals?.home || 0) + (m.goals?.away || 0) > 0
                         );
                         console.log('Matches with goals:', matchesWithGoals.length);
@@ -4194,7 +4219,7 @@
                             });
                             console.log(`API-Football: cached ${goalsAdded} goals`);
                         } else {
-                            console.log('No live matches with goals from API-Football');
+                            console.log('No matches with goals from API-Football');
                         }
 
                         // Save to localStorage for persistence
