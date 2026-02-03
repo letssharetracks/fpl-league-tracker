@@ -4286,8 +4286,20 @@
                                 const scorer = g.player?.name || '?';
                                 const time = g.time?.elapsed || '?';
                                 const assist = g.assist?.name ? ` (${g.assist.name})` : '';
-                                // Use cyan color for all goals (simplified)
-                                return `<span style="color:#04f5ff">⚽ ${scorer} ${time}'${assist}</span>`;
+
+                                // Color coding:
+                                // - Own goals (OG): red
+                                // - Home team goals: green
+                                // - Away team goals: cyan
+                                let color = '#04f5ff'; // default cyan (away)
+                                const isOwnGoal = scorer.includes('OG)') || scorer.includes('(OG');
+                                if (isOwnGoal) {
+                                    color = '#ff4757'; // red for own goals
+                                } else if (homeGoalsRaw.some(hg => hg.player?.name === g.player?.name && hg.time?.elapsed === g.time?.elapsed)) {
+                                    color = '#00ff85'; // green for home goals
+                                }
+
+                                return `<span style="color:${color}">⚽ ${scorer} ${time}'${assist}</span>`;
                             })
                             .join(' <span style="color:#666">│</span> ');
                     }
