@@ -3071,24 +3071,25 @@
 
             // Calculate pages to load (300 managers around user: 3 pages above, user's page, 3 pages below)
             const userPage = Math.ceil(userLeagueRank / 50);
-            const totalPages = leagueTotalPlayers > 0 ? Math.ceil(leagueTotalPlayers / 50) : 999;
+            // Don't rely on leagueTotalPlayers - it may not be accurate for large leagues
+            // Instead, trust that if user has a rank, those pages exist
+            const minPage = Math.max(3, userPage - 3); // At least page 3 (skip top 100)
+            const maxPage = userPage + 3;
             const pagesToLoad = [];
 
-            // Load 3 pages before and 3 pages after user's page (max 7 pages = 350 players)
-            for (let i = userPage - 3; i <= userPage + 3; i++) {
-                // Skip pages 1-2 (top 100 already loaded), skip invalid pages
-                if (i > 2 && i <= totalPages) {
-                    pagesToLoad.push(i);
-                }
+            // Load pages around user's position
+            for (let i = minPage; i <= maxPage; i++) {
+                pagesToLoad.push(i);
             }
 
-            // If no pages to load (user at position 101-150), load pages 3-5
-            if (pagesToLoad.length === 0) {
-                for (let i = 3; i <= Math.min(5, totalPages); i++) {
+            // If user is in top 150, make sure we load at least pages 3-5
+            if (pagesToLoad.length === 0 || (userPage <= 3 && pagesToLoad.length < 3)) {
+                pagesToLoad.length = 0; // Clear and rebuild
+                for (let i = 3; i <= 5; i++) {
                     pagesToLoad.push(i);
                 }
             }
-            console.log('loadMyArea: userPage=', userPage, 'pagesToLoad=', pagesToLoad, 'totalPages=', totalPages);
+            console.log('loadMyArea: userPage=', userPage, 'pagesToLoad=', pagesToLoad);
 
             // Clear these pages from loadedPages to force reload
             pagesToLoad.forEach(p => loadedPages.delete(p));
