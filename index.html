@@ -1488,13 +1488,13 @@
                     <button class="btn btn-top-10" id="selectFilteredBtn" onclick="selectFiltered()" style="display: none;">Select Filtered</button>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px; margin: 8px 0;">
-                    <span style="font-size: 11px; color: #888;">10</span>
-                    <input type="range" id="topNSlider" min="10" max="50" step="10" value="10"
+                    <span style="font-size: 11px; color: #888;">1</span>
+                    <input type="range" id="topNSlider" min="1" max="100" step="1" value="10"
                            oninput="updateSliderLabel(this.value)"
                            onchange="selectTopN(this.value)"
-                           style="flex: 1; accent-color: #04f5ff; cursor: pointer;">
-                    <span style="font-size: 11px; color: #888;">50</span>
-                    <span id="sliderValue" style="font-size: 12px; color: #04f5ff; font-weight: 600; min-width: 45px;">Top 10</span>
+                           style="flex: 1; accent-color: #04f5ff; cursor: pointer; height: 20px;">
+                    <span style="font-size: 11px; color: #888;">100</span>
+                    <span id="sliderValue" style="font-size: 12px; color: #04f5ff; font-weight: 600; min-width: 50px;">Top 10</span>
                 </div>
                 <div class="player-list" id="playerToggles">
                     <div class="loading">
@@ -6045,6 +6045,9 @@
             }
             console.log('Rendering', allPlayers.length, 'player toggles');
 
+            // Update slider max to match league size
+            updateSliderMax();
+
             // Sort players by live position if available, otherwise by API rank
             const sortedPlayers = [...allPlayers].sort((a, b) => {
                 const posA = livePositions[a.entry] ? livePositions[a.entry].position : a.rank;
@@ -6787,11 +6790,29 @@
 
         function updateSliderLabel(n) {
             const label = document.getElementById('sliderValue');
-            if (label) label.textContent = `Top ${n}`;
+            const maxPlayers = allPlayers.length || 100;
+            // Show "All" if at or above league size
+            if (n >= maxPlayers) {
+                if (label) label.textContent = `All (${maxPlayers})`;
+            } else {
+                if (label) label.textContent = `Top ${n}`;
+            }
+        }
+
+        function updateSliderMax() {
+            const slider = document.getElementById('topNSlider');
+            if (slider && allPlayers.length > 0) {
+                // Cap slider max at league size or 100, whichever is smaller
+                const maxVal = Math.min(allPlayers.length, 100);
+                slider.max = maxVal;
+            }
         }
 
         function selectTopN(n) {
             n = parseInt(n) || 10;
+            // Cap at league size
+            const maxPlayers = allPlayers.length || 100;
+            n = Math.min(n, maxPlayers);
             selectedEntries = new Set(allPlayers.slice(0, n).map(p => p.entry));
             updateSliderLabel(n);
             renderPlayerToggles();
