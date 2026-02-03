@@ -2977,10 +2977,10 @@
         async function fetchDataForVisiblePlayers(visiblePlayers) {
             if (fetchingVisibleData) return;
 
-            // Find players missing history data (limit to 50 at a time)
+            // Find players missing history data (limit to 100 at a time)
             const playersNeedingData = visiblePlayers
                 .filter(p => !playerHistories[p.entry])
-                .slice(0, 50);
+                .slice(0, 100);
 
             if (playersNeedingData.length === 0) return;
 
