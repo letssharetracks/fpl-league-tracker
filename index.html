@@ -4176,37 +4176,39 @@
                 // Check if there are existing goals on first load
                 const hasExistingGoals = liveFixtures.some(f => (f.team_h_score || 0) + (f.team_a_score || 0) > 0);
 
-                // Fetch goal scorers when: new goal detected OR first load with existing goals
-                const shouldFetchScorers = goalsDetected || (isFirstLoad && hasExistingGoals);
-                if (shouldFetchScorers) {
-                    console.log(`Fetching goal scorers (goal=${goalsDetected}, firstLoad=${isFirstLoad})`);
+                // Only fetch goal scorers for LIVE matches (not finished)
+                // Finished games use hardcoded data which has accurate minutes
+                const hasLiveGoals = liveFixtures.some(f => f.started && !f.finished && ((f.team_h_score || 0) + (f.team_a_score || 0) > 0));
+                const shouldFetchScorers = goalsDetected || (isFirstLoad && hasLiveGoals);
+
+                if (shouldFetchScorers && liveFixtures.length > 0) {
+                    console.log(`Fetching goal scorers for LIVE matches only (goal=${goalsDetected}, firstLoad=${isFirstLoad})`);
                     try {
-                        // Try API-Football - check both live matches AND today's finished matches
-                        console.log('Fetching goal scorers from API-Football...');
-                        const [liveMatches, todaysMatches] = await Promise.all([
-                            fetchLiveFootballMatches(),
-                            fetchTodaysFootballMatches()
-                        ]);
+                        // Only fetch LIVE matches from API-Football (not finished)
+                        console.log('Fetching goal scorers from API-Football for live games...');
+                        const liveMatches = await fetchLiveFootballMatches();
+                        console.log(`API-Football: ${liveMatches.length} live matches`);
 
-                        // Combine and dedupe by fixture ID
-                        const seenFixtures = new Set();
-                        const allMatches = [...liveMatches, ...todaysMatches].filter(m => {
-                            if (seenFixtures.has(m.fixture?.id)) return false;
-                            seenFixtures.add(m.fixture?.id);
-                            return true;
-                        });
-                        console.log(`API-Football: ${liveMatches.length} live + ${todaysMatches.length} today = ${allMatches.length} unique`);
-
-                        const matchesWithGoals = allMatches.filter(m =>
-                            (m.goals?.home || 0) + (m.goals?.away || 0) > 0
+                        // Filter to only in-progress matches with goals
+                        const liveMatchesWithGoals = liveMatches.filter(m =>
+                            m.fixture?.status?.short !== 'FT' && // Not finished
+                            ((m.goals?.home || 0) + (m.goals?.away || 0) > 0)
                         );
-                        console.log('Matches with goals:', matchesWithGoals.length);
+                        console.log('Live matches with goals:', liveMatchesWithGoals.length);
 
-                        if (matchesWithGoals.length > 0) {
-                            const eventPromises = matchesWithGoals.map(async (match) => {
+                        if (liveMatchesWithGoals.length > 0) {
+                            const eventPromises = liveMatchesWithGoals.map(async (match) => {
                                 const homeTeam = match.teams?.home?.name?.toLowerCase() || '';
                                 const awayTeam = match.teams?.away?.name?.toLowerCase() || '';
                                 const fixtureId = match.fixture?.id;
+
+                                // Skip if we already have hardcoded data for this team
+                                const hardcodedForGw = HARDCODED_GOALS[currentGameweek] || {};
+                                if (hardcodedForGw[homeTeam]?.length > 0 || hardcodedForGw[awayTeam]?.length > 0) {
+                                    console.log(`Skipping ${homeTeam} vs ${awayTeam} - has hardcoded data`);
+                                    return null;
+                                }
+
                                 console.log(`Fetching events for ${homeTeam} vs ${awayTeam} (fixture ${fixtureId})`);
                                 if (!fixtureId) return null;
 
@@ -4225,19 +4227,24 @@
                             let goalsAdded = 0;
                             results.forEach(r => {
                                 if (r && r.goals.length > 0) {
-                                    // Store goals for both teams (they'll be deduped on display)
-                                    cachedGoalScorers[r.homeTeam] = r.goals;
-                                    cachedGoalScorers[r.awayTeam] = r.goals;
-                                    goalsAdded += r.goals.length;
+                                    // Only store if no hardcoded data exists
+                                    const hardcodedForGw = HARDCODED_GOALS[currentGameweek] || {};
+                                    if (!hardcodedForGw[r.homeTeam]?.length && !hardcodedForGw[r.awayTeam]?.length) {
+                                        cachedGoalScorers[r.homeTeam] = r.goals;
+                                        cachedGoalScorers[r.awayTeam] = r.goals;
+                                        goalsAdded += r.goals.length;
+                                    }
                                 }
                             });
-                            console.log(`API-Football: cached ${goalsAdded} goals`);
-                        } else {
-                            console.log('No matches with goals from API-Football');
-                        }
+                            console.log(`API-Football: cached ${goalsAdded} goals for live matches`);
 
-                        // Save to localStorage for persistence
-                        saveGoalScorersToStorage();
+                            // Save to localStorage for persistence
+                            if (goalsAdded > 0) {
+                                saveGoalScorersToStorage();
+                            }
+                        } else {
+                            console.log('No live matches with goals from API-Football');
+                        }
                     } catch (e) {
                         console.warn('Could not fetch goal scorer data:', e);
                     }
