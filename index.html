@@ -4153,46 +4153,50 @@
                 if (shouldFetchScorers) {
                     console.log(`Fetching goal scorers (goal=${goalsDetected}, firstLoad=${isFirstLoad})`);
                     try {
-                        // Try Sky Sports first (more reliable for PL)
-                        const skyGoals = await fetchSkySportsGoals();
+                        // Try API-Football first (reliable, via Cloudflare Worker)
+                        console.log('Fetching goal scorers from API-Football...');
+                        const liveMatches = await fetchLiveFootballMatches();
+                        console.log('API-Football live matches:', liveMatches.length);
 
-                        if (Object.keys(skyGoals).length > 0) {
-                            // Merge Sky Sports data into cache
-                            Object.entries(skyGoals).forEach(([team, goals]) => {
-                                cachedGoalScorers[team] = goals;
-                            });
-                            console.log('Sky Sports: cached goals for', Object.keys(skyGoals).length, 'teams');
-                        } else {
-                            // Fallback to API-Football if Sky Sports fails
-                            console.log('Sky Sports returned no data, trying API-Football...');
-                            const liveMatches = await fetchLiveFootballMatches();
-                            const matchesWithGoals = liveMatches.filter(m =>
-                                (m.goals?.home || 0) + (m.goals?.away || 0) > 0
-                            );
+                        const matchesWithGoals = liveMatches.filter(m =>
+                            (m.goals?.home || 0) + (m.goals?.away || 0) > 0
+                        );
+                        console.log('Matches with goals:', matchesWithGoals.length);
 
+                        if (matchesWithGoals.length > 0) {
                             const eventPromises = matchesWithGoals.map(async (match) => {
                                 const homeTeam = match.teams?.home?.name?.toLowerCase() || '';
                                 const awayTeam = match.teams?.away?.name?.toLowerCase() || '';
                                 const fixtureId = match.fixture?.id;
+                                console.log(`Fetching events for ${homeTeam} vs ${awayTeam} (fixture ${fixtureId})`);
                                 if (!fixtureId) return null;
 
                                 try {
                                     const events = await fetchMatchEvents(fixtureId);
                                     const goals = events.filter(e => e.type === 'Goal');
+                                    console.log(`Found ${goals.length} goals in ${homeTeam} vs ${awayTeam}`);
                                     return { homeTeam, awayTeam, goals };
                                 } catch (e) {
+                                    console.warn('Failed to fetch events for fixture', fixtureId, e);
                                     return null;
                                 }
                             });
 
                             const results = await Promise.all(eventPromises);
+                            let goalsAdded = 0;
                             results.forEach(r => {
                                 if (r && r.goals.length > 0) {
+                                    // Store goals for both teams (they'll be deduped on display)
                                     cachedGoalScorers[r.homeTeam] = r.goals;
                                     cachedGoalScorers[r.awayTeam] = r.goals;
+                                    goalsAdded += r.goals.length;
                                 }
                             });
+                            console.log(`API-Football: cached ${goalsAdded} goals`);
+                        } else {
+                            console.log('No live matches with goals from API-Football');
                         }
+
                         // Save to localStorage for persistence
                         saveGoalScorersToStorage();
                     } catch (e) {
