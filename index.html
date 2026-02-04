@@ -908,9 +908,14 @@
                 min-width: 50px;
             }
             .player-toggle .player-name {
-                font-size: 13px;
                 min-width: 70px;
                 flex: 1 1 70px;
+            }
+            .player-toggle .toggle-team-name {
+                font-size: 12px;
+            }
+            .player-toggle .toggle-manager-name {
+                font-size: 9px;
             }
             .player-toggle .points {
                 font-size: 11px;
@@ -1181,12 +1186,24 @@
         }
         .player-toggle .player-name {
             flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 80px;
+            overflow: hidden;
+        }
+        .player-toggle .toggle-team-name {
             font-size: 13px;
+            font-weight: 500;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            font-weight: 500;
-            min-width: 80px;
+        }
+        .player-toggle .toggle-manager-name {
+            font-size: 10px;
+            color: #888;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .player-toggle .points {
             font-weight: 700;
@@ -6285,7 +6302,10 @@
                                onchange="togglePlayer(${player.entry}, this.checked)">
                         <span class="rank">#${displayRank} ${movementIndicator}</span>
                         <span class="color-dot" style="background: ${color}; box-shadow: 0 0 4px ${color};"></span>
-                        <span class="player-name" title="${player.player_name} - ${player.entry_name}${player.eliteAchievement ? ' | ' + player.eliteAchievement : ''}">${userStar}${player.player_name}${eliteBadge}</span>
+                        <span class="player-name" title="${player.entry_name} - ${player.player_name}${player.eliteAchievement ? ' | ' + player.eliteAchievement : ''}">
+                            <span class="toggle-team-name">${userStar}${player.entry_name}${eliteBadge}</span>
+                            <span class="toggle-manager-name">${player.player_name}</span>
+                        </span>
                         <span class="points">${pointsDisplay}${liveIndicator}</span>
                         ${live ? '<span class="expand-icon">ℹ️</span>' : ''}
                     </label>
