@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FPL League Tracker</title>
+    <meta name="description" content="Track your Fantasy Premier League mini-leagues with live scores, charts, auto-sub predictions, and bonus point tracking.">
+
+    <!-- Preconnect to external domains for faster loading -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://fpl-proxy.dom-mackie.workers.dev" crossorigin>
+    <link rel="preconnect" href="https://api-football-proxy.dom-mackie.workers.dev" crossorigin>
+    <link rel="dns-prefetch" href="https://fantasy.premierleague.com">
+
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%2337003c' width='100' height='100' rx='15'/><path d='M20 70 L35 45 L50 55 L65 30 L80 40' stroke='%2300ff85' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/><circle cx='80' cy='40' r='6' fill='%2304f5ff'/></svg>">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
@@ -51,7 +59,7 @@
         }
         .ticker-wrapper {
             display: flex;
-            animation: ticker-scroll 60s linear infinite;
+            animation: ticker-scroll 120s linear infinite;
             width: max-content;
         }
         .ticker-wrapper:hover {
