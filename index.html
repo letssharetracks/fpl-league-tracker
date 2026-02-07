@@ -2714,33 +2714,57 @@
             }
         }
 
-        function openSquadModal(entryId, event) {
+        async function openSquadModal(entryId, event) {
             if (event) event.stopPropagation();
-            console.log('openSquadModal called for entry:', entryId);
 
             const live = livePoints[entryId];
-            if (!live) { console.log('No live data for entry', entryId); return; }
-            if (!live.picks) { console.log('No picks data for entry', entryId, '- try refreshing live data'); return; }
-
-            // Find team info from allPlayers
             const team = allPlayers.find(p => p.entry === entryId);
             if (!team) return;
+
+            // Show modal immediately with loading state
+            document.getElementById('modalName').textContent = team.entry_name;
+            document.getElementById('modalTeam').textContent = team.player_name;
+            const modalContent = document.querySelector('#mobileModal .modal-content');
+            if (modalContent) modalContent.classList.add('squad-modal');
+            document.getElementById('modalBody').innerHTML = '<div style="text-align:center;padding:20px;color:#888;">Loading squad...</div>';
+            document.getElementById('mobileModal').classList.add('active');
+
+            // Fetch picks on demand if not cached
+            let picks = live?.picks;
+            if (!picks && currentGameweek) {
+                try {
+                    const response = await fplApiFetch(`/api/entry/${entryId}/event/${currentGameweek}/picks/`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        picks = data.picks;
+                        // Cache for future use
+                        if (live) live.picks = picks;
+                    }
+                } catch (e) {
+                    console.warn('Failed to fetch picks for', entryId, e);
+                }
+            }
+
+            if (!picks) {
+                document.getElementById('modalBody').innerHTML = '<div style="text-align:center;padding:20px;color:#ff6b6b;">Could not load squad data</div>';
+                return;
+            }
 
             const posLabels = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
             const posClasses = { 1: 'pos-gk', 2: 'pos-def', 3: 'pos-mid', 4: 'pos-fwd' };
 
             // Build auto-sub lookup
-            const autoSubOut = new Set((live.autoSubs || []).map(s => s.out));
-            const autoSubIn = new Set((live.autoSubs || []).map(s => s.in));
+            const autoSubOut = new Set((live?.autoSubs || []).map(s => s.out));
+            const autoSubIn = new Set((live?.autoSubs || []).map(s => s.in));
 
             // Build live bonus lookup from bpsPlayers
             const bonusLookup = {};
-            if (live.bpsPlayers) {
+            if (live?.bpsPlayers) {
                 live.bpsPlayers.forEach(bp => { bonusLookup[bp.name] = bp.bonus; });
             }
 
-            const starting = live.picks.filter(p => p.position <= 11);
-            const bench = live.picks.filter(p => p.position > 11).sort((a, b) => a.position - b.position);
+            const starting = picks.filter(p => p.position <= 11);
+            const bench = picks.filter(p => p.position > 11).sort((a, b) => a.position - b.position);
 
             function buildPlayerRow(pick, isBench) {
                 const info = bootstrapPlayers ? bootstrapPlayers[pick.element] : null;
@@ -2752,8 +2776,8 @@
 
                 // Determine effective multiplier (consider VC activation)
                 let multiplier = pick.multiplier;
-                if (live.vcActivated && pick.is_vice_captain) multiplier = 2;
-                if (live.vcActivated && pick.is_captain) multiplier = 0;
+                if (live?.vcActivated && pick.is_vice_captain) multiplier = 2;
+                if (live?.vcActivated && pick.is_captain) multiplier = 0;
 
                 const displayPts = pts * (multiplier || 1);
 
@@ -2814,19 +2838,13 @@
             bench.forEach(pick => { html += buildPlayerRow(pick, true); });
 
             // Total row
-            const gwPts = live.predictedPoints !== undefined ? live.predictedPoints : live.points;
+            const gwPts = live?.predictedPoints !== undefined ? live.predictedPoints : (live?.points || 0);
             html += '<div class="squad-total-row">' +
                 '<span class="squad-total-label">GW Points</span>' +
                 '<span class="squad-total-pts">' + gwPts + '</span>' +
                 '</div>';
 
-            // Set modal content
-            document.getElementById('modalName').textContent = team.entry_name;
-            document.getElementById('modalTeam').textContent = team.player_name;
-            const modalContent = document.querySelector('#mobileModal .modal-content');
-            if (modalContent) modalContent.classList.add('squad-modal');
             document.getElementById('modalBody').innerHTML = html;
-            document.getElementById('mobileModal').classList.add('active');
         }
 
         function updateTableView() {
