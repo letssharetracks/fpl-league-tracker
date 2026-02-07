@@ -1434,6 +1434,15 @@
             border-radius: 3px;
             margin-left: 4px;
         }
+        .squad-player-name .tc-badge {
+            font-size: 9px;
+            font-weight: 700;
+            background: #e8a900;
+            color: #37003c;
+            padding: 1px 4px;
+            border-radius: 3px;
+            margin-left: 4px;
+        }
         .squad-player-stats {
             display: flex;
             align-items: center;
@@ -2815,14 +2824,13 @@
                     if (pData.defcon) stats += '<span class="stat-icon stat-defcon">DC' + pData.defcon + '</span>';
                 }
 
-                // Captain / VC badge
+                // Captain / VC / TC badge
                 let badge = '';
-                if (pick.is_captain) badge = '<span class="captain-badge">C</span>';
+                if (pick.is_captain && live?.isTripleCaptain) badge = '<span class="tc-badge">TC</span>';
+                else if (pick.is_captain) badge = '<span class="captain-badge">C</span>';
                 else if (pick.is_vice_captain) badge = '<span class="vc-badge">V</span>';
 
-                // Multiplier display
-                let ptsDisplay = '' + displayPts;
-                if (multiplier > 1 && pts > 0) ptsDisplay = displayPts + ' <span style="font-size:9px;color:#888;">(' + pts + 'x' + multiplier + ')</span>';
+                const ptsDisplay = '' + displayPts;
 
                 // Colour-coded points rating (based on raw pts before captain multiplier)
                 let ptsColor = '#666';       // 0 = grey (blanked)
