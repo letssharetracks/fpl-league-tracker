@@ -4523,7 +4523,7 @@
                         const goalMatch = c.text.match(/^Goal[!.].*?\.\s+(.+?)\s+\(/);
                         if (goalMatch) {
                             const scorer = goalMatch[1].trim();
-                            const assistMatch = c.text.match(/Assisted by (.+?)(?:\s+with|\s*\.|\s*$)/);
+                            const assistMatch = c.text.match(/Assisted by (.+?)(?:\s+with|\s+following|\s+after|\s+from|\s+in\s|\s*\.|\s*$)/);
                             const assist = assistMatch ? assistMatch[1].trim() : null;
                             const timeMatch = c.time?.displayValue?.match(/(\d+)/);
                             const minute = timeMatch ? timeMatch[1] : '?';
