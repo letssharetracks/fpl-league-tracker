@@ -2822,9 +2822,6 @@
                     if (pData.penalties_missed) stats += '<span class="stat-icon stat-pen-miss">PM</span>';
                     if (pData.yellow_cards) stats += '<span class="stat-icon stat-yc"><span class="card-icon card-yellow"></span></span>';
                     if (pData.red_cards) stats += '<span class="stat-icon stat-rc"><span class="card-icon card-red"></span></span>';
-                    const bns = bnsInfo ? bnsInfo.bonus : 0;
-                    if (bns > 0) stats += '<span class="stat-icon stat-bonus">BPS' + bns + '</span>';
-                    if (pData.defcon) stats += '<span class="stat-icon stat-defcon">&#9888;' + pData.defcon + '</span>';
                 }
 
                 // Captain / VC / TC badge
