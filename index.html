@@ -1458,8 +1458,8 @@
         .stat-og { background: rgba(231,76,60,0.2); color: #e74c3c; }
         .stat-pen-miss { background: rgba(231,76,60,0.2); color: #e74c3c; }
         .stat-pen-save { background: rgba(0,255,133,0.2); color: #00ff85; }
-        .stat-bonus { background: rgba(232,169,0,0.2); color: #e8a900; }
-        .stat-defcon { background: rgba(255,107,107,0.2); color: #ff6b6b; }
+        .stat-bonus { background: rgba(255,170,0,0.2); color: #ffaa00; }
+        .stat-defcon { background: rgba(224,86,253,0.2); color: #e056fd; }
         .squad-player-pts {
             font-size: 14px;
             font-weight: 700;
@@ -2855,7 +2855,7 @@
                 // Bonus points breakdown
                 if (live.bpsPlayers && live.bpsPlayers.length > 0) {
                     const bpsText = live.bpsPlayers.map(bp =>
-                        '<span style="color:#e8a900;">' + bp.name + ' +' + bp.bonus + '</span>'
+                        '<span style="color:#ffaa00;">' + bp.name + ' +' + bp.bonus + '</span>'
                     ).join(', ');
                     html += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;">' +
                         '<span style="color:#888;">Bonus</span><span>' + bpsText + '</span></div>';
@@ -2864,7 +2864,7 @@
                 // DEFCON breakdown
                 if (live.defconPlayers && live.defconPlayers.length > 0) {
                     const defText = live.defconPlayers.map(dp =>
-                        '<span style="color:#ff6b6b;">' + dp.name + ' ' + dp.points + '</span>'
+                        '<span style="color:#e056fd;">' + dp.name + ' ' + dp.points + '</span>'
                     ).join(', ');
                     html += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;">' +
                         '<span style="color:#888;">DEFCON</span><span>' + defText + '</span></div>';
