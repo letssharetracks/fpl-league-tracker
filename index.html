@@ -1461,8 +1461,11 @@
         .stat-goal { background: rgba(0,255,133,0.2); color: #00ff85; }
         .stat-assist { background: rgba(4,245,255,0.2); color: #04f5ff; }
         .stat-cs { background: rgba(0,196,106,0.15); color: #00c46a; }
-        .stat-yc { background: rgba(255,204,0,0.25); color: #fc0; }
-        .stat-rc { background: rgba(231,76,60,0.25); color: #e74c3c; }
+        .stat-yc { background: none; padding: 0; }
+        .stat-rc { background: none; padding: 0; }
+        .card-icon { display: inline-block; width: 10px; height: 14px; border-radius: 2px; vertical-align: middle; }
+        .card-yellow { background: #fc0; }
+        .card-red { background: #e74c3c; }
         .stat-save { background: rgba(4,181,245,0.15); color: #04b5f5; }
         .stat-og { background: rgba(231,76,60,0.2); color: #e74c3c; }
         .stat-pen-miss { background: rgba(231,76,60,0.2); color: #e74c3c; }
@@ -2812,16 +2815,16 @@
                 if (pData) {
                     if (pData.goals) stats += '<span class="stat-icon stat-goal">&#9917;' + pData.goals + '</span>';
                     if (pData.assists) stats += '<span class="stat-icon stat-assist">&#127919;' + pData.assists + '</span>';
-                    if (pData.clean_sheets && pos <= 3) stats += '<span class="stat-icon stat-cs">CS</span>';
+                    if (pData.clean_sheets && pos <= 3) stats += '<span class="stat-icon stat-cs">&#128737;</span>';
                     if (pData.saves >= 3) stats += '<span class="stat-icon stat-save">' + pData.saves + 'S</span>';
                     if (pData.penalties_saved) stats += '<span class="stat-icon stat-pen-save">PS</span>';
                     if (pData.own_goals) stats += '<span class="stat-icon stat-og">' + pData.own_goals + 'OG</span>';
                     if (pData.penalties_missed) stats += '<span class="stat-icon stat-pen-miss">PM</span>';
-                    if (pData.yellow_cards) stats += '<span class="stat-icon stat-yc">YC</span>';
-                    if (pData.red_cards) stats += '<span class="stat-icon stat-rc">RC</span>';
+                    if (pData.yellow_cards) stats += '<span class="stat-icon stat-yc"><span class="card-icon card-yellow"></span></span>';
+                    if (pData.red_cards) stats += '<span class="stat-icon stat-rc"><span class="card-icon card-red"></span></span>';
                     const bns = bnsInfo ? bnsInfo.bonus : 0;
                     if (bns > 0) stats += '<span class="stat-icon stat-bonus">BPS' + bns + '</span>';
-                    if (pData.defcon) stats += '<span class="stat-icon stat-defcon">DC' + pData.defcon + '</span>';
+                    if (pData.defcon) stats += '<span class="stat-icon stat-defcon">&#9888;' + pData.defcon + '</span>';
                 }
 
                 // Captain / VC / TC badge
