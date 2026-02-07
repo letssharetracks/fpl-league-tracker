@@ -2758,10 +2758,12 @@
             const autoSubOut = new Set((live?.autoSubs || []).map(s => s.out));
             const autoSubIn = new Set((live?.autoSubs || []).map(s => s.in));
 
-            // Build live bonus lookup from bpsPlayers
+            // Build live bonus lookup from bpsPlayers (track confirmed vs provisional)
             const bonusLookup = {};
             if (live?.bpsPlayers) {
-                live.bpsPlayers.forEach(bp => { bonusLookup[bp.name] = bp.bonus; });
+                live.bpsPlayers.forEach(bp => {
+                    bonusLookup[bp.name] = { bonus: bp.bonus, isConfirmed: bp.isConfirmed };
+                });
             }
 
             const starting = picks.filter(p => p.position <= 11);
@@ -2772,8 +2774,13 @@
                 const pData = livePlayerData ? livePlayerData[pick.element] : null;
                 const name = info ? info.name : 'Unknown';
                 const pos = info ? info.position : 0;
-                const pts = pData ? pData.points : 0;
+                const rawPts = pData ? pData.points : 0;
                 const mins = pData ? pData.minutes : 0;
+
+                // Add provisional bonus to points (confirmed bonus is already in pData.points)
+                const bnsInfo = bonusLookup[name];
+                const provisionalBonus = (bnsInfo && !bnsInfo.isConfirmed) ? bnsInfo.bonus : 0;
+                const pts = rawPts + provisionalBonus;
 
                 // Determine effective multiplier (consider VC activation)
                 let multiplier = pick.multiplier;
@@ -2800,7 +2807,7 @@
                     if (pData.penalties_missed) stats += '<span class="stat-icon stat-pen-miss">PM</span>';
                     if (pData.yellow_cards) stats += '<span class="stat-icon stat-yc">YC</span>';
                     if (pData.red_cards) stats += '<span class="stat-icon stat-rc">RC</span>';
-                    const bns = bonusLookup[name] || 0;
+                    const bns = bnsInfo ? bnsInfo.bonus : 0;
                     if (bns > 0) stats += '<span class="stat-icon stat-bonus">+' + bns + '</span>';
                     if (pData.defcon) stats += '<span class="stat-icon stat-defcon">DC ' + pData.defcon + '</span>';
                 }
