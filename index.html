@@ -1382,6 +1382,116 @@
             font-size: 12px;
             margin-bottom: 8px;
         }
+
+        /* Squad breakdown modal */
+        .squad-player {
+            display: flex;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+            gap: 8px;
+        }
+        .squad-player:last-child { border-bottom: none; }
+        .squad-player.bench-player { opacity: 0.5; }
+        .squad-player.auto-sub-in { opacity: 1; border-left: 2px solid #00ff85; padding-left: 6px; }
+        .squad-player.auto-sub-out { opacity: 0.35; text-decoration: line-through; }
+        .pos-badge {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 4px;
+            border-radius: 3px;
+            min-width: 28px;
+            text-align: center;
+            color: #fff;
+        }
+        .pos-gk { background: #e8a900; }
+        .pos-def { background: #00c46a; }
+        .pos-mid { background: #04b5f5; }
+        .pos-fwd { background: #e74c3c; }
+        .squad-player-name {
+            flex: 1;
+            font-size: 13px;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .squad-player-name .captain-badge {
+            font-size: 9px;
+            font-weight: 700;
+            background: #00ff85;
+            color: #37003c;
+            padding: 1px 4px;
+            border-radius: 3px;
+            margin-left: 4px;
+        }
+        .squad-player-name .vc-badge {
+            font-size: 9px;
+            font-weight: 700;
+            background: #04f5ff;
+            color: #37003c;
+            padding: 1px 4px;
+            border-radius: 3px;
+            margin-left: 4px;
+        }
+        .squad-player-stats {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+        .stat-icon {
+            display: inline-flex;
+            align-items: center;
+            gap: 1px;
+            padding: 1px 3px;
+            border-radius: 3px;
+            font-size: 10px;
+        }
+        .stat-goal { background: rgba(0,255,133,0.2); color: #00ff85; }
+        .stat-assist { background: rgba(4,245,255,0.2); color: #04f5ff; }
+        .stat-cs { background: rgba(0,196,106,0.15); color: #00c46a; }
+        .stat-yc { background: rgba(255,204,0,0.25); color: #fc0; }
+        .stat-rc { background: rgba(231,76,60,0.25); color: #e74c3c; }
+        .stat-save { background: rgba(4,181,245,0.15); color: #04b5f5; }
+        .stat-og { background: rgba(231,76,60,0.2); color: #e74c3c; }
+        .stat-pen-miss { background: rgba(231,76,60,0.2); color: #e74c3c; }
+        .stat-pen-save { background: rgba(0,255,133,0.2); color: #00ff85; }
+        .stat-bonus { background: rgba(232,169,0,0.2); color: #e8a900; }
+        .squad-player-pts {
+            font-size: 14px;
+            font-weight: 700;
+            color: #00ff85;
+            min-width: 28px;
+            text-align: right;
+        }
+        .squad-player-pts.zero-pts { color: #666; }
+        .squad-player-mins {
+            font-size: 10px;
+            color: #666;
+            min-width: 28px;
+            text-align: right;
+        }
+        .bench-divider {
+            text-align: center;
+            color: #888;
+            font-size: 11px;
+            padding: 8px 0 4px;
+            border-top: 1px solid rgba(255,255,255,0.15);
+            margin-top: 4px;
+        }
+        .squad-total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0 0;
+            margin-top: 6px;
+            border-top: 1px solid rgba(0,255,133,0.3);
+            font-weight: 700;
+        }
+        .squad-total-label { color: #888; font-size: 13px; }
+        .squad-total-pts { color: #00ff85; font-size: 16px; }
+        .modal-content.squad-modal { max-width: 420px; }
     </style>
 </head>
 <body>
@@ -2592,6 +2702,131 @@
             detailsRow.style.display = detailsRow.style.display === 'none' ? 'table-row' : 'none';
         }
 
+        function closeMobileModal(event) {
+            // If called from backdrop click, only close if clicking the backdrop itself
+            if (event && event.target && event.target !== event.currentTarget) return;
+            const modal = document.getElementById('mobileModal');
+            if (modal) {
+                modal.classList.remove('active');
+                // Remove squad-modal class for next use
+                const content = modal.querySelector('.modal-content');
+                if (content) content.classList.remove('squad-modal');
+            }
+        }
+
+        function openSquadModal(entryId, event) {
+            if (event) event.stopPropagation();
+
+            const live = livePoints[entryId];
+            if (!live || !live.picks) return;
+
+            // Find team info from allPlayers
+            const team = allPlayers.find(p => p.entry === entryId);
+            if (!team) return;
+
+            const posLabels = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const posClasses = { 1: 'pos-gk', 2: 'pos-def', 3: 'pos-mid', 4: 'pos-fwd' };
+
+            // Build auto-sub lookup
+            const autoSubOut = new Set((live.autoSubs || []).map(s => s.out));
+            const autoSubIn = new Set((live.autoSubs || []).map(s => s.in));
+
+            // Build live bonus lookup from bpsPlayers
+            const bonusLookup = {};
+            if (live.bpsPlayers) {
+                live.bpsPlayers.forEach(bp => { bonusLookup[bp.name] = bp.bonus; });
+            }
+
+            const starting = live.picks.filter(p => p.position <= 11);
+            const bench = live.picks.filter(p => p.position > 11).sort((a, b) => a.position - b.position);
+
+            function buildPlayerRow(pick, isBench) {
+                const info = bootstrapPlayers ? bootstrapPlayers[pick.element] : null;
+                const pData = livePlayerData ? livePlayerData[pick.element] : null;
+                const name = info ? info.name : 'Unknown';
+                const pos = info ? info.position : 0;
+                const pts = pData ? pData.points : 0;
+                const mins = pData ? pData.minutes : 0;
+
+                // Determine effective multiplier (consider VC activation)
+                let multiplier = pick.multiplier;
+                if (live.vcActivated && pick.is_vice_captain) multiplier = 2;
+                if (live.vcActivated && pick.is_captain) multiplier = 0;
+
+                const displayPts = pts * (multiplier || 1);
+
+                // Auto-sub classes
+                let rowClass = 'squad-player';
+                if (isBench && !autoSubIn.has(pick.element)) rowClass += ' bench-player';
+                if (autoSubIn.has(pick.element)) rowClass += ' auto-sub-in';
+                if (autoSubOut.has(pick.element)) rowClass += ' auto-sub-out';
+
+                // Build stat icons
+                let stats = '';
+                if (pData) {
+                    for (let i = 0; i < pData.goals; i++) stats += '<span class="stat-icon stat-goal">&#9917;</span>';
+                    for (let i = 0; i < pData.assists; i++) stats += '<span class="stat-icon stat-assist">&#127860;</span>';
+                    if (pData.clean_sheets) stats += '<span class="stat-icon stat-cs">CS</span>';
+                    if (pData.saves >= 3) stats += '<span class="stat-icon stat-save">' + pData.saves + 'S</span>';
+                    if (pData.penalties_saved) stats += '<span class="stat-icon stat-pen-save">PS</span>';
+                    if (pData.own_goals) stats += '<span class="stat-icon stat-og">OG</span>';
+                    if (pData.penalties_missed) stats += '<span class="stat-icon stat-pen-miss">PM</span>';
+                    if (pData.yellow_cards) stats += '<span class="stat-icon stat-yc">YC</span>';
+                    if (pData.red_cards) stats += '<span class="stat-icon stat-rc">RC</span>';
+                    const bns = bonusLookup[name] || 0;
+                    if (bns > 0) stats += '<span class="stat-icon stat-bonus">+' + bns + '</span>';
+                }
+
+                // Captain / VC badge
+                let badge = '';
+                if (pick.is_captain) badge = '<span class="captain-badge">C</span>';
+                else if (pick.is_vice_captain) badge = '<span class="vc-badge">V</span>';
+
+                // Multiplier display
+                let ptsDisplay = '' + displayPts;
+                if (multiplier > 1 && pts > 0) ptsDisplay = displayPts + ' <span style="font-size:9px;color:#888;">(' + pts + 'x' + multiplier + ')</span>';
+
+                const ptsClass = displayPts === 0 ? 'squad-player-pts zero-pts' : 'squad-player-pts';
+
+                return '<div class="' + rowClass + '">' +
+                    '<span class="pos-badge ' + (posClasses[pos] || '') + '">' + (posLabels[pos] || '?') + '</span>' +
+                    '<span class="squad-player-name">' + name + badge + '</span>' +
+                    '<span class="squad-player-stats">' + stats + '</span>' +
+                    '<span class="squad-player-mins">' + (mins > 0 ? mins + "'" : '-') + '</span>' +
+                    '<span class="' + ptsClass + '">' + ptsDisplay + '</span>' +
+                    '</div>';
+            }
+
+            let html = '';
+
+            // Starting XI - sort by position type for clean display
+            const sortedStarting = [...starting].sort((a, b) => {
+                const posA = bootstrapPlayers ? (bootstrapPlayers[a.element]?.position || 0) : 0;
+                const posB = bootstrapPlayers ? (bootstrapPlayers[b.element]?.position || 0) : 0;
+                return posA - posB;
+            });
+            sortedStarting.forEach(pick => { html += buildPlayerRow(pick, false); });
+
+            // Bench divider
+            html += '<div class="bench-divider">BENCH</div>';
+            bench.forEach(pick => { html += buildPlayerRow(pick, true); });
+
+            // Total row
+            const gwPts = live.predictedPoints !== undefined ? live.predictedPoints : live.points;
+            html += '<div class="squad-total-row">' +
+                '<span class="squad-total-label">GW Points</span>' +
+                '<span class="squad-total-pts">' + gwPts + '</span>' +
+                '</div>';
+
+            // Set modal content
+            document.getElementById('modalName').textContent = team.entry_name;
+            document.getElementById('modalTeam').textContent = team.player_name;
+            const modalContent = document.querySelector('#mobileModal .modal-content');
+            if (modalContent) modalContent.classList.add('squad-modal');
+            document.getElementById('modalBody').innerHTML = html;
+            document.getElementById('mobileModal').classList.add('active');
+        }
+
         function updateTableView() {
             const tbody = document.getElementById('leagueTableBody');
             if (!tbody || allPlayers.length === 0) return;
@@ -2954,7 +3189,7 @@
                     <tr class="${rowClass}" data-entry="${player.entry}" style="${highlightStyle}" onclick="toggleRowDetails(${player.entry})">
                         <td class="col-rank">${position.toLocaleString()}</td>
                         <td class="col-move">${moveHtml}</td>
-                        <td class="col-name" title="${player.entry_name} - ${player.player_name}">
+                        <td class="col-name" title="${player.entry_name} - ${player.player_name}" onclick="openSquadModal(${player.entry}, event)" style="cursor:pointer;">
                             <div class="team-name">${isMyTeam ? '⭐ ' : ''}${player.entry_name.length > 18 ? player.entry_name.substring(0, 18) + '...' : player.entry_name}</div>
                             <div class="manager-name">${player.player_name}</div>
                         </td>
@@ -4910,10 +5145,18 @@
                         points: el.stats.total_points,
                         minutes: el.stats.minutes,
                         bonus: el.stats.bonus || 0,
-                        bps: el.stats.bps || 0,  // Live BPS score for calculating provisional bonus
+                        bps: el.stats.bps || 0,
                         defcon: defconPoints,
                         goals: el.stats.goals_scored || 0,
-                        assists: el.stats.assists || 0
+                        assists: el.stats.assists || 0,
+                        clean_sheets: el.stats.clean_sheets || 0,
+                        yellow_cards: el.stats.yellow_cards || 0,
+                        red_cards: el.stats.red_cards || 0,
+                        saves: el.stats.saves || 0,
+                        own_goals: el.stats.own_goals || 0,
+                        penalties_saved: el.stats.penalties_saved || 0,
+                        penalties_missed: el.stats.penalties_missed || 0,
+                        goals_conceded: el.stats.goals_conceded || 0
                     };
                 });
                 console.log('Fetched live scores for', Object.keys(livePlayerScores).length, 'players');
@@ -5359,7 +5602,8 @@
                     defconPlayers: defconPlayers,
                     captainName: captainName,
                     captainPoints: captainPoints,
-                    isTripleCaptain: activeChip === '3xc'
+                    isTripleCaptain: activeChip === '3xc',
+                    picks: data.picks
                 };
             } catch (e) {
                 console.error(`Failed to fetch live points for ${entryId}:`, e);
