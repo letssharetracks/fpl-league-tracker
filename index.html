@@ -1459,6 +1459,7 @@
         .stat-pen-miss { background: rgba(231,76,60,0.2); color: #e74c3c; }
         .stat-pen-save { background: rgba(0,255,133,0.2); color: #00ff85; }
         .stat-bonus { background: rgba(232,169,0,0.2); color: #e8a900; }
+        .stat-defcon { background: rgba(255,107,107,0.2); color: #ff6b6b; }
         .squad-player-pts {
             font-size: 14px;
             font-weight: 700;
@@ -2801,6 +2802,7 @@
                     if (pData.red_cards) stats += '<span class="stat-icon stat-rc">RC</span>';
                     const bns = bonusLookup[name] || 0;
                     if (bns > 0) stats += '<span class="stat-icon stat-bonus">+' + bns + '</span>';
+                    if (pData.defcon) stats += '<span class="stat-icon stat-defcon">DC ' + pData.defcon + '</span>';
                 }
 
                 // Captain / VC badge
