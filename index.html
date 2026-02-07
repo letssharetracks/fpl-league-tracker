@@ -9,7 +9,7 @@
     <!-- Preconnect to external domains for faster loading -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://fpl-proxy.dom-mackie.workers.dev" crossorigin>
-    <link rel="preconnect" href="https://api-football-proxy.dom-mackie.workers.dev" crossorigin>
+    <link rel="preconnect" href="https://site.api.espn.com" crossorigin>
     <link rel="dns-prefetch" href="https://fantasy.premierleague.com">
 
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%2337003c' width='100' height='100' rx='15'/><path d='M20 70 L35 45 L50 55 L65 30 L80 40' stroke='%2300ff85' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/><circle cx='80' cy='40' r='6' fill='%2304f5ff'/></svg>">
@@ -1729,14 +1729,15 @@
         const CLOUDFLARE_WORKER = 'https://fpl-proxy.dom-mackie.workers.dev/?path=';
         console.log('Using Cloudflare Worker for fast API calls');
 
-        // API-Football via Cloudflare Worker (caches globally - all users share same cache)
-        // Worker caches responses for 60 seconds, so 100 users = still ~1 API call/min
-        const API_FOOTBALL_WORKER = 'https://api-football-proxy.dom-mackie.workers.dev';
-        let previousScores = {}; // Track scores to detect goals
+        // ESPN API for live goal data - no API key needed, CORS-friendly
+        const ESPN_API_BASE = 'https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1';
+        let previousScores = {}; // Track scores to detect goals / VAR removals
+        let previousFinished = {}; // Track which matches have finished (for end-of-match re-check)
 
-        // Hardcoded goal data per gameweek - sourced from Sky Sports
+        // Hardcoded goal data per gameweek - sourced from ESPN
         // GW24: Brighton 1-1 Everton, Leeds 0-4 Arsenal, Wolves 0-2 Bournemouth, Chelsea 3-2 West Ham,
         //       Liverpool 4-1 Newcastle, Villa 0-1 Brentford, Man Utd 3-2 Fulham, Forest 1-1 Palace, Spurs 2-2 Man City
+        // GW25: Leeds 3-1 Forest (+ remaining games fetched live from ESPN)
         const HARDCODED_GOALS = {
             24: {
                 // Brighton 1-1 Everton
@@ -1822,6 +1823,17 @@
                     { player: { name: 'Talbi' }, time: { elapsed: 72 }, assist: { name: 'Mandava' } }
                 ],
                 'burnley': []
+            },
+            25: {
+                // Leeds 3-1 Nottingham Forest (Fri 6 Feb)
+                'leeds': [
+                    { player: { name: 'Bogle' }, time: { elapsed: 26 }, assist: { name: 'Gruev' } },
+                    { player: { name: 'Okafor' }, time: { elapsed: 30 }, assist: { name: 'Justin' } },
+                    { player: { name: 'Calvert-Lewin' }, time: { elapsed: 49 }, assist: { name: 'Gruev' } }
+                ],
+                'nottingham forest': [
+                    { player: { name: 'Lucca' }, time: { elapsed: 86 }, assist: { name: 'Hutchinson' } }
+                ]
             }
         };
 
@@ -4431,104 +4443,128 @@
         }
 
         // Fetch live Premier League fixtures via Cloudflare Worker (cached globally)
-        async function fetchLiveFootballMatches() {
+        // Normalize ESPN team names to match our internal format
+        function normalizeESPNTeamName(espnName) {
+            const name = espnName.toLowerCase();
+            const mappings = {
+                'leeds united': 'leeds',
+                'tottenham hotspur': 'tottenham',
+                'wolverhampton wanderers': 'wolves',
+                'brighton & hove albion': 'brighton',
+                'brighton hove albion': 'brighton',
+                'newcastle united': 'newcastle',
+                'west ham united': 'west ham',
+                'leicester city': 'leicester',
+                'ipswich town': 'ipswich',
+                'afc bournemouth': 'bournemouth',
+            };
+            // Check explicit mappings first, otherwise use lowercase as-is
+            return mappings[name] || name;
+        }
+
+        // Fetch today's EPL scoreboard from ESPN (all matches in one call)
+        async function fetchESPNScoreboard() {
             try {
-                const response = await fetch(`${API_FOOTBALL_WORKER}?endpoint=fixtures?live=all%26league=39`);
+                const response = await fetch(`${ESPN_API_BASE}/scoreboard`);
                 const data = await response.json();
-                const cacheStatus = response.headers.get('X-Cache') || 'UNKNOWN';
-                console.log(`API-Football via worker (cache: ${cacheStatus})`);
-                return data.response || [];
+                return data.events || [];
             } catch (e) {
-                console.error('API-Football worker error:', e);
+                console.warn('ESPN scoreboard fetch failed:', e);
                 return [];
             }
         }
 
-        // Fetch today's fixtures (including finished) from API-Football
-        async function fetchTodaysFootballMatches() {
+        // Fetch match commentary from ESPN summary (contains assist info)
+        async function fetchESPNCommentary(eventId) {
             try {
-                const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-                const response = await fetch(`${API_FOOTBALL_WORKER}?endpoint=fixtures?date=${today}%26league=39`);
+                const response = await fetch(`${ESPN_API_BASE}/summary?event=${eventId}`);
                 const data = await response.json();
-                console.log(`API-Football today's fixtures:`, data.response?.length || 0);
-                return data.response || [];
+                return data.commentary || [];
             } catch (e) {
-                console.error('API-Football today error:', e);
+                console.warn('ESPN summary fetch failed for event', eventId, ':', e);
                 return [];
             }
         }
 
-        // Fetch match events (goals, assists) via Cloudflare Worker
-        async function fetchMatchEvents(fixtureId) {
+        // Fetch goal data from ESPN: scoreboard for scorers + summary commentary for assists
+        // Returns { teamName: [{ player: { name }, time: { elapsed }, assist: { name } | null }] }
+        async function fetchESPNGoals() {
             try {
-                const response = await fetch(`${API_FOOTBALL_WORKER}?endpoint=fixtures/events?fixture=${fixtureId}`);
-                const data = await response.json();
-                return data.response || [];
-            } catch (e) {
-                console.error('API-Football events error:', e);
-                return [];
-            }
-        }
+                const events = await fetchESPNScoreboard();
+                if (!events.length) {
+                    console.log('ESPN: no events found for today');
+                    return {};
+                }
 
-        // Fetch goal scorers from Sky Sports live scores
-        async function fetchSkySportsGoals() {
-            try {
-                // Sky Sports live scores JSON feed (via CORS proxy)
-                const skyUrl = 'https://www.skysports.com/live-scores/football';
-                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(skyUrl)}`;
+                const allGoals = {}; // teamName -> [goals]
 
-                const response = await fetch(proxyUrl, { timeout: 8000 });
-                const html = await response.text();
+                for (const event of events) {
+                    const comp = event.competitions[0];
+                    if (!comp) continue;
 
-                // Parse HTML to extract goal scorers
-                const goals = {};
-
-                // Match pattern: team names and scorers from Sky Sports HTML
-                // Sky Sports uses data attributes and specific classes for match data
-                const matchRegex = /<div[^>]*class="[^"]*fixres__item[^"]*"[^>]*>([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/gi;
-                const teamRegex = /class="[^"]*swap-text--bp30[^"]*"[^>]*>([^<]+)/gi;
-                const scorerRegex = /class="[^"]*fixres__scorers[^"]*"[^>]*>([\s\S]*?)<\/p>/gi;
-
-                let match;
-                while ((match = matchRegex.exec(html)) !== null) {
-                    const block = match[1];
-
-                    // Extract teams
-                    const teams = [];
-                    let teamMatch;
-                    const teamRe = /swap-text--bp30[^>]*>([^<]+)/gi;
-                    while ((teamMatch = teamRe.exec(block)) !== null) {
-                        teams.push(teamMatch[1].trim().toLowerCase());
+                    // Build ESPN team ID -> normalized name mapping from competitors
+                    const teamMap = {};
+                    for (const c of comp.competitors) {
+                        teamMap[c.team.id] = normalizeESPNTeamName(c.team.displayName);
                     }
 
-                    // Extract scorers
-                    const scorerMatch = /fixres__scorers[^>]*>([\s\S]*?)<\/p>/gi.exec(block);
-                    if (scorerMatch && teams.length >= 2) {
-                        const scorerText = scorerMatch[1].replace(/<[^>]+>/g, ' ').trim();
-                        const scorerParts = scorerText.split(/\s*,\s*/);
+                    // Get goal details from scoreboard
+                    const goalDetails = (comp.details || []).filter(d => d.scoringPlay);
+                    if (!goalDetails.length) continue;
 
-                        const teamGoals = scorerParts.map(s => {
-                            const timeMatch = s.match(/(\d+)/);
-                            const nameMatch = s.match(/([A-Za-z\s\-']+)/);
-                            return {
-                                player: { name: nameMatch ? nameMatch[1].trim() : s },
-                                time: { elapsed: timeMatch ? parseInt(timeMatch[1]) : 0 },
-                                type: 'Goal'
-                            };
-                        }).filter(g => g.player.name);
+                    // Fetch commentary for this match to get assists
+                    const commentary = await fetchESPNCommentary(event.id);
 
-                        if (teamGoals.length > 0) {
-                            teams.forEach(team => {
-                                goals[team] = teamGoals;
-                            });
+                    // Parse assists from commentary text
+                    // Format: "Goal! TeamA X, TeamB Y. PlayerName (TeamName) ... Assisted by AssistName with ..."
+                    const assistMap = {}; // "scorerName-minute" -> assistName
+                    for (const c of commentary) {
+                        if (!c.text) continue;
+                        const goalMatch = c.text.match(/^Goal[!.].*?\.\s+(.+?)\s+\(/);
+                        if (goalMatch) {
+                            const scorer = goalMatch[1].trim();
+                            const assistMatch = c.text.match(/Assisted by (.+?)(?:\s+with|\s*\.|\s*$)/);
+                            const assist = assistMatch ? assistMatch[1].trim() : null;
+                            const timeMatch = c.time?.displayValue?.match(/(\d+)/);
+                            const minute = timeMatch ? timeMatch[1] : '?';
+                            assistMap[`${scorer}-${minute}`] = assist;
                         }
+                    }
+
+                    // Build goal objects per team
+                    for (const detail of goalDetails) {
+                        const scorer = detail.athletesInvolved?.[0];
+                        if (!scorer) continue;
+
+                        const teamId = detail.team?.id;
+                        const teamName = teamMap[teamId];
+                        if (!teamName) continue;
+
+                        if (!allGoals[teamName]) allGoals[teamName] = [];
+
+                        const timeStr = detail.clock?.displayValue || '?';
+                        const minuteNum = timeStr.match(/(\d+)/)?.[1] || '?';
+
+                        // Look up assist from commentary
+                        const assistName = assistMap[`${scorer.displayName}-${minuteNum}`] || null;
+
+                        let playerName = scorer.shortName || scorer.displayName;
+                        if (detail.ownGoal) playerName += ' (OG)';
+                        if (detail.penaltyKick) playerName += ' (P)';
+
+                        allGoals[teamName].push({
+                            player: { name: playerName },
+                            time: { elapsed: parseInt(minuteNum) || minuteNum },
+                            assist: assistName ? { name: assistName } : null
+                        });
                     }
                 }
 
-                console.log('Sky Sports: parsed goals for', Object.keys(goals).length, 'teams');
-                return goals;
+                const teamsWithGoals = Object.keys(allGoals).filter(k => allGoals[k].length > 0);
+                console.log(`ESPN: parsed goals for ${teamsWithGoals.length} teams:`, teamsWithGoals);
+                return allGoals;
             } catch (e) {
-                console.warn('Sky Sports fetch failed:', e);
+                console.warn('ESPN goals fetch failed:', e);
                 return {};
             }
         }
@@ -4573,107 +4609,70 @@
                 // - If NO games live: show ALL GW fixtures with results
                 const fixtures = hasLiveGames ? liveGames : allFixtures;
 
-                // Check for score changes (goals) - only fetch API-Football ONCE when any goal detected
-                let liveMatchData = {};
-                const liveFixtures = fixtures.filter(f => f.started && !f.finished);
+                // Check for score changes (goals/VAR removals) - triggers ESPN fetch
+                const startedFixtures = fixtures.filter(f => f.started);
+                const liveFixtures = startedFixtures.filter(f => !f.finished);
                 const isFirstLoad = Object.keys(previousScores).length === 0;
 
-                // First pass: check if ANY goals were scored (don't call API yet)
-                let goalsDetected = false;
-                console.log(`Goal check: ${liveFixtures.length} live fixtures, isFirstLoad=${isFirstLoad}`);
-                for (const f of liveFixtures) {
+                // Track score changes: new goals AND VAR disallowed goals (score decrease)
+                let scoreChanged = false;
+                let matchJustFinished = false;
+                console.log(`Goal check: ${liveFixtures.length} live, ${startedFixtures.length} started, isFirstLoad=${isFirstLoad}`);
+                for (const f of startedFixtures) {
                     const fixtureKey = `${f.team_h}-${f.team_a}`;
                     const currentTotal = (f.team_h_score || 0) + (f.team_a_score || 0);
                     const previousTotal = previousScores[fixtureKey];
+                    const wasFinished = previousFinished?.[fixtureKey];
 
-                    console.log(`  ${fixtureKey}: current=${currentTotal}, previous=${previousTotal}`);
+                    console.log(`  ${fixtureKey}: current=${currentTotal}, previous=${previousTotal}, finished=${f.finished}, wasFinished=${wasFinished}`);
 
-                    // Only detect as new goal if we had a previous score (not first load)
-                    if (previousTotal !== undefined && currentTotal > previousTotal) {
-                        console.log(`⚽ GOAL DETECTED in ${fixtureKey}! Score: ${previousTotal} → ${currentTotal}`);
-                        goalsDetected = true;
+                    // Detect new goal or VAR disallowed goal (score went up OR down)
+                    if (previousTotal !== undefined && currentTotal !== previousTotal) {
+                        console.log(`⚽ SCORE CHANGE in ${fixtureKey}! ${previousTotal} → ${currentTotal}`);
+                        scoreChanged = true;
                     }
-                    // Always update the tracked score
+
+                    // Detect match just finished (was live, now FT) - re-fetch for final confirmation
+                    if (f.finished && !wasFinished) {
+                        console.log(`🏁 MATCH FINISHED: ${fixtureKey} - re-fetching for final scorer/assist confirmation`);
+                        matchJustFinished = true;
+                    }
+
+                    // Always update tracked state
                     previousScores[fixtureKey] = currentTotal;
+                    previousFinished[fixtureKey] = f.finished;
                 }
 
                 // Check if there are existing goals on first load
-                const hasExistingGoals = liveFixtures.some(f => (f.team_h_score || 0) + (f.team_a_score || 0) > 0);
+                const hasExistingGoals = startedFixtures.some(f => (f.team_h_score || 0) + (f.team_a_score || 0) > 0);
+                const shouldFetchScorers = scoreChanged || matchJustFinished || (isFirstLoad && hasExistingGoals);
 
-                // Only fetch goal scorers for LIVE matches (not finished)
-                // Finished games use hardcoded data which has accurate minutes
-                const hasLiveGoals = liveFixtures.some(f => f.started && !f.finished && ((f.team_h_score || 0) + (f.team_a_score || 0) > 0));
-                const shouldFetchScorers = goalsDetected || (isFirstLoad && hasLiveGoals);
-
-                if (shouldFetchScorers && liveFixtures.length > 0) {
-                    console.log(`Fetching goal scorers for LIVE matches only (goal=${goalsDetected}, firstLoad=${isFirstLoad})`);
+                if (shouldFetchScorers) {
+                    console.log(`Fetching goal details from ESPN (scoreChanged=${scoreChanged}, matchFinished=${matchJustFinished}, firstLoad=${isFirstLoad})`);
                     try {
-                        // Only fetch LIVE matches from API-Football (not finished)
-                        console.log('Fetching goal scorers from API-Football for live games...');
-                        const liveMatches = await fetchLiveFootballMatches();
-                        console.log(`API-Football: ${liveMatches.length} live matches`);
+                        const espnGoals = await fetchESPNGoals();
+                        let goalsAdded = 0;
+                        const hardcodedForGw = HARDCODED_GOALS[currentGameweek] || {};
 
-                        // Filter to only in-progress matches with goals
-                        const liveMatchesWithGoals = liveMatches.filter(m =>
-                            m.fixture?.status?.short !== 'FT' && // Not finished
-                            ((m.goals?.home || 0) + (m.goals?.away || 0) > 0)
-                        );
-                        console.log('Live matches with goals:', liveMatchesWithGoals.length);
-
-                        if (liveMatchesWithGoals.length > 0) {
-                            const eventPromises = liveMatchesWithGoals.map(async (match) => {
-                                const homeTeam = match.teams?.home?.name?.toLowerCase() || '';
-                                const awayTeam = match.teams?.away?.name?.toLowerCase() || '';
-                                const fixtureId = match.fixture?.id;
-
-                                // Skip if we already have hardcoded data for this team
-                                const hardcodedForGw = HARDCODED_GOALS[currentGameweek] || {};
-                                if (hardcodedForGw[homeTeam]?.length > 0 || hardcodedForGw[awayTeam]?.length > 0) {
-                                    console.log(`Skipping ${homeTeam} vs ${awayTeam} - has hardcoded data`);
-                                    return null;
-                                }
-
-                                console.log(`Fetching events for ${homeTeam} vs ${awayTeam} (fixture ${fixtureId})`);
-                                if (!fixtureId) return null;
-
-                                try {
-                                    const events = await fetchMatchEvents(fixtureId);
-                                    const goals = events.filter(e => e.type === 'Goal');
-                                    console.log(`Found ${goals.length} goals in ${homeTeam} vs ${awayTeam}`);
-                                    return { homeTeam, awayTeam, goals };
-                                } catch (e) {
-                                    console.warn('Failed to fetch events for fixture', fixtureId, e);
-                                    return null;
-                                }
-                            });
-
-                            const results = await Promise.all(eventPromises);
-                            let goalsAdded = 0;
-                            results.forEach(r => {
-                                if (r && r.goals.length > 0) {
-                                    // Only store if no hardcoded data exists
-                                    const hardcodedForGw = HARDCODED_GOALS[currentGameweek] || {};
-                                    if (!hardcodedForGw[r.homeTeam]?.length && !hardcodedForGw[r.awayTeam]?.length) {
-                                        cachedGoalScorers[r.homeTeam] = r.goals;
-                                        cachedGoalScorers[r.awayTeam] = r.goals;
-                                        goalsAdded += r.goals.length;
-                                    }
-                                }
-                            });
-                            console.log(`API-Football: cached ${goalsAdded} goals for live matches`);
-
-                            // Save to localStorage for persistence
-                            if (goalsAdded > 0) {
-                                saveGoalScorersToStorage();
+                        Object.keys(espnGoals).forEach(team => {
+                            // ESPN data overrides for: teams without hardcoded data,
+                            // OR when a match just finished (re-confirm OGs/assists)
+                            const hasHardcoded = hardcodedForGw[team]?.length > 0;
+                            if ((!hasHardcoded || matchJustFinished) && espnGoals[team].length > 0) {
+                                cachedGoalScorers[team] = espnGoals[team];
+                                goalsAdded++;
                             }
-                        } else {
-                            console.log('No live matches with goals from API-Football');
+                        });
+
+                        if (goalsAdded > 0) {
+                            console.log(`ESPN: updated goal data for ${goalsAdded} teams`);
+                            saveGoalScorersToStorage();
                         }
                     } catch (e) {
-                        console.warn('Could not fetch goal scorer data:', e);
+                        console.warn('Could not fetch ESPN goal data:', e);
                     }
                 } else if (isFirstLoad) {
-                    console.log('First load - no goals yet, will fetch on first goal');
+                    console.log('First load - no goals yet, will fetch on first score change');
                 }
 
                 const fixtureHtml = fixtures.map(f => {
@@ -4761,10 +4760,10 @@
 
                 // Check for score changes using BOTH detection methods (belt and suspenders)
                 const backupDetected = checkScoreChanges(fixtures);
-                const shouldRefreshTable = goalsDetected || backupDetected;
+                const shouldRefreshTable = scoreChanged || backupDetected;
 
                 if (shouldRefreshTable) {
-                    console.log(`Score change detected (goal=${goalsDetected}, backup=${backupDetected}) - refreshing table`);
+                    console.log(`Score change detected (scoreChanged=${scoreChanged}, backup=${backupDetected}) - refreshing table`);
                     silentRefreshLiveData();
                 }
 
