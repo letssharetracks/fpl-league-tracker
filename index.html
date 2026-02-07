@@ -2716,9 +2716,11 @@
 
         function openSquadModal(entryId, event) {
             if (event) event.stopPropagation();
+            console.log('openSquadModal called for entry:', entryId);
 
             const live = livePoints[entryId];
-            if (!live || !live.picks) return;
+            if (!live) { console.log('No live data for entry', entryId); return; }
+            if (!live.picks) { console.log('No picks data for entry', entryId, '- try refreshing live data'); return; }
 
             // Find team info from allPlayers
             const team = allPlayers.find(p => p.entry === entryId);
