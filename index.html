@@ -1386,17 +1386,15 @@
         /* Squad breakdown modal */
         .squad-player {
             display: flex;
-            flex-wrap: wrap;
             align-items: center;
             padding: 6px 0;
             border-bottom: 1px solid rgba(255,255,255,0.07);
-            gap: 4px 8px;
+            gap: 8px;
         }
         .squad-player:last-child { border-bottom: none; }
         .squad-player.bench-player { opacity: 0.5; }
         .squad-player.auto-sub-in { opacity: 1; border-left: 2px solid #00ff85; padding-left: 6px; }
-        .squad-player.auto-sub-out { opacity: 0.35; }
-        .squad-player.auto-sub-out .squad-player-name { text-decoration: line-through; }
+        .squad-player.auto-sub-out { opacity: 0.35; text-decoration: line-through; }
         .pos-badge {
             font-size: 9px;
             font-weight: 700;
@@ -1450,8 +1448,7 @@
             align-items: center;
             gap: 4px;
             font-size: 11px;
-            flex-wrap: wrap;
-            flex-basis: 100%;
+            flex-shrink: 0;
         }
         .stat-icon {
             display: inline-flex;
@@ -2813,8 +2810,8 @@
                 // Build stat icons - clear text labels
                 let stats = '';
                 if (pData) {
-                    if (pData.goals) stats += '<span class="stat-icon stat-goal">' + pData.goals + 'G</span>';
-                    if (pData.assists) stats += '<span class="stat-icon stat-assist">' + pData.assists + 'A</span>';
+                    if (pData.goals) stats += '<span class="stat-icon stat-goal">&#9917;' + pData.goals + '</span>';
+                    if (pData.assists) stats += '<span class="stat-icon stat-assist">&#127919;' + pData.assists + '</span>';
                     if (pData.clean_sheets && pos <= 3) stats += '<span class="stat-icon stat-cs">CS</span>';
                     if (pData.saves >= 3) stats += '<span class="stat-icon stat-save">' + pData.saves + 'S</span>';
                     if (pData.penalties_saved) stats += '<span class="stat-icon stat-pen-save">PS</span>';
@@ -2846,16 +2843,13 @@
 
                 const ptsClass = 'squad-player-pts';
 
-                let row = '<div class="' + rowClass + '">' +
+                return '<div class="' + rowClass + '">' +
                     '<span class="pos-badge ' + (posClasses[pos] || '') + '">' + (posLabels[pos] || '?') + '</span>' +
                     '<span class="squad-player-name">' + name + badge + '</span>' +
+                    '<span class="squad-player-stats">' + stats + '</span>' +
                     '<span class="squad-player-mins">' + (mins > 0 ? mins + "'" : '-') + '</span>' +
-                    '<span class="' + ptsClass + '" style="color:' + ptsColor + ';">' + ptsDisplay + '</span>';
-                if (stats) {
-                    row += '<span class="squad-player-stats" style="margin-left:36px;">' + stats + '</span>';
-                }
-                row += '</div>';
-                return row;
+                    '<span class="' + ptsClass + '" style="color:' + ptsColor + ';">' + ptsDisplay + '</span>' +
+                    '</div>';
             }
 
             let html = '';
