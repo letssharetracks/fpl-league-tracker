@@ -2787,15 +2787,15 @@
                 if (autoSubIn.has(pick.element)) rowClass += ' auto-sub-in';
                 if (autoSubOut.has(pick.element)) rowClass += ' auto-sub-out';
 
-                // Build stat icons
+                // Build stat icons - clear text labels
                 let stats = '';
                 if (pData) {
-                    for (let i = 0; i < pData.goals; i++) stats += '<span class="stat-icon stat-goal">&#9917;</span>';
-                    for (let i = 0; i < pData.assists; i++) stats += '<span class="stat-icon stat-assist">&#127860;</span>';
+                    if (pData.goals) stats += '<span class="stat-icon stat-goal">' + pData.goals + 'G</span>';
+                    if (pData.assists) stats += '<span class="stat-icon stat-assist">' + pData.assists + 'A</span>';
                     if (pData.clean_sheets) stats += '<span class="stat-icon stat-cs">CS</span>';
                     if (pData.saves >= 3) stats += '<span class="stat-icon stat-save">' + pData.saves + 'S</span>';
                     if (pData.penalties_saved) stats += '<span class="stat-icon stat-pen-save">PS</span>';
-                    if (pData.own_goals) stats += '<span class="stat-icon stat-og">OG</span>';
+                    if (pData.own_goals) stats += '<span class="stat-icon stat-og">' + pData.own_goals + 'OG</span>';
                     if (pData.penalties_missed) stats += '<span class="stat-icon stat-pen-miss">PM</span>';
                     if (pData.yellow_cards) stats += '<span class="stat-icon stat-yc">YC</span>';
                     if (pData.red_cards) stats += '<span class="stat-icon stat-rc">RC</span>';
@@ -2812,14 +2812,23 @@
                 let ptsDisplay = '' + displayPts;
                 if (multiplier > 1 && pts > 0) ptsDisplay = displayPts + ' <span style="font-size:9px;color:#888;">(' + pts + 'x' + multiplier + ')</span>';
 
-                const ptsClass = displayPts === 0 ? 'squad-player-pts zero-pts' : 'squad-player-pts';
+                // Colour-coded points rating (based on raw pts before captain multiplier)
+                let ptsColor = '#666';       // 0 = grey (blanked)
+                if (mins === 0) ptsColor = '#666';
+                else if (pts <= 2) ptsColor = '#ff6b6b';  // 1-2 = red (poor)
+                else if (pts <= 4) ptsColor = '#ccc';      // 3-4 = white (average)
+                else if (pts <= 7) ptsColor = '#7ddf7d';   // 5-7 = light green (good)
+                else if (pts <= 12) ptsColor = '#00ff85';   // 8-12 = bright green (great)
+                else ptsColor = '#e8a900';                  // 13+ = gold (monster haul)
+
+                const ptsClass = 'squad-player-pts';
 
                 return '<div class="' + rowClass + '">' +
                     '<span class="pos-badge ' + (posClasses[pos] || '') + '">' + (posLabels[pos] || '?') + '</span>' +
                     '<span class="squad-player-name">' + name + badge + '</span>' +
                     '<span class="squad-player-stats">' + stats + '</span>' +
                     '<span class="squad-player-mins">' + (mins > 0 ? mins + "'" : '-') + '</span>' +
-                    '<span class="' + ptsClass + '">' + ptsDisplay + '</span>' +
+                    '<span class="' + ptsClass + '" style="color:' + ptsColor + ';">' + ptsDisplay + '</span>' +
                     '</div>';
             }
 
@@ -2836,6 +2845,44 @@
             // Bench divider
             html += '<div class="bench-divider">BENCH</div>';
             bench.forEach(pick => { html += buildPlayerRow(pick, true); });
+
+            // Summary section
+            if (live) {
+                html += '<div style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.15);">';
+
+                // Bonus points breakdown
+                if (live.bpsPlayers && live.bpsPlayers.length > 0) {
+                    const bpsText = live.bpsPlayers.map(bp =>
+                        '<span style="color:#e8a900;">' + bp.name + ' +' + bp.bonus + '</span>'
+                    ).join(', ');
+                    html += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;">' +
+                        '<span style="color:#888;">Bonus</span><span>' + bpsText + '</span></div>';
+                }
+
+                // DEFCON breakdown
+                if (live.defconPlayers && live.defconPlayers.length > 0) {
+                    const defText = live.defconPlayers.map(dp =>
+                        '<span style="color:#ff6b6b;">' + dp.name + ' ' + dp.points + '</span>'
+                    ).join(', ');
+                    html += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;">' +
+                        '<span style="color:#888;">DEFCON</span><span>' + defText + '</span></div>';
+                }
+
+                // Hit taken
+                if (live.transferCost > 0) {
+                    html += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;">' +
+                        '<span style="color:#888;">Hit</span><span style="color:#ff6b6b;">-' + live.transferCost + '</span></div>';
+                }
+
+                // Chip
+                const chipNames = { 'bboost': 'Bench Boost', '3xc': 'Triple Captain', 'freehit': 'Free Hit', 'wildcard': 'Wildcard' };
+                if (live.chip) {
+                    html += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;">' +
+                        '<span style="color:#888;">Chip</span><span style="color:#04f5ff;">' + (chipNames[live.chip] || live.chip) + '</span></div>';
+                }
+
+                html += '</div>';
+            }
 
             // Total row
             const gwPts = live?.predictedPoints !== undefined ? live.predictedPoints : (live?.points || 0);
