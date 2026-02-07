@@ -1386,15 +1386,17 @@
         /* Squad breakdown modal */
         .squad-player {
             display: flex;
+            flex-wrap: wrap;
             align-items: center;
             padding: 6px 0;
             border-bottom: 1px solid rgba(255,255,255,0.07);
-            gap: 8px;
+            gap: 4px 8px;
         }
         .squad-player:last-child { border-bottom: none; }
         .squad-player.bench-player { opacity: 0.5; }
         .squad-player.auto-sub-in { opacity: 1; border-left: 2px solid #00ff85; padding-left: 6px; }
-        .squad-player.auto-sub-out { opacity: 0.35; text-decoration: line-through; }
+        .squad-player.auto-sub-out { opacity: 0.35; }
+        .squad-player.auto-sub-out .squad-player-name { text-decoration: line-through; }
         .pos-badge {
             font-size: 9px;
             font-weight: 700;
@@ -1448,7 +1450,8 @@
             align-items: center;
             gap: 4px;
             font-size: 11px;
-            flex-shrink: 0;
+            flex-wrap: wrap;
+            flex-basis: 100%;
         }
         .stat-icon {
             display: inline-flex;
@@ -2843,13 +2846,16 @@
 
                 const ptsClass = 'squad-player-pts';
 
-                return '<div class="' + rowClass + '">' +
+                let row = '<div class="' + rowClass + '">' +
                     '<span class="pos-badge ' + (posClasses[pos] || '') + '">' + (posLabels[pos] || '?') + '</span>' +
                     '<span class="squad-player-name">' + name + badge + '</span>' +
-                    '<span class="squad-player-stats">' + stats + '</span>' +
                     '<span class="squad-player-mins">' + (mins > 0 ? mins + "'" : '-') + '</span>' +
-                    '<span class="' + ptsClass + '" style="color:' + ptsColor + ';">' + ptsDisplay + '</span>' +
-                    '</div>';
+                    '<span class="' + ptsClass + '" style="color:' + ptsColor + ';">' + ptsDisplay + '</span>';
+                if (stats) {
+                    row += '<span class="squad-player-stats" style="margin-left:36px;">' + stats + '</span>';
+                }
+                row += '</div>';
+                return row;
             }
 
             let html = '';
