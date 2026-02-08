@@ -5204,10 +5204,22 @@
                     `;
                 }).join('');
 
-                // Duplicate for seamless loop
+                // Only duplicate for scroll loop if content is wider than viewport
                 const tickerContent = document.getElementById('tickerContent');
-                tickerContent.innerHTML = fixtureHtml + fixtureHtml;
-                document.getElementById('fixtureTicker').style.display = 'block';
+                const tickerContainer = document.getElementById('fixtureTicker');
+                tickerContainer.style.display = 'block';
+                tickerContent.innerHTML = fixtureHtml;
+                tickerContent.style.animation = 'none';
+                tickerContent.style.justifyContent = '';
+                // Check after render if content overflows
+                requestAnimationFrame(() => {
+                    if (tickerContent.scrollWidth > tickerContainer.clientWidth) {
+                        tickerContent.innerHTML = fixtureHtml + fixtureHtml;
+                        tickerContent.style.animation = '';
+                    } else {
+                        tickerContent.style.justifyContent = 'center';
+                    }
+                });
 
                 // Check if any matches are live and manage auto-refresh
                 const liveMatches = fixtures.some(f => f.started && !f.finished);
