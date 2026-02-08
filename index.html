@@ -2804,7 +2804,7 @@
 
                 // Auto-sub classes
                 let rowClass = 'squad-player';
-                if (isBench && !autoSubIn.has(pick.element)) rowClass += ' bench-player';
+                if (isBench && !autoSubIn.has(pick.element) && live?.chip !== 'bboost') rowClass += ' bench-player';
                 if (autoSubIn.has(pick.element)) rowClass += ' auto-sub-in';
                 if (autoSubOut.has(pick.element)) rowClass += ' auto-sub-out';
 
