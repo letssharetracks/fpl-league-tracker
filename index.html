@@ -5179,7 +5179,7 @@
                             .join(' <span style="color:#666">│</span> ');
                     }
 
-                    if (f.finished) {
+                    if (f.finished || f.finished_provisional) {
                         statusClass = 'ft';
                         statusText = 'FT';
                     } else if (f.started) {
