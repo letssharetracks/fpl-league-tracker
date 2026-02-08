@@ -2900,8 +2900,15 @@
                             '<span style="color:#00ff85;">' + t.playerIn + '</span>' +
                             ' <span style="color:' + swingColor + ';">(' + swingText + ')</span></div>';
                     }).join('');
+                    const totalSwing = transferData.transfers.reduce((sum, t) => sum + t.swing, 0);
+                    const totalColor = totalSwing > 0 ? '#00ff85' : totalSwing < 0 ? '#ff6b6b' : '#ccc';
+                    const totalText = totalSwing > 0 ? '+' + totalSwing : '' + totalSwing;
+                    const swingLine = transferData.transfers.length > 1
+                        ? '<div style="font-size:11px;padding:2px 0 0;text-align:right;border-top:1px solid #333;margin-top:2px;">' +
+                          '<span style="color:' + totalColor + ';">Net swing: ' + totalText + '</span></div>'
+                        : '';
                     html += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;">' +
-                        '<span style="color:#888;align-self:flex-start;">Transfers</span><div>' + txHtml + '</div></div>';
+                        '<span style="color:#888;align-self:flex-start;">Transfers</span><div>' + txHtml + swingLine + '</div></div>';
                 }
 
                 // FT (free transfers available this GW - skip for wildcard as it's unlimited)
