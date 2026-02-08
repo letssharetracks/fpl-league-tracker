@@ -2889,8 +2889,8 @@
                         '<span style="color:#888;">DEFCON</span><span>' + defText + '</span></div>';
                 }
 
-                // Transfers this GW (skip for wildcard/free hit - too many transfers, chip row already shows it)
-                if (transferData && transferData.transfers.length > 0 && !transferData.chipThisGw) {
+                // Transfers this GW (for wildcard/free hit, shows net squad changes only)
+                if (transferData && transferData.transfers.length > 0) {
                     const txHtml = transferData.transfers.map(t => {
                         const swingColor = t.swing > 0 ? '#00ff85' : t.swing < 0 ? '#ff6b6b' : '#ccc';
                         const swingText = t.swing > 0 ? '+' + t.swing : '' + t.swing;
@@ -2970,22 +2970,61 @@
                 const allTransfers = await transfersRes.json();
                 const historyData = await historyRes.json();
 
-                // Transfers this GW
-                const gwTransfers = allTransfers.filter(t => t.event === currentGameweek);
-                const transfers = gwTransfers.map(t => {
-                    const playerIn = bootstrapPlayers ? (bootstrapPlayers[t.element_in]?.name || 'Unknown') : 'Unknown';
-                    const playerOut = bootstrapPlayers ? (bootstrapPlayers[t.element_out]?.name || 'Unknown') : 'Unknown';
-                    const inPts = livePlayerData[t.element_in]?.points || 0;
-                    const outPts = livePlayerData[t.element_out]?.points || 0;
-                    const swing = inPts - outPts;
-                    return { playerIn, playerOut, swing };
-                });
-
-                // Calculate FT available at start of this GW
+                // Determine chip used this GW
                 const chipsUsed = historyData.chips || [];
-                const ftAvailable = calculateFreeTransfers(historyData.current || [], allTransfers, chipsUsed);
                 const chipThisGw = chipsUsed.find(c => c.event === currentGameweek);
                 const chipName = chipThisGw ? chipThisGw.name : null;
+
+                let transfers;
+
+                if ((chipName === 'wildcard' || chipName === 'freehit') && currentGameweek > 1) {
+                    // For wildcard/free hit, compare previous vs current GW squad for net changes
+                    // This avoids showing intermediate swaps that didn't stick
+                    const [prevRes, currRes] = await Promise.all([
+                        fplApiFetch(`/api/entry/${entryId}/event/${currentGameweek - 1}/picks/`),
+                        fplApiFetch(`/api/entry/${entryId}/event/${currentGameweek}/picks/`)
+                    ]);
+                    if (prevRes.ok && currRes.ok) {
+                        const prevPicks = await prevRes.json();
+                        const currPicks = await currRes.json();
+                        const prevIds = new Set(prevPicks.picks.map(p => p.element));
+                        const currIds = new Set(currPicks.picks.map(p => p.element));
+                        const outIds = [...prevIds].filter(id => !currIds.has(id));
+                        const inIds = [...currIds].filter(id => !prevIds.has(id));
+                        // Sort both by position (GK, DEF, MID, FWD) for cleaner display
+                        const byPos = id => bootstrapPlayers?.[id]?.position || 99;
+                        outIds.sort((a, b) => byPos(a) - byPos(b));
+                        inIds.sort((a, b) => byPos(a) - byPos(b));
+                        transfers = [];
+                        const count = Math.max(outIds.length, inIds.length);
+                        for (let i = 0; i < count; i++) {
+                            const outId = outIds[i];
+                            const inId = inIds[i];
+                            const playerOut = outId && bootstrapPlayers ? (bootstrapPlayers[outId]?.name || 'Unknown') : '-';
+                            const playerIn = inId && bootstrapPlayers ? (bootstrapPlayers[inId]?.name || 'Unknown') : '-';
+                            const outPts = outId ? (livePlayerData[outId]?.points || 0) : 0;
+                            const inPts = inId ? (livePlayerData[inId]?.points || 0) : 0;
+                            const swing = inPts - outPts;
+                            transfers.push({ playerIn, playerOut, swing });
+                        }
+                    } else {
+                        transfers = [];
+                    }
+                } else {
+                    // Normal transfers this GW
+                    const gwTransfers = allTransfers.filter(t => t.event === currentGameweek);
+                    transfers = gwTransfers.map(t => {
+                        const playerIn = bootstrapPlayers ? (bootstrapPlayers[t.element_in]?.name || 'Unknown') : 'Unknown';
+                        const playerOut = bootstrapPlayers ? (bootstrapPlayers[t.element_out]?.name || 'Unknown') : 'Unknown';
+                        const inPts = livePlayerData[t.element_in]?.points || 0;
+                        const outPts = livePlayerData[t.element_out]?.points || 0;
+                        const swing = inPts - outPts;
+                        return { playerIn, playerOut, swing };
+                    });
+                }
+
+                // Calculate FT available at start of this GW
+                const ftAvailable = calculateFreeTransfers(historyData.current || [], allTransfers, chipsUsed);
 
                 const result = { transfers, ftAvailable, chipThisGw: chipName };
                 transfersCache[entryId] = result;
