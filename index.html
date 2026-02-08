@@ -2903,10 +2903,9 @@
                     const totalSwing = transferData.transfers.reduce((sum, t) => sum + t.swing, 0);
                     const totalColor = totalSwing > 0 ? '#00ff85' : totalSwing < 0 ? '#ff6b6b' : '#ccc';
                     const totalText = totalSwing > 0 ? '+' + totalSwing : '' + totalSwing;
-                    const swingLine = transferData.transfers.length > 1
-                        ? '<div style="font-size:11px;padding:2px 0 0;text-align:right;border-top:1px solid #333;margin-top:2px;">' +
-                          '<span style="color:' + totalColor + ';">Net swing: ' + totalText + '</span></div>'
-                        : '';
+                    const swingLine = '<div style="font-size:11px;padding:2px 0 0;text-align:right;' +
+                        (transferData.transfers.length > 1 ? 'border-top:1px solid #333;margin-top:2px;' : '') + '">' +
+                        '<span style="color:' + totalColor + ';">Net swing: ' + totalText + '</span></div>';
                     html += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;">' +
                         '<span style="color:#888;align-self:flex-start;">Transfers</span><div>' + txHtml + swingLine + '</div></div>';
                 }
@@ -2914,7 +2913,7 @@
                 // FT (free transfers available this GW - skip for wildcard as it's unlimited)
                 if (transferData && transferData.chipThisGw !== 'wildcard') {
                     html += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;">' +
-                        '<span style="color:#888;">FT</span><span>' + transferData.ftAvailable + '</span></div>';
+                        '<span style="color:#888;">FT</span><span>' + transferData.ftRemaining + '</span></div>';
                 }
 
                 // Hit taken
@@ -3030,10 +3029,15 @@
                     });
                 }
 
-                // Calculate FT available at start of this GW
+                // Calculate FT remaining after this GW's transfers
                 const ftAvailable = calculateFreeTransfers(historyData.current || [], allTransfers, chipsUsed);
+                const gwTransferCount = allTransfers.filter(t => t.event === currentGameweek).length;
+                // Wildcard/free hit don't consume FT
+                const ftRemaining = (chipName === 'wildcard' || chipName === 'freehit')
+                    ? ftAvailable
+                    : Math.max(ftAvailable - gwTransferCount, 0);
 
-                const result = { transfers, ftAvailable, chipThisGw: chipName };
+                const result = { transfers, ftRemaining, chipThisGw: chipName };
                 transfersCache[entryId] = result;
                 return result;
             } catch (e) {
