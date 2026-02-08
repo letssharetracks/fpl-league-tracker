@@ -1800,6 +1800,7 @@
         let weekRangeStart = 1;
         let weekRangeEnd = 38;
         let topOverallTotal = null; // #1 overall's total points
+        let transfersCache = {}; // Cache transfer data per entryId
 
         // Pagination state for large leagues
         let leagueTotalPlayers = 0;     // Total managers in league
@@ -2745,20 +2746,17 @@
             document.getElementById('modalBody').innerHTML = '<div style="text-align:center;padding:20px;color:#888;">Loading squad...</div>';
             document.getElementById('mobileModal').classList.add('active');
 
-            // Fetch picks on demand if not cached
+            // Fetch picks and transfers in parallel
             let picks = live?.picks;
-            if (!picks && currentGameweek) {
-                try {
-                    const response = await fplApiFetch(`/api/entry/${entryId}/event/${currentGameweek}/picks/`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        picks = data.picks;
-                        // Cache for future use
-                        if (live) live.picks = picks;
-                    }
-                } catch (e) {
-                    console.warn('Failed to fetch picks for', entryId, e);
-                }
+            const picksPromise = (!picks && currentGameweek) ?
+                fplApiFetch(`/api/entry/${entryId}/event/${currentGameweek}/picks/`).then(r => r.ok ? r.json() : null).catch(() => null) :
+                Promise.resolve(null);
+            const transferPromise = fetchTransferData(entryId);
+
+            const [picksData, transferData] = await Promise.all([picksPromise, transferPromise]);
+            if (picksData && !picks) {
+                picks = picksData.picks;
+                if (live) live.picks = picks;
             }
 
             if (!picks) {
@@ -2891,6 +2889,27 @@
                         '<span style="color:#888;">DEFCON</span><span>' + defText + '</span></div>';
                 }
 
+                // Transfers this GW
+                if (transferData && transferData.transfers.length > 0) {
+                    const txHtml = transferData.transfers.map(t => {
+                        const swingColor = t.swing > 0 ? '#00ff85' : t.swing < 0 ? '#ff6b6b' : '#ccc';
+                        const swingText = t.swing > 0 ? '+' + t.swing : '' + t.swing;
+                        return '<div style="font-size:11px;padding:1px 0;text-align:right;">' +
+                            '<span style="color:#ff6b6b;">' + t.playerOut + '</span>' +
+                            ' <span style="color:#888;">\u2192</span> ' +
+                            '<span style="color:#00ff85;">' + t.playerIn + '</span>' +
+                            ' <span style="color:' + swingColor + ';">(' + swingText + ')</span></div>';
+                    }).join('');
+                    html += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;">' +
+                        '<span style="color:#888;align-self:flex-start;">Transfers</span><div>' + txHtml + '</div></div>';
+                }
+
+                // FT Left
+                if (transferData) {
+                    html += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;">' +
+                        '<span style="color:#888;">FT Left</span><span>' + transferData.ftLeft + '</span></div>';
+                }
+
                 // Hit taken
                 if (live.transferCost > 0) {
                     html += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;">' +
@@ -2915,6 +2934,69 @@
                 '</div>';
 
             document.getElementById('modalBody').innerHTML = html;
+        }
+
+        function calculateFreeTransfers(historyData, allTransfers, chipsUsed) {
+            let ft = 1; // Start with 1 FT in GW1
+            for (let gw = 1; gw < currentGameweek; gw++) {
+                const gwEntry = historyData.find(h => h.event === gw);
+                const gwTransfers = allTransfers.filter(t => t.event === gw).length;
+                const chipThisGw = chipsUsed.find(c => c.event === gw);
+                const chipName = chipThisGw ? chipThisGw.name : null;
+
+                if (chipName === 'wildcard') {
+                    ft = 1; // Wildcard resets FT to 1 next GW
+                } else if (chipName === 'freehit') {
+                    // Free hit doesn't consume FT, carries over
+                    ft = Math.min(ft + 1, 5);
+                } else {
+                    const freeUsed = Math.min(gwTransfers, ft);
+                    ft = Math.min(ft - freeUsed + 1, 5);
+                    if (ft < 1) ft = 1;
+                }
+            }
+            return ft;
+        }
+
+        async function fetchTransferData(entryId) {
+            if (transfersCache[entryId]) return transfersCache[entryId];
+            try {
+                const [transfersRes, historyRes] = await Promise.all([
+                    fplApiFetch(`/api/entry/${entryId}/transfers/`),
+                    fplApiFetch(`/api/entry/${entryId}/history/`)
+                ]);
+                if (!transfersRes.ok || !historyRes.ok) return null;
+
+                const allTransfers = await transfersRes.json();
+                const historyData = await historyRes.json();
+
+                // Transfers this GW
+                const gwTransfers = allTransfers.filter(t => t.event === currentGameweek);
+                const transfers = gwTransfers.map(t => {
+                    const playerIn = bootstrapPlayers ? (bootstrapPlayers[t.element_in]?.name || 'Unknown') : 'Unknown';
+                    const playerOut = bootstrapPlayers ? (bootstrapPlayers[t.element_out]?.name || 'Unknown') : 'Unknown';
+                    const inPts = livePlayerData[t.element_in]?.points || 0;
+                    const outPts = livePlayerData[t.element_out]?.points || 0;
+                    const swing = inPts - outPts;
+                    return { playerIn, playerOut, swing };
+                });
+
+                // Calculate FT remaining
+                const chipsUsed = historyData.chips || [];
+                const ftBefore = calculateFreeTransfers(historyData.current || [], allTransfers, chipsUsed);
+                const freeUsedThisGw = Math.min(gwTransfers.length, ftBefore);
+                const ftLeft = Math.max(ftBefore - freeUsedThisGw, 0);
+                // If wildcard or free hit active this GW, FT isn't consumed
+                const chipThisGw = chipsUsed.find(c => c.event === currentGameweek);
+                const ftDisplay = (chipThisGw && (chipThisGw.name === 'wildcard' || chipThisGw.name === 'freehit')) ? ftBefore : ftLeft;
+
+                const result = { transfers, ftLeft: ftDisplay };
+                transfersCache[entryId] = result;
+                return result;
+            } catch (e) {
+                console.warn('Failed to fetch transfer data for', entryId, e);
+                return null;
+            }
         }
 
         function updateTableView() {
@@ -3902,6 +3984,7 @@
             livePoints = {};
             livePositions = {};
             livePlayerScores = null; // Reset live scores cache
+            transfersCache = {};
 
             // Reset view state for new league
             viewingMyArea = false;
@@ -3962,6 +4045,7 @@
             livePoints = {};
             livePositions = {};
             livePlayerScores = null;
+            transfersCache = {};
             if (chart) chart.destroy();
             chart = null;
             document.getElementById('playerToggles').innerHTML = '<div class="loading"><div id="loadingText">Loading elite managers...</div><div style="margin-top: 10px;"><div id="loadingPercent" style="font-size: 20px; color: #ffd700;">0%</div></div></div>';
