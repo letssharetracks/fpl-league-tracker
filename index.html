@@ -2007,8 +2007,25 @@
         }
 
         // Function to save goal scorers to localStorage
+        // Never overwrite goals with real times with "?" data from FPL
         function saveGoalScorersToStorage() {
             try {
+                const existing = localStorage.getItem('fpl_goal_scorers');
+                if (existing) {
+                    const parsed = JSON.parse(existing);
+                    if (parsed.gameweek === currentGameweek && parsed.data) {
+                        Object.keys(parsed.data).forEach(team => {
+                            const savedGoals = parsed.data[team];
+                            const currentGoals = cachedGoalScorers[team];
+                            const savedHasRealTimes = savedGoals?.some(g => g.time?.elapsed !== '?' && g.time?.elapsed != null);
+                            const currentHasRealTimes = currentGoals?.some(g => g.time?.elapsed !== '?' && g.time?.elapsed != null);
+                            // Keep saved goals if they have real times and current doesn't
+                            if (savedHasRealTimes && !currentHasRealTimes) {
+                                cachedGoalScorers[team] = savedGoals;
+                            }
+                        });
+                    }
+                }
                 localStorage.setItem('fpl_goal_scorers', JSON.stringify({
                     gameweek: currentGameweek,
                     data: cachedGoalScorers,
@@ -4917,10 +4934,13 @@
             return mappings[name] || name;
         }
 
-        // Fetch today's EPL scoreboard from ESPN (all matches in one call)
-        async function fetchESPNScoreboard() {
+        // Fetch EPL scoreboard from ESPN (optionally for a specific date YYYYMMDD)
+        async function fetchESPNScoreboard(dateStr) {
             try {
-                const response = await fetch(`${ESPN_API_BASE}/scoreboard`);
+                const url = dateStr
+                    ? `${ESPN_API_BASE}/scoreboard?dates=${dateStr}`
+                    : `${ESPN_API_BASE}/scoreboard`;
+                const response = await fetch(url);
                 const data = await response.json();
                 return data.events || [];
             } catch (e) {
@@ -4943,11 +4963,12 @@
 
         // Fetch goal data from ESPN: scoreboard for scorers + summary commentary for assists
         // Returns { teamName: [{ player: { name }, time: { elapsed }, assist: { name } | null }] }
-        async function fetchESPNGoals() {
+        // Optional dateStr param (YYYYMMDD) to fetch a specific date's matches
+        async function fetchESPNGoals(dateStr) {
             try {
-                const events = await fetchESPNScoreboard();
+                const events = await fetchESPNScoreboard(dateStr);
                 if (!events.length) {
-                    console.log('ESPN: no events found for today');
+                    console.log('ESPN: no events found' + (dateStr ? ` for ${dateStr}` : ' for today'));
                     return {};
                 }
 
@@ -5105,7 +5126,23 @@
                 if (shouldFetchScorers) {
                     console.log(`Fetching goal details from ESPN (scoreChanged=${scoreChanged}, matchFinished=${matchJustFinished}, firstLoad=${isFirstLoad})`);
                     try {
-                        const espnGoals = await fetchESPNGoals();
+                        let espnGoals = await fetchESPNGoals();
+
+                        // If ESPN default returns empty but there are finished matches,
+                        // try fetching for specific match dates (ESPN only returns today by default)
+                        if (Object.keys(espnGoals).length === 0 && hasExistingGoals) {
+                            const matchDates = new Set();
+                            allFixtures.filter(f => f.started && f.kickoff_time).forEach(f => {
+                                const d = new Date(f.kickoff_time);
+                                matchDates.add(d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0'));
+                            });
+                            console.log('ESPN: no today events, trying match dates:', [...matchDates]);
+                            for (const dateStr of matchDates) {
+                                const dateGoals = await fetchESPNGoals(dateStr);
+                                Object.assign(espnGoals, dateGoals);
+                            }
+                        }
+
                         let goalsAdded = 0;
                         const hardcodedForGw = HARDCODED_GOALS[currentGameweek] || {};
 
