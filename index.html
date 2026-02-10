@@ -1854,7 +1854,8 @@
         const CLOUDFLARE_WORKER = 'https://fpl-proxy.dom-mackie.workers.dev/?path=';
         console.log('Using Cloudflare Worker for fast API calls');
 
-        // ESPN API for live goal data - no API key needed, CORS-friendly
+        // Goals API - Cloudflare Worker primary (has assists), ESPN fallback (times only)
+        const GOALS_WORKER = 'https://api-football-proxy.dom-mackie.workers.dev';
         const ESPN_API_BASE = 'https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1';
         let previousScores = {}; // Track scores to detect goals / VAR removals
         let previousFinished = {}; // Track which matches have finished (for end-of-match re-check)
@@ -4934,6 +4935,48 @@
             return mappings[name] || name;
         }
 
+        // Fetch live goal data from Cloudflare Worker (primary source - has assists)
+        // Returns { teamName: [{ player: { name }, time: { elapsed }, assist: { name } | null }] }
+        async function fetchWorkerGoals() {
+            try {
+                const response = await fetch(`${GOALS_WORKER}?action=live-goals`);
+                const data = await response.json();
+                if (!data.matches || !data.matches.length) {
+                    console.log('Worker: no live matches');
+                    return {};
+                }
+
+                const allGoals = {};
+                for (const match of data.matches) {
+                    if (!match.goals || !match.goals.length) continue;
+                    for (const goal of match.goals) {
+                        const teamName = normalizeESPNTeamName(goal.team);
+                        if (!allGoals[teamName]) allGoals[teamName] = [];
+
+                        let playerName = goal.scorer || '?';
+                        if (goal.isOwnGoal) playerName += ' (OG)';
+                        if (goal.type && goal.type.includes('Penalty')) playerName += ' (P)';
+
+                        const minuteStr = (goal.minute || '?').replace("'", '');
+                        const elapsed = parseInt(minuteStr) || minuteStr;
+
+                        allGoals[teamName].push({
+                            player: { name: playerName },
+                            time: { elapsed: elapsed },
+                            assist: goal.assist ? { name: goal.assist } : null
+                        });
+                    }
+                }
+
+                const teams = Object.keys(allGoals).filter(k => allGoals[k].length > 0);
+                console.log(`Worker: parsed goals for ${teams.length} teams:`, teams);
+                return allGoals;
+            } catch (e) {
+                console.warn('Worker goals fetch failed:', e);
+                return {};
+            }
+        }
+
         // Fetch EPL scoreboard from ESPN (optionally for a specific date YYYYMMDD)
         async function fetchESPNScoreboard(dateStr) {
             try {
@@ -5124,44 +5167,59 @@
                 const shouldFetchScorers = scoreChanged || matchJustFinished || (isFirstLoad && hasExistingGoals);
 
                 if (shouldFetchScorers) {
-                    console.log(`Fetching goal details from ESPN (scoreChanged=${scoreChanged}, matchFinished=${matchJustFinished}, firstLoad=${isFirstLoad})`);
+                    console.log(`Fetching goal details (scoreChanged=${scoreChanged}, matchFinished=${matchJustFinished}, firstLoad=${isFirstLoad})`);
                     try {
-                        let espnGoals = await fetchESPNGoals();
-
-                        // If ESPN default returns empty but there are finished matches,
-                        // try fetching for specific match dates (ESPN only returns today by default)
-                        if (Object.keys(espnGoals).length === 0 && hasExistingGoals) {
-                            const matchDates = new Set();
-                            allFixtures.filter(f => f.started && f.kickoff_time).forEach(f => {
-                                const d = new Date(f.kickoff_time);
-                                matchDates.add(d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0'));
-                            });
-                            console.log('ESPN: no today events, trying match dates:', [...matchDates]);
-                            for (const dateStr of matchDates) {
-                                const dateGoals = await fetchESPNGoals(dateStr);
-                                Object.assign(espnGoals, dateGoals);
-                            }
-                        }
-
-                        let goalsAdded = 0;
                         const hardcodedForGw = HARDCODED_GOALS[currentGameweek] || {};
+                        let goalsAdded = 0;
 
-                        Object.keys(espnGoals).forEach(team => {
-                            // ESPN data overrides for: teams without hardcoded data,
-                            // OR when a match just finished (re-confirm OGs/assists)
-                            const hasHardcoded = hardcodedForGw[team]?.length > 0;
-                            if ((!hasHardcoded || matchJustFinished) && espnGoals[team].length > 0) {
-                                cachedGoalScorers[team] = espnGoals[team];
-                                goalsAdded++;
-                            }
+                        // 1. Primary: Cloudflare Worker (has assists for live matches)
+                        const workerGoals = await fetchWorkerGoals();
+                        Object.keys(workerGoals).forEach(team => {
+                            if (hardcodedForGw[team]?.length > 0 && !matchJustFinished) return;
+                            if (!workerGoals[team].length) return;
+                            cachedGoalScorers[team] = workerGoals[team];
+                            goalsAdded++;
                         });
 
+                        // 2. Fallback: ESPN for teams not covered by worker (finished matches from other days)
+                        // Only fetch from ESPN for teams we still don't have data for
+                        const teamsWithGoals = allFixtures.filter(f => f.started && ((f.team_h_score || 0) + (f.team_a_score || 0) > 0));
+                        const needsESPN = teamsWithGoals.length > 0 && Object.keys(workerGoals).length === 0;
+
+                        if (needsESPN || (isFirstLoad && hasExistingGoals && goalsAdded === 0)) {
+                            let espnGoals = await fetchESPNGoals();
+
+                            // If ESPN default returns empty, try specific match dates
+                            if (Object.keys(espnGoals).length === 0 && hasExistingGoals) {
+                                const matchDates = new Set();
+                                allFixtures.filter(f => f.started && f.kickoff_time).forEach(f => {
+                                    const d = new Date(f.kickoff_time);
+                                    matchDates.add(d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0'));
+                                });
+                                console.log('ESPN: trying match dates:', [...matchDates]);
+                                for (const dateStr of matchDates) {
+                                    const dateGoals = await fetchESPNGoals(dateStr);
+                                    Object.assign(espnGoals, dateGoals);
+                                }
+                            }
+
+                            Object.keys(espnGoals).forEach(team => {
+                                if (hardcodedForGw[team]?.length > 0 && !matchJustFinished) return;
+                                if (!espnGoals[team].length) return;
+                                // Don't overwrite data that has assists with data that doesn't
+                                const cachedHasAssists = cachedGoalScorers[team]?.some(g => g.assist?.name);
+                                if (cachedHasAssists) return;
+                                cachedGoalScorers[team] = espnGoals[team];
+                                goalsAdded++;
+                            });
+                        }
+
                         if (goalsAdded > 0) {
-                            console.log(`ESPN: updated goal data for ${goalsAdded} teams`);
+                            console.log(`Goals: updated data for ${goalsAdded} teams`);
                             saveGoalScorersToStorage();
                         }
                     } catch (e) {
-                        console.warn('Could not fetch ESPN goal data:', e);
+                        console.warn('Could not fetch goal data:', e);
                     }
                 } else if (isFirstLoad) {
                     console.log('First load - no goals yet, will fetch on first score change');
