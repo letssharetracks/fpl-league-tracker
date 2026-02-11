@@ -3113,7 +3113,7 @@
                     captainName: live?.captainName || '',
                     captainPoints: live?.captainPoints || 0,
                     chip: live?.chip || '',
-                    bonusTotal: live?.liveBonus || 0,
+                    bonusTotal: live?.bpsPlayers ? live.bpsPlayers.reduce((sum, p) => sum + p.bonus, 0) : 0,
                     defconTotal: live?.defconPlayers ? live.defconPlayers.reduce((sum, p) => sum + (p.points || 0), 0) : 0,
                     leaguePosition: null, // Actual league position based on total points
                     movement: 0
