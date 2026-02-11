@@ -1678,8 +1678,8 @@
                         <th class="col-captain sortable" id="sortCaptain">Cpt</th>
                         <th class="col-chip sortable" id="sortChip">Chip</th>
                         <th class="col-autosub">Auto-Sub</th>
-                        <th class="col-bps">BPS</th>
-                        <th class="col-defcon">DEFCON</th>
+                        <th class="col-bps sortable" id="sortBps">BPS</th>
+                        <th class="col-defcon sortable" id="sortDefcon">DEFCON</th>
                         <th class="col-status">Status</th>
                         <th class="col-or">OR</th>
                     </tr>
@@ -2603,6 +2603,10 @@
                 toggleSort('captain');
             } else if (e.target.id === 'sortChip' || e.target.closest('#sortChip')) {
                 toggleSort('chip');
+            } else if (e.target.id === 'sortBps' || e.target.closest('#sortBps')) {
+                toggleSort('bps');
+            } else if (e.target.id === 'sortDefcon' || e.target.closest('#sortDefcon')) {
+                toggleSort('defcon');
             }
         });
 
@@ -3109,6 +3113,8 @@
                     captainName: live?.captainName || '',
                     captainPoints: live?.captainPoints || 0,
                     chip: live?.chip || '',
+                    bonusTotal: live?.liveBonus || 0,
+                    defconTotal: live?.defconPlayers ? live.defconPlayers.reduce((sum, p) => sum + (p.points || 0), 0) : 0,
                     leaguePosition: null, // Actual league position based on total points
                     movement: 0
                 };
@@ -3159,6 +3165,12 @@
                     const aChip = a.chip ? (chipOrder[a.chip] || 5) : 99;
                     const bChip = b.chip ? (chipOrder[b.chip] || 5) : 99;
                     comparison = aChip - bChip;
+                    if (comparison === 0) comparison = b.totalDisplay - a.totalDisplay;
+                } else if (sortColumn === 'bps') {
+                    comparison = b.bonusTotal - a.bonusTotal;
+                    if (comparison === 0) comparison = b.totalDisplay - a.totalDisplay;
+                } else if (sortColumn === 'defcon') {
+                    comparison = b.defconTotal - a.defconTotal;
                     if (comparison === 0) comparison = b.totalDisplay - a.totalDisplay;
                 } else {
                     // Default: sort by total (live standings), then API rank as tiebreaker
