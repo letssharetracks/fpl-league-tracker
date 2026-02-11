@@ -1675,8 +1675,8 @@
                         <th class="col-gw sortable" id="sortGw">GW</th>
                         <th class="col-total sortable" id="sortTotal">Total</th>
                         <th class="col-gap">Gap</th>
-                        <th class="col-captain">Cpt</th>
-                        <th class="col-chip">Chip</th>
+                        <th class="col-captain sortable" id="sortCaptain">Cpt</th>
+                        <th class="col-chip sortable" id="sortChip">Chip</th>
                         <th class="col-autosub">Auto-Sub</th>
                         <th class="col-bps">BPS</th>
                         <th class="col-defcon">DEFCON</th>
@@ -2599,6 +2599,10 @@
                 toggleSort('gw');
             } else if (e.target.id === 'sortTotal' || e.target.closest('#sortTotal')) {
                 toggleSort('total');
+            } else if (e.target.id === 'sortCaptain' || e.target.closest('#sortCaptain')) {
+                toggleSort('captain');
+            } else if (e.target.id === 'sortChip' || e.target.closest('#sortChip')) {
+                toggleSort('chip');
             }
         });
 
@@ -3102,6 +3106,8 @@
                     player,
                     gwPoints,
                     totalDisplay,
+                    captainPoints: live?.captainPoints || 0,
+                    chip: live?.chip || '',
                     leaguePosition: null, // Actual league position based on total points
                     movement: 0
                 };
@@ -3137,12 +3143,20 @@
                 let comparison = 0;
                 if (sortColumn === 'gw') {
                     comparison = b.gwPoints - a.gwPoints;
-                    // Tiebreaker: API rank (official FPL tiebreaker is fewest transfers)
                     if (comparison === 0) comparison = a.player.rank - b.player.rank;
                 } else if (sortColumn === 'total') {
-                    // Sort by total, then API rank as tiebreaker (official FPL tiebreaker)
                     comparison = b.totalDisplay - a.totalDisplay;
                     if (comparison === 0) comparison = a.player.rank - b.player.rank;
+                } else if (sortColumn === 'captain') {
+                    comparison = b.captainPoints - a.captainPoints;
+                    if (comparison === 0) comparison = b.totalDisplay - a.totalDisplay;
+                } else if (sortColumn === 'chip') {
+                    // Sort by chip presence (chip users first), then by chip type
+                    const chipOrder = { 'bboost': 1, '3xc': 2, 'freehit': 3, 'wildcard': 4 };
+                    const aChip = a.chip ? (chipOrder[a.chip] || 5) : 99;
+                    const bChip = b.chip ? (chipOrder[b.chip] || 5) : 99;
+                    comparison = aChip - bChip;
+                    if (comparison === 0) comparison = b.totalDisplay - a.totalDisplay;
                 } else {
                     // Default: sort by total (live standings), then API rank as tiebreaker
                     comparison = b.totalDisplay - a.totalDisplay;
