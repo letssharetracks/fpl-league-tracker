@@ -3106,6 +3106,7 @@
                     player,
                     gwPoints,
                     totalDisplay,
+                    captainName: live?.captainName || '',
                     captainPoints: live?.captainPoints || 0,
                     chip: live?.chip || '',
                     leaguePosition: null, // Actual league position based on total points
@@ -3148,7 +3149,9 @@
                     comparison = b.totalDisplay - a.totalDisplay;
                     if (comparison === 0) comparison = a.player.rank - b.player.rank;
                 } else if (sortColumn === 'captain') {
-                    comparison = b.captainPoints - a.captainPoints;
+                    const aCap = a.captainName || '';
+                    const bCap = b.captainName || '';
+                    comparison = aCap.localeCompare(bCap);
                     if (comparison === 0) comparison = b.totalDisplay - a.totalDisplay;
                 } else if (sortColumn === 'chip') {
                     // Sort by chip presence (chip users first), then by chip type
