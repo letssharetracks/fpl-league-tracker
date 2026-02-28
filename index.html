@@ -395,11 +395,15 @@
         }
         .league-table .col-captain {
             min-width: 70px;
-            max-width: 85px;
+            max-width: 95px;
             font-size: 11px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }
+        .league-table .col-captain:has(.captain-inactive) {
+            white-space: normal;
+            line-height: 1.3;
         }
         .league-table .col-status {
             width: 90px;
@@ -468,6 +472,11 @@
         .league-table .captain-pts {
             color: #00ff85;
             font-size: 11px;
+        }
+        .league-table .captain-inactive {
+            text-decoration: line-through;
+            color: #666;
+            font-size: 10px;
         }
         .league-table .vc-active {
             color: #04f5ff;
@@ -618,6 +627,10 @@
             .league-table .col-total { width: 13% !important; }
             .league-table .col-gap { width: 10% !important; }
             .league-table .col-captain { width: 28% !important; }
+            .league-table .col-captain:has(.captain-inactive) {
+                white-space: normal !important;
+                line-height: 1.3;
+            }
             .league-table tr {
                 cursor: pointer;
             }
@@ -644,6 +657,10 @@
             .league-table .col-total { width: 42px; }
             .league-table .col-gap { width: 30px; }
             .league-table .col-captain { max-width: 60px; overflow: hidden; text-overflow: ellipsis; }
+            .league-table .col-captain:has(.captain-inactive) {
+                white-space: normal !important;
+                line-height: 1.2;
+            }
             .league-table .col-chip { width: 22px; }
             .league-table .col-autosub { max-width: 55px; overflow: hidden; text-overflow: ellipsis; }
             .league-table .col-bps { width: 28px; }
@@ -3258,12 +3275,15 @@
                     moveHtml = `<span class="move-down">▼${Math.abs(movement)}</span>`;
                 }
 
-                // Captain display - simplified, no multiplier shown
+                // Captain display - show VC when captain not playing
                 let captainHtml = '-';
                 if (live && live.captainName) {
-                    captainHtml = live.captainName;
-                    if (live.vcActivated) {
-                        captainHtml += ` <span class="vc-active">(VC)</span>`;
+                    if ((live.vcActivated || live.vcLikely) && live.vcName) {
+                        // Captain not playing - show strikethrough captain + VC name
+                        const vcLabel = live.vcActivated ? '(VC)' : '(VC?)';
+                        captainHtml = `<span class="captain-inactive">${live.captainName}</span><br><span class="vc-active">${live.vcName} ${vcLabel}</span>`;
+                    } else {
+                        captainHtml = live.captainName;
                     }
                 }
 
@@ -3358,11 +3378,17 @@
                     // GW Points (gross)
                     mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">GW${currentGameweek} Pts:</span><span style="color: #00ff85;">${live.points}</span></div>`;
 
-                    // Captain
+                    // Captain - show VC info when captain not playing
                     if (live.captainName) {
                         const capLabel = live.isTripleCaptain ? 'Triple Cap:' : 'Captain:';
                         const capMultiplier = live.isTripleCaptain ? 3 : 2;
-                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">${capLabel}</span><span>${live.captainName} <span style="color: #00ff85;">(${live.captainPoints} × ${capMultiplier})</span></span></div>`;
+                        if (live.vcActivated && live.vcName) {
+                            mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">${capLabel}</span><span><span class="captain-inactive">${live.captainName}</span> → <span style="color: #04f5ff;">${live.vcName} <span style="color: #00ff85;">(${live.captainPoints} × ${capMultiplier})</span></span></span></div>`;
+                        } else if (live.vcLikely && live.vcName) {
+                            mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">${capLabel}</span><span><span class="captain-inactive">${live.captainName}</span> → <span style="color: #04f5ff;">${live.vcName} (VC?)</span></span></div>`;
+                        } else {
+                            mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">${capLabel}</span><span>${live.captainName} <span style="color: #00ff85;">(${live.captainPoints} × ${capMultiplier})</span></span></div>`;
+                        }
                     }
 
                     // Hit Taken
@@ -3413,9 +3439,11 @@
                         }
                     }
 
-                    // VC Active
+                    // VC Active or Likely
                     if (live.vcActivated && live.vcName) {
                         mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">VC Active:</span><span style="color: #04f5ff;">${live.vcName} (C)</span></div>`;
+                    } else if (live.vcLikely && live.vcName) {
+                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">VC Likely:</span><span style="color: #04f5ff;">${live.vcName} (C?)</span></div>`;
                     }
 
                     // Players status
@@ -5649,6 +5677,7 @@
                 const captain = data.picks.find(p => p.is_captain);
                 const viceCaptain = data.picks.find(p => p.is_vice_captain);
                 let vcActivated = false;
+                let vcLikely = false; // VC likely to activate (mid-game or captain flagged unavailable)
                 let effectiveMultipliers = {}; // Track adjusted multipliers
 
                 // Initialize multipliers from picks
@@ -5662,12 +5691,24 @@
                     const captainTeam = captainInfo ? captainInfo.team : 0;
                     const captainMins = captainData ? captainData.minutes : 0;
 
-                    // If captain's fixture is finished and they played 0 minutes
+                    // If captain's fixture is finished and they played 0 minutes - VC CONFIRMED
                     if (teamsFinished.has(captainTeam) && captainMins === 0) {
                         // Transfer captain multiplier to vice captain
                         effectiveMultipliers[captain.element] = 1; // Captain loses multiplier
                         effectiveMultipliers[viceCaptain.element] = captain.multiplier; // VC gets it
                         vcActivated = true;
+                    }
+                    // If captain is flagged as unavailable/injured/suspended - VC LIKELY
+                    // Only use bootstrap status (not just 0 mins) since captain could be a real-team bench sub
+                    else if (captainMins === 0 && captainInfo) {
+                        const captainUnavailable = (
+                            ['i', 'u', 's'].includes(captainInfo.status) ||
+                            captainInfo.chanceOfPlaying === 0
+                        );
+
+                        if (captainUnavailable) {
+                            vcLikely = true;
+                        }
                     }
                 }
 
@@ -5825,12 +5866,14 @@
                             playersPlaying++;
                         }
 
+                        // Include provisional bonus in pointsGained display
+                        const autoSubProvBonus = liveBonusMap[benchPlayer.element] || 0;
                         autoSubs.push({
                             out: outPlayer.element,
                             in: benchPlayer.element,
                             outName: outInfo?.name || '?',
                             inName: benchInfo?.name || '?',
-                            pointsGained: benchPoints
+                            pointsGained: benchPoints + autoSubProvBonus
                         });
                         break;
                     }
@@ -5868,7 +5911,9 @@
                         });
                     }
                     // Only add provisional to liveBonus (confirmed already in total_points)
-                    liveBonus += provisionalBonus;
+                    // Apply captain multiplier so captain's bonus counts 2x (or 3x for TC)
+                    const bonusMultiplier = effectiveMultipliers[pick.element] || 1;
+                    liveBonus += provisionalBonus * bonusMultiplier;
 
                     // Sum DEFCON points for active players
                     if (playerLiveData && playerLiveData.defcon) {
@@ -5891,21 +5936,30 @@
                             points: playerLiveData.defcon
                         });
                     }
-                    // Auto-subbed players can also have bonus points
-                    if (playerLiveData && playerLiveData.bonus > 0) {
+                    // Auto-subbed players can also have bonus points (provisional or confirmed)
+                    const provisionalBonus = liveBonusMap[sub.in] || 0;
+                    const confirmedBonus = playerLiveData?.bonus || 0;
+                    const displayBonus = provisionalBonus > 0 ? provisionalBonus : confirmedBonus;
+                    if (displayBonus > 0) {
                         bpsPlayers.push({
                             name: playerInfo?.name || 'Unknown',
-                            bonus: playerLiveData.bonus,
-                            bps: playerLiveData.bps || 0,
-                            isConfirmed: true
+                            bonus: displayBonus,
+                            bps: playerLiveData?.bps || 0,
+                            isConfirmed: provisionalBonus === 0 && confirmedBonus > 0
                         });
                     }
+                    // Add provisional bonus to liveBonus (confirmed already in total_points)
+                    liveBonus += provisionalBonus;
                 });
 
                 // Get captain and vice captain names for display
                 const captainInfo = captain && players ? players[captain.element] : null;
                 const captainName = captainInfo ? captainInfo.name : null;
-                const captainPoints = captain && playerScores ? (playerScores[captain.element] || 0) : 0;
+                // Include provisional bonus in captain points for display
+                let captainPoints = captain && playerScores ? (playerScores[captain.element] || 0) : 0;
+                if (captain) {
+                    captainPoints += liveBonusMap[captain.element] || 0;
+                }
                 const vcInfo = viceCaptain && players ? players[viceCaptain.element] : null;
                 const vcName = vcInfo ? vcInfo.name : null;
 
@@ -5939,6 +5993,7 @@
                     predictedPoints: predictedWithBonus,    // GW points WITH auto-subs
                     autoSubs: autoSubs,
                     vcActivated: vcActivated,
+                    vcLikely: vcLikely,
                     vcName: vcName,
                     liveBonus: liveBonus,
                     bpsPlayers: bpsPlayers,
@@ -6040,6 +6095,7 @@
                             predictedPoints: live.predictedPoints,
                             autoSubs: live.autoSubs,
                             vcActivated: live.vcActivated,
+                            vcLikely: live.vcLikely,
                             vcName: live.vcName,
                             liveBonus: live.liveBonus,
                             bpsPlayers: live.bpsPlayers,
@@ -6242,6 +6298,7 @@
                                 predictedPoints: live.predictedPoints,
                                 autoSubs: live.autoSubs,
                                 vcActivated: live.vcActivated,
+                                vcLikely: live.vcLikely,
                                 vcName: live.vcName,
                                 liveBonus: live.liveBonus,
                                 bpsPlayers: live.bpsPlayers,
@@ -6804,6 +6861,8 @@
                     let vcHtml = '';
                     if (live.vcActivated && live.vcName) {
                         vcHtml = `<div class="detail-row"><span style="color: #888;">VC Active:</span><span style="color: #04f5ff;">${live.vcName} (C)</span></div>`;
+                    } else if (live.vcLikely && live.vcName) {
+                        vcHtml = `<div class="detail-row"><span style="color: #888;">VC Likely:</span><span style="color: #04f5ff;">${live.vcName} (C?)</span></div>`;
                     }
 
                     // Bonus points display - show total then each player
@@ -6842,11 +6901,19 @@
 
                     // Predicted line removed - auto-sub points now included in main GW Points
 
-                    // Captain display
+                    // Captain display - show VC info when captain not playing
                     const capLabel = live.isTripleCaptain ? 'Triple Cap:' : 'Captain:';
                     const capMultiplier = live.isTripleCaptain ? 3 : 2;
-                    const capHtml = live.captainName ?
-                        `<div class="detail-row"><span style="color: #888;">${capLabel}</span><span>${live.captainName} <span style="color: #00ff85;">(${live.captainPoints} × ${capMultiplier})</span></span></div>` : '';
+                    let capHtml = '';
+                    if (live.captainName) {
+                        if (live.vcActivated && live.vcName) {
+                            capHtml = `<div class="detail-row"><span style="color: #888;">${capLabel}</span><span><span class="captain-inactive">${live.captainName}</span> → <span style="color: #04f5ff;">${live.vcName} <span style="color: #00ff85;">(${live.captainPoints} × ${capMultiplier})</span></span></span></div>`;
+                        } else if (live.vcLikely && live.vcName) {
+                            capHtml = `<div class="detail-row"><span style="color: #888;">${capLabel}</span><span><span class="captain-inactive">${live.captainName}</span> → <span style="color: #04f5ff;">${live.vcName} (VC?)</span></span></div>`;
+                        } else {
+                            capHtml = `<div class="detail-row"><span style="color: #888;">${capLabel}</span><span>${live.captainName} <span style="color: #00ff85;">(${live.captainPoints} × ${capMultiplier})</span></span></div>`;
+                        }
+                    }
 
                     detailSection = `
                     <div class="player-details" id="details-${player.entry}" style="display: none;">
