@@ -2838,10 +2838,10 @@
                 const provisionalBonus = (bnsInfo && !bnsInfo.isConfirmed) ? bnsInfo.bonus : 0;
                 const pts = rawPts + provisionalBonus;
 
-                // Determine effective multiplier (consider VC activation)
+                // Determine effective multiplier (consider VC activation or likely)
                 let multiplier = pick.multiplier;
-                if (live?.vcActivated && pick.is_vice_captain) multiplier = 2;
-                if (live?.vcActivated && pick.is_captain) multiplier = 0;
+                if ((live?.vcActivated || live?.vcLikely) && pick.is_vice_captain) multiplier = 2;
+                if ((live?.vcActivated || live?.vcLikely) && pick.is_captain) multiplier = 0;
 
                 const displayPts = pts * (multiplier || 1);
 
@@ -2887,9 +2887,15 @@
 
                 const ptsClass = 'squad-player-pts';
 
+                // Strikethrough captain name if VC is active/likely
+                const captainInactive = pick.is_captain && (live?.vcActivated || live?.vcLikely);
+                const nameDisplay = captainInactive
+                    ? '<span style="text-decoration: line-through; color: #666;">' + name + '</span>' + badge
+                    : name + badge;
+
                 return '<div class="' + rowClass + '">' +
                     '<span class="pos-badge ' + (posClasses[pos] || '') + '">' + (posLabels[pos] || '?') + '</span>' +
-                    '<span class="squad-player-name">' + name + badge + '</span>' +
+                    '<span class="squad-player-name">' + nameDisplay + '</span>' +
                     '<span class="squad-player-stats">' + stats + '</span>' +
                     '<span class="squad-player-mins">' + (mins > 0 ? mins + "'" : '-') + '</span>' +
                     '<span class="' + ptsClass + '" style="color:' + ptsColor + ';">' + ptsDisplay + '</span>' +
@@ -3280,7 +3286,7 @@
                 if (live && live.captainName) {
                     if ((live.vcActivated || live.vcLikely) && live.vcName) {
                         // Captain not playing - show strikethrough captain + VC name
-                        const vcLabel = live.vcActivated ? '(VC)' : '(VC?)';
+                        const vcLabel = '(VC)';
                         captainHtml = `<span class="captain-inactive">${live.captainName}</span><br><span class="vc-active">${live.vcName} ${vcLabel}</span>`;
                     } else {
                         captainHtml = live.captainName;
@@ -3382,10 +3388,8 @@
                     if (live.captainName) {
                         const capLabel = live.isTripleCaptain ? 'Triple Cap:' : 'Captain:';
                         const capMultiplier = live.isTripleCaptain ? 3 : 2;
-                        if (live.vcActivated && live.vcName) {
-                            mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">${capLabel}</span><span><span class="captain-inactive">${live.captainName}</span> → <span style="color: #04f5ff;">${live.vcName} <span style="color: #00ff85;">(${live.captainPoints} × ${capMultiplier})</span></span></span></div>`;
-                        } else if (live.vcLikely && live.vcName) {
-                            mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">${capLabel}</span><span><span class="captain-inactive">${live.captainName}</span> → <span style="color: #04f5ff;">${live.vcName} (VC?)</span></span></div>`;
+                        if ((live.vcActivated || live.vcLikely) && live.vcName) {
+                            mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">${capLabel}</span><span><span class="captain-inactive">${live.captainName}</span> → <span style="color: #04f5ff;">${live.vcName} <span style="color: #00ff85;">(${live.vcPoints} × ${capMultiplier})</span></span></span></div>`;
                         } else {
                             mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">${capLabel}</span><span>${live.captainName} <span style="color: #00ff85;">(${live.captainPoints} × ${capMultiplier})</span></span></div>`;
                         }
@@ -3443,7 +3447,7 @@
                     if (live.vcActivated && live.vcName) {
                         mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">VC Active:</span><span style="color: #04f5ff;">${live.vcName} (C)</span></div>`;
                     } else if (live.vcLikely && live.vcName) {
-                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">VC Likely:</span><span style="color: #04f5ff;">${live.vcName} (C?)</span></div>`;
+                        mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">VC Active:</span><span style="color: #04f5ff;">${live.vcName} (C)</span></div>`;
                     }
 
                     // Players status
@@ -5709,6 +5713,9 @@
 
                         if (captainUnavailable || captainFixturePlaying) {
                             vcLikely = true;
+                            // Also transfer multipliers so predicted points include VC doubling
+                            effectiveMultipliers[captain.element] = 1;
+                            effectiveMultipliers[viceCaptain.element] = captain.multiplier;
                         }
                     }
                 }
@@ -5963,6 +5970,10 @@
                 }
                 const vcInfo = viceCaptain && players ? players[viceCaptain.element] : null;
                 const vcName = vcInfo ? vcInfo.name : null;
+                let vcPoints = viceCaptain && playerScores ? (playerScores[viceCaptain.element] || 0) : 0;
+                if (viceCaptain) {
+                    vcPoints += liveBonusMap[viceCaptain.element] || 0;
+                }
 
                 // Sort BPS players by bonus (highest first)
                 bpsPlayers.sort((a, b) => b.bonus - a.bonus);
@@ -5996,6 +6007,7 @@
                     vcActivated: vcActivated,
                     vcLikely: vcLikely,
                     vcName: vcName,
+                    vcPoints: vcPoints,
                     liveBonus: liveBonus,
                     bpsPlayers: bpsPlayers,
                     defconPoints: totalDefcon,
@@ -6098,6 +6110,7 @@
                             vcActivated: live.vcActivated,
                             vcLikely: live.vcLikely,
                             vcName: live.vcName,
+                            vcPoints: live.vcPoints,
                             liveBonus: live.liveBonus,
                             bpsPlayers: live.bpsPlayers,
                             defconPoints: live.defconPoints,
@@ -6301,6 +6314,7 @@
                                 vcActivated: live.vcActivated,
                                 vcLikely: live.vcLikely,
                                 vcName: live.vcName,
+                                vcPoints: live.vcPoints,
                                 liveBonus: live.liveBonus,
                                 bpsPlayers: live.bpsPlayers,
                                 defconPoints: live.defconPoints,
@@ -6863,7 +6877,7 @@
                     if (live.vcActivated && live.vcName) {
                         vcHtml = `<div class="detail-row"><span style="color: #888;">VC Active:</span><span style="color: #04f5ff;">${live.vcName} (C)</span></div>`;
                     } else if (live.vcLikely && live.vcName) {
-                        vcHtml = `<div class="detail-row"><span style="color: #888;">VC Likely:</span><span style="color: #04f5ff;">${live.vcName} (C?)</span></div>`;
+                        vcHtml = `<div class="detail-row"><span style="color: #888;">VC Active:</span><span style="color: #04f5ff;">${live.vcName} (C)</span></div>`;
                     }
 
                     // Bonus points display - show total then each player
@@ -6907,10 +6921,8 @@
                     const capMultiplier = live.isTripleCaptain ? 3 : 2;
                     let capHtml = '';
                     if (live.captainName) {
-                        if (live.vcActivated && live.vcName) {
-                            capHtml = `<div class="detail-row"><span style="color: #888;">${capLabel}</span><span><span class="captain-inactive">${live.captainName}</span> → <span style="color: #04f5ff;">${live.vcName} <span style="color: #00ff85;">(${live.captainPoints} × ${capMultiplier})</span></span></span></div>`;
-                        } else if (live.vcLikely && live.vcName) {
-                            capHtml = `<div class="detail-row"><span style="color: #888;">${capLabel}</span><span><span class="captain-inactive">${live.captainName}</span> → <span style="color: #04f5ff;">${live.vcName} (VC?)</span></span></div>`;
+                        if ((live.vcActivated || live.vcLikely) && live.vcName) {
+                            capHtml = `<div class="detail-row"><span style="color: #888;">${capLabel}</span><span><span class="captain-inactive">${live.captainName}</span> → <span style="color: #04f5ff;">${live.vcName} <span style="color: #00ff85;">(${live.vcPoints} × ${capMultiplier})</span></span></span></div>`;
                         } else {
                             capHtml = `<div class="detail-row"><span style="color: #888;">${capLabel}</span><span>${live.captainName} <span style="color: #00ff85;">(${live.captainPoints} × ${capMultiplier})</span></span></div>`;
                         }
