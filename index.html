@@ -2840,7 +2840,7 @@
 
                 // Determine effective multiplier (consider VC activation or likely)
                 let multiplier = pick.multiplier;
-                if ((live?.vcActivated || live?.vcLikely) && pick.is_vice_captain) multiplier = 2;
+                if ((live?.vcActivated || live?.vcLikely) && pick.is_vice_captain) multiplier = live?.isTripleCaptain ? 3 : 2;
                 if ((live?.vcActivated || live?.vcLikely) && pick.is_captain) multiplier = 0;
 
                 const displayPts = pts * (multiplier || 1);
