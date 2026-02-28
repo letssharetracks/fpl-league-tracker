@@ -5698,15 +5698,16 @@
                         effectiveMultipliers[viceCaptain.element] = captain.multiplier; // VC gets it
                         vcActivated = true;
                     }
-                    // If captain is flagged as unavailable/injured/suspended - VC LIKELY
-                    // Only use bootstrap status (not just 0 mins) since captain could be a real-team bench sub
-                    else if (captainMins === 0 && captainInfo) {
-                        const captainUnavailable = (
+                    // If captain is likely not playing - VC LIKELY
+                    // Check: flagged unavailable in bootstrap data, OR fixture in progress with 0 mins
+                    else if (captainMins === 0) {
+                        const captainUnavailable = captainInfo && (
                             ['i', 'u', 's'].includes(captainInfo.status) ||
                             captainInfo.chanceOfPlaying === 0
                         );
+                        const captainFixturePlaying = teamsPlaying.has(captainTeam);
 
-                        if (captainUnavailable) {
+                        if (captainUnavailable || captainFixturePlaying) {
                             vcLikely = true;
                         }
                     }
