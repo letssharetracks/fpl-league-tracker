@@ -3078,8 +3078,8 @@
             const recent = data.history.slice(-5).reverse();
 
             // Player position: 1=GK, 2=DEF, 3=MID, 4=FWD
-            const pInfo = playerData ? playerData[elementId] : null;
-            const posType = pInfo ? pInfo.element_type : 0;
+            const pInfo = bootstrapPlayers ? bootstrapPlayers[elementId] : null;
+            const posType = pInfo ? pInfo.position : 0;
 
             // Determine which stat columns have data across all 5 GWs
             const hasGoals = recent.some(g => g.goals_scored > 0);
