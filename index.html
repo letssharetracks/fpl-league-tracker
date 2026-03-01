@@ -3069,19 +3069,23 @@
             // Last 5 GWs, most recent first
             const recent = data.history.slice(-5).reverse();
 
+            // Player position: 1=GK, 2=DEF, 3=MID, 4=FWD
+            const pInfo = playerData ? playerData[elementId] : null;
+            const posType = pInfo ? pInfo.element_type : 0;
+
             // Determine which stat columns have data across all 5 GWs
             const hasGoals = recent.some(g => g.goals_scored > 0);
             const hasAssists = recent.some(g => g.assists > 0);
             const hasBonus = recent.some(g => g.bonus > 0);
             const hasCS = recent.some(g => g.clean_sheets > 0);
-            const hasDC = recent.some(g => g.defensive_contribution > 0);
+            const hasDC = (posType === 1 || posType === 2) && recent.some(g => g.defensive_contribution > 0);
             const hasSaves = recent.some(g => g.saves > 0);
             const hasYC = recent.some(g => g.yellow_cards > 0);
             const hasRC = recent.some(g => g.red_cards > 0);
             const hasOG = recent.some(g => g.own_goals > 0);
             const hasPenMiss = recent.some(g => g.penalties_missed > 0);
             const hasPenSave = recent.some(g => g.penalties_saved > 0);
-            const hasGC = recent.some(g => g.goals_conceded > 0);
+            const hasGC = (posType >= 1 && posType <= 3) && recent.some(g => g.goals_conceded > 0);
 
             // Build header
             let header = '<div class="h-row h-header">' +
