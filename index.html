@@ -1408,7 +1408,7 @@
             border-bottom: 1px solid rgba(255,255,255,0.07);
             gap: 8px;
         }
-        .squad-player:last-child { border-bottom: none; }
+        .squad-player-wrapper:last-child .squad-player { border-bottom: none; }
         .squad-player.bench-player { opacity: 0.5; }
         .squad-player.auto-sub-in { opacity: 1; border-left: 2px solid #00ff85; padding-left: 6px; }
         .squad-player.auto-sub-out { opacity: 0.35; text-decoration: line-through; }
@@ -1522,6 +1522,54 @@
         .squad-total-label { color: #888; font-size: 13px; }
         .squad-total-pts { color: #00ff85; font-size: 16px; }
         .modal-content.squad-modal { max-width: 420px; }
+
+        /* Player history expand panel */
+        .squad-player-wrapper .squad-player { cursor: pointer; }
+        .squad-player-wrapper .squad-player:active { background: rgba(255,255,255,0.05); }
+        .player-history-panel {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.25s ease-out;
+        }
+        .player-history-panel.active {
+            max-height: 40px;
+            transition: max-height 0.25s ease-in;
+        }
+        .player-history-row {
+            display: flex;
+            align-items: center;
+            padding: 4px 10px 6px;
+            gap: 6px;
+            font-size: 11px;
+            background: rgba(0,0,0,0.25);
+            border-radius: 0 0 6px 6px;
+            margin-bottom: 2px;
+        }
+        .player-history-label {
+            color: #888;
+            font-size: 10px;
+            flex-shrink: 0;
+        }
+        .player-history-pts {
+            display: flex;
+            gap: 4px;
+            flex-wrap: nowrap;
+        }
+        .player-history-pts span {
+            min-width: 20px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 11px;
+            padding: 1px 3px;
+            border-radius: 3px;
+            background: rgba(255,255,255,0.06);
+        }
+        .history-loading {
+            text-align: center;
+            padding: 6px;
+            color: #888;
+            font-size: 10px;
+        }
     </style>
 </head>
 <body>
@@ -2893,12 +2941,15 @@
                     ? '<span style="text-decoration: line-through; color: #666;">' + name + '</span>' + badge
                     : name + badge;
 
-                return '<div class="' + rowClass + '">' +
+                return '<div class="squad-player-wrapper">' +
+                    '<div class="' + rowClass + '" onclick="togglePlayerHistory(' + pick.element + ')">' +
                     '<span class="pos-badge ' + (posClasses[pos] || '') + '">' + (posLabels[pos] || '?') + '</span>' +
                     '<span class="squad-player-name">' + nameDisplay + '</span>' +
                     '<span class="squad-player-stats">' + stats + '</span>' +
                     '<span class="squad-player-mins">' + (mins > 0 ? mins + "'" : '-') + '</span>' +
                     '<span class="' + ptsClass + '" style="color:' + ptsColor + ';">' + ptsDisplay + '</span>' +
+                    '</div>' +
+                    '<div class="player-history-panel" id="player-history-' + pick.element + '"></div>' +
                     '</div>';
             }
 
@@ -2988,6 +3039,56 @@
                 '</div>';
 
             document.getElementById('modalBody').innerHTML = html;
+        }
+
+        async function togglePlayerHistory(elementId) {
+            const panel = document.getElementById('player-history-' + elementId);
+            if (!panel) return;
+
+            // If already open, close it
+            if (panel.classList.contains('active')) {
+                panel.classList.remove('active');
+                return;
+            }
+
+            // Close any other open panels (accordion)
+            document.querySelectorAll('.player-history-panel.active').forEach(p => {
+                p.classList.remove('active');
+            });
+
+            // Show loading and expand
+            panel.innerHTML = '<div class="history-loading">Loading...</div>';
+            panel.classList.add('active');
+
+            // Fetch data (cached after first call)
+            const data = await fetchPlayerSummary(elementId);
+
+            if (!data || !data.history || data.history.length === 0) {
+                panel.innerHTML = '<div class="history-loading">No history</div>';
+                return;
+            }
+
+            // Last 5 GWs, chronological (oldest left, newest right)
+            const recent = data.history.slice(-5);
+
+            let ptsHtml = '';
+            recent.forEach(gw => {
+                // Color-code points
+                let color = '#666';
+                if (gw.minutes === 0) color = '#666';
+                else if (gw.total_points <= 2) color = '#ff6b6b';
+                else if (gw.total_points <= 4) color = '#ccc';
+                else if (gw.total_points <= 7) color = '#7ddf7d';
+                else if (gw.total_points <= 12) color = '#00ff85';
+                else color = '#e8a900';
+
+                ptsHtml += '<span style="color:' + color + ';">' + gw.total_points + '</span>';
+            });
+
+            panel.innerHTML = '<div class="player-history-row">' +
+                '<span class="player-history-label">Last ' + recent.length + ':</span>' +
+                '<span class="player-history-pts">' + ptsHtml + '</span>' +
+                '</div>';
         }
 
         function calculateFreeTransfers(historyData, allTransfers, chipsUsed) {
@@ -4864,6 +4965,23 @@
                 return null;
             } catch (e) {
                 console.error('Failed to fetch bootstrap-static:', e);
+                return null;
+            }
+        }
+
+        // Cache for player element-summary data (history per GW)
+        const playerSummaryCache = {};
+
+        async function fetchPlayerSummary(elementId) {
+            if (playerSummaryCache[elementId]) return playerSummaryCache[elementId];
+            try {
+                const response = await fplApiFetch('/api/element-summary/' + elementId + '/');
+                if (!response.ok) return null;
+                const data = await response.json();
+                playerSummaryCache[elementId] = data;
+                return data;
+            } catch (e) {
+                console.error('Failed to fetch player summary for', elementId, e);
                 return null;
             }
         }
