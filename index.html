@@ -5798,14 +5798,15 @@
 
                 // Check if a substitution is valid (maintains valid formation)
                 // Official FPL rules: min 1 GK, min 3 DEF, min 2 MID, min 1 FWD
+                // Note: outgoing player is already excluded from currentFormation/activePicks,
+                // so we only need to simulate adding the bench player
                 const isValidSub = (outPos, inPos, currentFormation) => {
                     // GK can only be replaced by GK
                     if (outPos === 1) return inPos === 1;
                     if (inPos === 1) return false; // Can't sub GK in for outfield
 
-                    // Simulate the substitution
+                    // Simulate adding the bench player (outgoing already removed from formation)
                     const newFormation = { ...currentFormation };
-                    newFormation[outPos]--;
                     newFormation[inPos]++;
 
                     // Check official FPL formation requirements
