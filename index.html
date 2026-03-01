@@ -1532,38 +1532,36 @@
             transition: max-height 0.25s ease-out;
         }
         .player-history-panel.active {
-            max-height: 40px;
+            max-height: 250px;
             transition: max-height 0.25s ease-in;
         }
-        .player-history-row {
-            display: flex;
-            align-items: center;
-            padding: 4px 10px 6px;
-            gap: 6px;
-            font-size: 11px;
+        .history-table {
+            width: 100%;
             background: rgba(0,0,0,0.25);
             border-radius: 0 0 6px 6px;
             margin-bottom: 2px;
+            padding: 2px 6px 4px;
         }
-        .player-history-label {
-            color: #888;
-            font-size: 10px;
-            flex-shrink: 0;
-        }
-        .player-history-pts {
+        .history-table .h-row {
             display: flex;
-            gap: 4px;
-            flex-wrap: nowrap;
+            align-items: center;
+            padding: 3px 0;
+            font-size: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
         }
-        .player-history-pts span {
-            min-width: 20px;
-            text-align: center;
+        .history-table .h-row:last-child { border-bottom: none; }
+        .history-table .h-header {
+            color: #666;
+            font-size: 9px;
+            text-transform: uppercase;
             font-weight: 600;
-            font-size: 11px;
-            padding: 1px 3px;
-            border-radius: 3px;
-            background: rgba(255,255,255,0.06);
+            padding-bottom: 2px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
         }
+        .history-table .h-gw { width: 24px; color: #888; flex-shrink: 0; }
+        .history-table .h-opp { flex: 1; color: #aaa; }
+        .history-table .h-stat { width: 24px; text-align: center; flex-shrink: 0; }
+        .history-table .h-pts { width: 26px; text-align: right; font-weight: 700; flex-shrink: 0; }
         .history-loading {
             text-align: center;
             padding: 6px;
@@ -3068,27 +3066,71 @@
                 return;
             }
 
-            // Last 5 GWs, chronological (oldest left, newest right)
-            const recent = data.history.slice(-5);
+            // Last 5 GWs, most recent first
+            const recent = data.history.slice(-5).reverse();
 
-            let ptsHtml = '';
+            // Determine which stat columns have data across all 5 GWs
+            const hasGoals = recent.some(g => g.goals_scored > 0);
+            const hasAssists = recent.some(g => g.assists > 0);
+            const hasBonus = recent.some(g => g.bonus > 0);
+            const hasCS = recent.some(g => g.clean_sheets > 0);
+            const hasSaves = recent.some(g => g.saves > 0);
+            const hasYC = recent.some(g => g.yellow_cards > 0);
+            const hasRC = recent.some(g => g.red_cards > 0);
+            const hasOG = recent.some(g => g.own_goals > 0);
+            const hasPenMiss = recent.some(g => g.penalties_missed > 0);
+
+            // Build header
+            let header = '<div class="h-row h-header">' +
+                '<span class="h-gw">GW</span>' +
+                '<span class="h-opp">OPP</span>';
+            if (hasGoals) header += '<span class="h-stat">⚽</span>';
+            if (hasAssists) header += '<span class="h-stat">🎯</span>';
+            if (hasBonus) header += '<span class="h-stat">B</span>';
+            if (hasCS) header += '<span class="h-stat">CS</span>';
+            if (hasSaves) header += '<span class="h-stat">SV</span>';
+            if (hasYC) header += '<span class="h-stat">🟨</span>';
+            if (hasRC) header += '<span class="h-stat">🟥</span>';
+            if (hasOG) header += '<span class="h-stat">OG</span>';
+            if (hasPenMiss) header += '<span class="h-stat">PM</span>';
+            header += '<span class="h-stat">MIN</span>';
+            header += '<span class="h-pts">PTS</span></div>';
+
+            // Build rows
+            let rows = '';
             recent.forEach(gw => {
-                // Color-code points
-                let color = '#666';
-                if (gw.minutes === 0) color = '#666';
-                else if (gw.total_points <= 2) color = '#ff6b6b';
-                else if (gw.total_points <= 4) color = '#ccc';
-                else if (gw.total_points <= 7) color = '#7ddf7d';
-                else if (gw.total_points <= 12) color = '#00ff85';
-                else color = '#e8a900';
+                const oppName = bootstrapTeams ? (bootstrapTeams[gw.opponent_team] || '?') : '?';
+                const ha = gw.was_home ? '(H)' : '(A)';
 
-                ptsHtml += '<span style="color:' + color + ';">' + gw.total_points + '</span>';
+                // Color-code points
+                let ptsColor = '#666';
+                if (gw.minutes === 0) ptsColor = '#666';
+                else if (gw.total_points <= 2) ptsColor = '#ff6b6b';
+                else if (gw.total_points <= 4) ptsColor = '#ccc';
+                else if (gw.total_points <= 7) ptsColor = '#7ddf7d';
+                else if (gw.total_points <= 12) ptsColor = '#00ff85';
+                else ptsColor = '#e8a900';
+
+                const cell = (val) => val > 0 ? '<span class="h-stat" style="color:#fff;">' + val + '</span>' : '<span class="h-stat"></span>';
+
+                rows += '<div class="h-row">' +
+                    '<span class="h-gw">' + gw.round + '</span>' +
+                    '<span class="h-opp">' + oppName + ' ' + ha + '</span>';
+                if (hasGoals) rows += cell(gw.goals_scored);
+                if (hasAssists) rows += cell(gw.assists);
+                if (hasBonus) rows += cell(gw.bonus);
+                if (hasCS) rows += cell(gw.clean_sheets);
+                if (hasSaves) rows += cell(gw.saves);
+                if (hasYC) rows += '<span class="h-stat">' + (gw.yellow_cards > 0 ? '🟨' : '') + '</span>';
+                if (hasRC) rows += '<span class="h-stat">' + (gw.red_cards > 0 ? '🟥' : '') + '</span>';
+                if (hasOG) rows += cell(gw.own_goals);
+                if (hasPenMiss) rows += cell(gw.penalties_missed);
+                rows += '<span class="h-stat" style="color:#888;">' + (gw.minutes > 0 ? gw.minutes : '-') + '</span>';
+                rows += '<span class="h-pts" style="color:' + ptsColor + ';">' + gw.total_points + '</span>';
+                rows += '</div>';
             });
 
-            panel.innerHTML = '<div class="player-history-row">' +
-                '<span class="player-history-label">Last ' + recent.length + ':</span>' +
-                '<span class="player-history-pts">' + ptsHtml + '</span>' +
-                '</div>';
+            panel.innerHTML = '<div class="history-table">' + header + rows + '</div>';
         }
 
         function calculateFreeTransfers(historyData, allTransfers, chipsUsed) {
