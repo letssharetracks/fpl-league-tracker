@@ -3099,6 +3099,7 @@
             const hasOG = recent.some(g => g.own_goals > 0);
             const hasPenMiss = recent.some(g => g.penalties_missed > 0);
             const hasPenSave = recent.some(g => g.penalties_saved > 0);
+            const hasGC = (posType >= 1 && posType <= 3) && recent.some(g => g.goals_conceded > 0);
 
             // Build header
             let header = '<div class="h-row h-header">' +
@@ -3115,6 +3116,7 @@
             if (hasOG) header += '<span class="h-stat">OG</span>';
             if (hasPenMiss) header += '<span class="h-stat">PM</span>';
             if (hasPenSave) header += '<span class="h-stat">PS</span>';
+            if (hasGC) header += '<span class="h-stat">GC</span>';
 
             header += '<span class="h-stat">MIN</span>';
             header += '<span class="h-pts">PTS</span></div>';
@@ -3150,6 +3152,7 @@
                 if (hasOG) rows += cell(gw.own_goals);
                 if (hasPenMiss) rows += cell(gw.penalties_missed);
                 if (hasPenSave) rows += cell(gw.penalties_saved);
+                if (hasGC) rows += '<span class="h-stat" style="color:#ff6b6b;">' + (gw.goals_conceded > 0 ? gw.goals_conceded : '') + '</span>';
 
                 rows += '<span class="h-stat" style="color:#888;">' + (gw.minutes > 0 ? gw.minutes : '-') + '</span>';
                 rows += '<span class="h-pts" style="color:' + ptsColor + ';">' + gw.total_points + '</span>';
