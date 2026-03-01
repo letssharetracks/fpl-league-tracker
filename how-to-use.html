@@ -184,7 +184,7 @@
         <a href="index.html" class="back-link">← Back to Tracker</a>
 
         <h1>How to Use FPL League Tracker</h1>
-        <p class="subtitle">Track your Fantasy Premier League mini-leagues like a pro</p>
+        <p class="subtitle">Live gameweek tracking + season charts for your mini-leagues</p>
 
         <!-- Getting Started -->
         <div class="section">
@@ -203,7 +203,7 @@
         <!-- Live View -->
         <div class="section">
             <h2>📊 Live View</h2>
-            <p>The default view shows your league standings with live gameweek data.</p>
+            <p>The default view shows your league standings with live gameweek data — just the essentials without the clutter.</p>
 
             <h3>Column Guide</h3>
             <ul class="column-guide">
@@ -226,6 +226,43 @@
                 <li>Gap to 1st place</li>
                 <li>GW and Overall rank</li>
             </ul>
+
+            <h3>Sort Columns</h3>
+            <p>Click any column header to sort the table. Sortable columns include GW, Total, Captain, Chip, BPS, DEFCON, and Status.</p>
+
+            <h3>Vice-Captain Detection</h3>
+            <p>When a captain isn't playing (e.g. not in the squad), the tracker automatically detects this and shows the vice-captain taking over. The captain name appears with a <span style="text-decoration: line-through; color: #666;">strikethrough</span> and the VC is displayed below. Points are correctly doubled (or tripled for Triple Captain) for the vice-captain across all calculations.</p>
+        </div>
+
+        <!-- Squad Modal -->
+        <div class="section">
+            <h2>👥 Squad View</h2>
+            <p>Tap a team name in the table to open the squad modal, showing the full starting XI and bench.</p>
+
+            <h3>What You'll See</h3>
+            <ul>
+                <li>Starting players with position badges, points, and captain/VC markers</li>
+                <li>Bench players in order</li>
+                <li>Predicted auto-subs highlighted</li>
+                <li>Transfers made this GW with net swing (points gained/lost)</li>
+                <li>Free transfers remaining</li>
+            </ul>
+
+            <h3>Tap a Player for History</h3>
+            <p>Tap any player in the squad to expand their last 5 gameweek stats. Only one player expands at a time (accordion style). Stats shown include:</p>
+            <ul>
+                <li><strong>GW / OPP</strong> — Gameweek number and opponent (H/A)</li>
+                <li><strong>Goals, Assists, Bonus</strong> — Key attacking returns</li>
+                <li><strong>CS</strong> — Clean sheets (GK, DEF, MID only)</li>
+                <li><strong>DC</strong> — Defensive contribution points earned (tick shown when achieved)</li>
+                <li><strong>SV</strong> — Saves (goalkeepers)</li>
+                <li><strong>GC</strong> — Goals conceded while on pitch (GK, DEF, MID only)</li>
+                <li><strong>Cards, OG, PM, PS</strong> — Yellow/red cards, own goals, penalties missed/saved</li>
+                <li><strong>MIN / PTS</strong> — Minutes played and total points (colour-coded)</li>
+            </ul>
+            <div class="tip">
+                <strong>💡 Tip:</strong> Stat columns only appear when there's data — a striker won't show CS or GC columns since they don't affect their points. Data is cached after first tap so subsequent taps are instant.
+            </div>
         </div>
 
         <!-- Auto-Subs Toggle -->
@@ -244,22 +281,25 @@
         <!-- Charts View -->
         <div class="section">
             <h2>📈 Charts View</h2>
-            <p>Click <span class="badge badge-cyan">CHARTS</span> to see visual analysis of your league.</p>
+            <p>Click <span class="badge badge-cyan">CHARTS</span> to visualise your mini-league's entire season. See who peaked early, who's been climbing since Christmas, and who's been in freefall.</p>
 
             <h3>Chart Types</h3>
             <ul>
-                <li><strong>Total:</strong> Cumulative points over the season</li>
-                <li><strong>Weekly:</strong> Points scored each gameweek</li>
-                <li><strong>Position:</strong> League position changes over time</li>
+                <li><strong>Total:</strong> Cumulative points race — watch the season unfold week by week</li>
+                <li><strong>Weekly:</strong> Points scored each gameweek — spot form streaks and disasters</li>
+                <li><strong>Position:</strong> League position over time — relive every overtake and collapse</li>
             </ul>
 
-            <h3>Controls</h3>
+            <h3>Sidebar Controls</h3>
             <ul>
-                <li><strong>Toggle players:</strong> Click names in the sidebar to show/hide on chart</li>
+                <li><strong>Toggle managers:</strong> Click names in the sidebar to show/hide on chart (shows team name + manager name)</li>
                 <li><strong>Top 10 / All / Clear:</strong> Quick select buttons</li>
-                <li><strong>GW range:</strong> Filter to specific gameweeks</li>
-                <li><strong>Search:</strong> Find specific players</li>
+                <li><strong>GW range:</strong> Filter to specific gameweeks to zoom in on key periods</li>
+                <li><strong>Search:</strong> Find specific managers in large leagues</li>
             </ul>
+            <div class="tip">
+                <strong>💡 Tip:</strong> Toggle managers on/off to compare head-to-head rivalries or see exactly when you overtook your mate!
+            </div>
         </div>
 
         <!-- Mobile Usage -->
@@ -298,20 +338,32 @@
             <p>Your team is marked with a star so you can easily spot yourself in the league table.</p>
         </div>
 
+        <!-- Goal Ticker -->
+        <div class="section">
+            <h2>⚽ Goal Ticker</h2>
+            <p>A scrolling ticker at the top shows live goals from Premier League matches.</p>
+            <ul>
+                <li><span style="color: cyan;">Cyan</span> = home team scorer, <span style="color: yellow;">Yellow</span> = away team scorer</li>
+                <li>Shows scorer name, minute, and assister</li>
+                <li>Updates automatically during live matches</li>
+            </ul>
+        </div>
+
         <!-- Tips -->
         <div class="section">
             <h2>💡 Pro Tips</h2>
             <ul>
                 <li><strong>Refresh button:</strong> Click to fetch latest live data during matches</li>
                 <li><strong>Star a league:</strong> Click ☆ next to a league to set it as your default</li>
-                <li><strong>Sort columns:</strong> Click GW or Total headers to sort</li>
+                <li><strong>Sort columns:</strong> Click any column header (GW, Total, Captain, Chip, BPS, DEFCON) to sort</li>
+                <li><strong>Squad view:</strong> Tap a team name to see their full squad, then tap a player for their recent history</li>
                 <li><strong>Reset:</strong> Click Reset to clear all cached data if something seems wrong</li>
                 <li><strong>Multiple leagues:</strong> Switch between leagues using the dropdown</li>
             </ul>
         </div>
 
         <div class="footer">
-            <p>Built for FPL managers who want more than just a table.</p>
+            <p>Your mini-league companion — live tracking + season charts.</p>
             <p><a href="index.html">← Back to FPL League Tracker</a></p>
             <p style="font-size: 0.75rem; margin-top: 15px; opacity: 0.6;">Unofficial tool. Not affiliated with the Premier League.</p>
         </div>
