@@ -1856,6 +1856,7 @@
         let gameweekFinished = true;
         let livePoints = {};
         let livePositions = {};
+        let globalTeamsFinished = new Set();
         let autoSubsEnabled = true; // Toggle for predicted auto-subs
         let currentFilter = '';
         let sortColumn = 'total'; // Current sort column: 'total', 'gw', 'gap'
@@ -2898,6 +2899,11 @@
                 if (isBench && !autoSubIn.has(pick.element) && live?.chip !== 'bboost') rowClass += ' bench-player';
                 if (autoSubIn.has(pick.element)) rowClass += ' auto-sub-in';
                 if (autoSubOut.has(pick.element)) rowClass += ' auto-sub-out';
+                // Strike through bench players who didn't play (fixture finished, 0 mins)
+                const playerTeam = info ? info.team : 0;
+                if (isBench && !autoSubIn.has(pick.element) && mins === 0 && globalTeamsFinished.has(playerTeam)) {
+                    rowClass += ' auto-sub-out';
+                }
 
                 // Build stat icons - clear text labels
                 let stats = '';
@@ -5858,6 +5864,7 @@
                         teamsYetToPlay.add(f.team_a);
                     }
                 });
+                globalTeamsFinished = teamsFinished;
 
                 // Calculate live bonus for in-progress AND bonus-pending fixtures
                 const liveBonusMap = {};
