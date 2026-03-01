@@ -3077,7 +3077,7 @@
             const hasGoals = recent.some(g => g.goals_scored > 0);
             const hasAssists = recent.some(g => g.assists > 0);
             const hasBonus = recent.some(g => g.bonus > 0);
-            const hasCS = recent.some(g => g.clean_sheets > 0);
+            const hasCS = (posType >= 1 && posType <= 3) && recent.some(g => g.clean_sheets > 0);
             const hasDC = (posType === 1 || posType === 2) && recent.some(g => g.defensive_contribution > 0);
             const hasSaves = recent.some(g => g.saves > 0);
             const hasYC = recent.some(g => g.yellow_cards > 0);
