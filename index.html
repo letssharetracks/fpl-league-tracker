@@ -3086,7 +3086,6 @@
             const hasAssists = recent.some(g => g.assists > 0);
             const hasBonus = recent.some(g => g.bonus > 0);
             const hasCS = (posType >= 1 && posType <= 3) && recent.some(g => g.clean_sheets > 0);
-            const hasDC = (posType === 1 || posType === 2) && recent.some(g => (g.defensive_contribution || 0) > 0);
             const hasSaves = recent.some(g => g.saves > 0);
             const hasYC = recent.some(g => g.yellow_cards > 0);
             const hasRC = recent.some(g => g.red_cards > 0);
@@ -3102,7 +3101,6 @@
             if (hasAssists) header += '<span class="h-stat">🎯</span>';
             if (hasBonus) header += '<span class="h-stat">B</span>';
             if (hasCS) header += '<span class="h-stat">CS</span>';
-            if (hasDC) header += '<span class="h-stat">DC</span>';
             if (hasSaves) header += '<span class="h-stat">SV</span>';
             if (hasYC) header += '<span class="h-stat">🟨</span>';
             if (hasRC) header += '<span class="h-stat">🟥</span>';
@@ -3137,7 +3135,6 @@
                 if (hasAssists) rows += cell(gw.assists);
                 if (hasBonus) rows += cell(gw.bonus);
                 if (hasCS) rows += cell(gw.clean_sheets);
-                if (hasDC) rows += '<span class="h-stat" style="color:#e056fd;">' + ((gw.defensive_contribution || 0) > 0 ? '✓' : '') + '</span>';
                 if (hasSaves) rows += cell(gw.saves);
                 if (hasYC) rows += '<span class="h-stat">' + (gw.yellow_cards > 0 ? '🟨' : '') + '</span>';
                 if (hasRC) rows += '<span class="h-stat">' + (gw.red_cards > 0 ? '🟥' : '') + '</span>';
