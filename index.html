@@ -3081,6 +3081,13 @@
             const pInfo = bootstrapPlayers ? bootstrapPlayers[elementId] : null;
             const posType = pInfo ? pInfo.position : 0;
 
+            // Fetch DEFCON data for these GWs in parallel
+            const gwRounds = recent.map(g => g.round);
+            const dcMaps = await Promise.all(gwRounds.map(gw => fetchGwDefcon(gw)));
+            const playerDC = {};
+            gwRounds.forEach((gw, i) => { playerDC[gw] = dcMaps[i][elementId] || 0; });
+            const hasDC = Object.values(playerDC).some(v => v > 0);
+
             // Determine which stat columns have data across all 5 GWs
             const hasGoals = recent.some(g => g.goals_scored > 0);
             const hasAssists = recent.some(g => g.assists > 0);
@@ -3101,6 +3108,7 @@
             if (hasAssists) header += '<span class="h-stat">🎯</span>';
             if (hasBonus) header += '<span class="h-stat">B</span>';
             if (hasCS) header += '<span class="h-stat">CS</span>';
+            if (hasDC) header += '<span class="h-stat">DC</span>';
             if (hasSaves) header += '<span class="h-stat">SV</span>';
             if (hasYC) header += '<span class="h-stat">🟨</span>';
             if (hasRC) header += '<span class="h-stat">🟥</span>';
@@ -3135,6 +3143,7 @@
                 if (hasAssists) rows += cell(gw.assists);
                 if (hasBonus) rows += cell(gw.bonus);
                 if (hasCS) rows += cell(gw.clean_sheets);
+                if (hasDC) rows += '<span class="h-stat" style="color:#e056fd;">' + (playerDC[gw.round] > 0 ? '✓' : '') + '</span>';
                 if (hasSaves) rows += cell(gw.saves);
                 if (hasYC) rows += '<span class="h-stat">' + (gw.yellow_cards > 0 ? '🟨' : '') + '</span>';
                 if (hasRC) rows += '<span class="h-stat">' + (gw.red_cards > 0 ? '🟥' : '') + '</span>';
@@ -5029,6 +5038,36 @@
             } catch (e) {
                 console.error('Failed to fetch bootstrap-static:', e);
                 return null;
+            }
+        }
+
+        // Cache for DEFCON points per GW: gwDefconCache[gw] = { elementId: points }
+        const gwDefconCache = {};
+
+        async function fetchGwDefcon(gw) {
+            if (gwDefconCache[gw]) return gwDefconCache[gw];
+            try {
+                const response = await fplApiFetch('/api/event/' + gw + '/live/');
+                if (!response.ok) return {};
+                const data = await response.json();
+                const dcMap = {};
+                data.elements.forEach(el => {
+                    if (el.explain && Array.isArray(el.explain)) {
+                        el.explain.forEach(fixture => {
+                            if (fixture.stats && Array.isArray(fixture.stats)) {
+                                fixture.stats.forEach(stat => {
+                                    if (stat.identifier === 'defensive_contribution' && stat.points > 0) {
+                                        dcMap[el.id] = (dcMap[el.id] || 0) + stat.points;
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+                gwDefconCache[gw] = dcMap;
+                return dcMap;
+            } catch (e) {
+                return {};
             }
         }
 
