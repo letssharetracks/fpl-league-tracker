@@ -353,7 +353,8 @@
             background: rgba(255,255,255,0.05);
         }
         .league-table tbody tr.my-team {
-            background: rgba(0,255,133,0.1);
+            background: rgba(0,255,133,0.15);
+            border-left: 3px solid #00ff85;
         }
         .league-table .col-rank {
             width: 40px;
@@ -1666,6 +1667,7 @@
                     <button class="view-btn active" id="btn-total" onclick="setChartType('total')">Total</button>
                     <button class="view-btn" id="btn-weekly" onclick="setChartType('weekly')">Weekly</button>
                     <button class="view-btn" id="btn-rank" onclick="setChartType('rank')">Position</button>
+                    <button class="view-btn" id="btn-gap" onclick="setChartType('gap')">Gap</button>
                 </div>
             </div>
             <div class="control-group" id="weekControls">
@@ -2605,7 +2607,7 @@
         function setChartType(type) {
             currentChartType = type;
             // Update button states for chart type only
-            ['btn-total', 'btn-weekly', 'btn-rank'].forEach(id => {
+            ['btn-total', 'btn-weekly', 'btn-rank', 'btn-gap'].forEach(id => {
                 document.getElementById(id).classList.remove('active');
             });
             document.getElementById('btn-' + type).classList.add('active');
@@ -7378,6 +7380,20 @@
                 }
             }
 
+            // Pre-calculate leader totals at each GW for gap mode
+            const leaderTotals = [];
+            if (chartType === 'gap') {
+                for (let gwIdx = 0; gwIdx < maxGameweeks; gwIdx++) {
+                    let maxTotal = 0;
+                    allPlayers.forEach(p => {
+                        const h = playerHistories[p.entry];
+                        const total = h && h[gwIdx] ? h[gwIdx].total_points : 0;
+                        if (total > maxTotal) maxTotal = total;
+                    });
+                    leaderTotals.push(maxTotal);
+                }
+            }
+
             // Calculate final values for label positioning (use last gameweek for all)
             const finalValues = selectedPlayers.map(player => {
                 const history = playerHistories[player.entry] || [];
@@ -7389,6 +7405,9 @@
                 if (chartType === 'rank') {
                     // Use position at the final gameweek
                     value = allPositions[player.entry] ? allPositions[player.entry][maxGameweeks - 1] || allPositions[player.entry][lastIdx] : 999;
+                } else if (chartType === 'gap') {
+                    const total = lastGw ? lastGw.total_points : 0;
+                    value = total - (leaderTotals[lastIdx] || 0);
                 } else {
                     value = chartType === 'total' ? (lastGw ? lastGw.total_points : 0) : (lastGw ? lastGw.points : 0);
                 }
@@ -7483,6 +7502,49 @@
                                 data.push(data.length > 0 ? data[data.length - 1] : null);
                             }
                             data.push(currentPos);
+                        }
+                    }
+                } else if (chartType === 'gap') {
+                    // Gap to leader at each GW
+                    data = history.map((gw, idx) => {
+                        if (!gw) return null;
+                        return gw.total_points - (leaderTotals[idx] || 0);
+                    });
+
+                    // For current GW, use live totals
+                    if (hasLiveData && currentGameweek) {
+                        const prevTotal = history.length >= currentGameweek - 1 && history[currentGameweek - 2]
+                            ? history[currentGameweek - 2].total_points : 0;
+                        let currentTotal;
+                        if (matchesInProgress) {
+                            currentTotal = prevTotal + live.netPoints;
+                        } else {
+                            currentTotal = player.total;
+                        }
+                        // Find live leader total
+                        let liveLeaderTotal = 0;
+                        allPlayers.forEach(p => {
+                            const pLive = livePoints[p.entry];
+                            const pH = playerHistories[p.entry] || [];
+                            const pPrev = pH.length >= currentGameweek - 1 && pH[currentGameweek - 2]
+                                ? pH[currentGameweek - 2].total_points : 0;
+                            let pTotal;
+                            if (pLive && matchesInProgress) {
+                                pTotal = pPrev + pLive.netPoints;
+                            } else {
+                                pTotal = p.total || pPrev;
+                            }
+                            if (pTotal > liveLeaderTotal) liveLeaderTotal = pTotal;
+                        });
+
+                        const gapValue = currentTotal - liveLeaderTotal;
+                        if (data.length >= currentGameweek) {
+                            data[currentGameweek - 1] = gapValue;
+                        } else {
+                            while (data.length < currentGameweek - 1) {
+                                data.push(data.length > 0 ? data[data.length - 1] : null);
+                            }
+                            data.push(gapValue);
                         }
                     }
                 }
@@ -7649,7 +7711,13 @@
                             intersect: false,
                             callbacks: {
                                 title: (items) => items[0].label,
-                                label: (item) => `${item.dataset.label}: ${item.raw}`
+                                label: (item) => {
+                                    const val = item.raw;
+                                    if (chartType === 'gap') {
+                                        return `${item.dataset.label}: ${val === 0 ? 'Leader' : val}`;
+                                    }
+                                    return `${item.dataset.label}: ${val}`;
+                                }
                             }
                         },
                         datalabels: {
@@ -7680,7 +7748,8 @@
                             title: {
                                 display: true,
                                 text: chartType === 'total' ? 'Total Points' :
-                                      chartType === 'weekly' ? 'Weekly Points' : 'League Position',
+                                      chartType === 'weekly' ? 'Weekly Points' :
+                                      chartType === 'gap' ? 'Points Behind Leader' : 'League Position',
                                 color: '#888'
                             }
                         }
