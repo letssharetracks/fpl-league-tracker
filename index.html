@@ -1743,7 +1743,7 @@
                         <th class="col-autosub">Auto-Sub</th>
                         <th class="col-bps sortable" id="sortBps">BPS</th>
                         <th class="col-defcon sortable" id="sortDefcon">DEFCON</th>
-                        <th class="col-status">Status</th>
+                        <th class="col-status" title="Played · Playing · To Play">Status</th>
                         <th class="col-or">OR</th>
                     </tr>
                 </thead>
@@ -3502,12 +3502,15 @@
                 // Status display
                 let statusHtml = '';
                 if (live) {
+                    const played = live.playersPlayed || 0;
                     const playing = live.playersPlaying || 0;
                     const toPlay = live.playersYetToPlay || 0;
-                    if (playing > 0) {
-                        statusHtml = `<span class="status-playing">${playing} playing</span>`;
-                    } else if (toPlay > 0) {
-                        statusHtml = `<span class="status-toplay">${toPlay} to play</span>`;
+                    if (playing > 0 || toPlay > 0) {
+                        const parts = [];
+                        if (played > 0) parts.push(`<span class="status-done" style="text-align:center;"><div>${played}</div><div style="font-size:8px;opacity:0.7;">played</div></span>`);
+                        if (playing > 0) parts.push(`<span class="status-playing" style="text-align:center;"><div>${playing}</div><div style="font-size:8px;opacity:0.7;">live</div></span>`);
+                        if (toPlay > 0) parts.push(`<span class="status-toplay" style="text-align:center;"><div>${toPlay}</div><div style="font-size:8px;opacity:0.7;">left</div></span>`);
+                        statusHtml = `<div style="display:flex;gap:6px;justify-content:center;">${parts.join('')}</div>`;
                     } else {
                         statusHtml = `<span class="status-done">Done</span>`;
                     }
@@ -3627,10 +3630,12 @@
                     }
 
                     // Players status
+                    const played = live.playersPlayed || 0;
                     const playing = live.playersPlaying || 0;
                     const yetToPlay = live.playersYetToPlay || 0;
                     if (playing > 0 || yetToPlay > 0) {
                         const parts = [];
+                        if (played > 0) parts.push(`<span style="color: #00ff85;">${played} played</span>`);
                         if (playing > 0) parts.push(`<span style="color: #ff4757;">${playing} playing</span>`);
                         if (yetToPlay > 0) parts.push(`<span style="color: #888;">${yetToPlay} to play</span>`);
                         mobileDetailsHtml += `<div class="detail-item"><span class="detail-label">Players:</span><span>${parts.join(', ')}</span></div>`;
@@ -5947,6 +5952,7 @@
                 let calculatedPoints = 0;
                 let playersYetToPlay = 0;
                 let playersPlaying = 0;
+                let playersPlayed = 0;
                 const needsAutoSub = []; // Starting players with 0 mins and fixture finished
 
                 // Debug: check for Saka specifically
@@ -5980,6 +5986,8 @@
                         const pName = players ? players[pick.element]?.name : pick.element;
                         console.log(`Needs auto-sub: ${pName} (team ${team} finished, 0 mins)`);
                         needsAutoSub.push(pick);
+                    } else if (teamsFinished.has(team)) {
+                        playersPlayed++;
                     }
                 }
 
@@ -6001,6 +6009,8 @@
                             playersYetToPlay++;
                         } else if (teamsPlaying.has(team)) {
                             playersPlaying++;
+                        } else if (teamsFinished.has(team)) {
+                            playersPlayed++;
                         }
                     }
                 }
@@ -6096,6 +6106,8 @@
                             playersYetToPlay++;
                         } else if (teamsPlaying.has(benchTeam)) {
                             playersPlaying++;
+                        } else if (teamsFinished.has(benchTeam)) {
+                            playersPlayed++;
                         }
 
                         // Include provisional bonus in pointsGained display
@@ -6225,6 +6237,7 @@
                     chip: activeChip,
                     playersYetToPlay: playersYetToPlay,
                     playersPlaying: playersPlaying,
+                    playersPlayed: playersPlayed,
                     basePoints: basePointsWithBonus,        // GW points WITHOUT auto-subs
                     predictedPoints: predictedWithBonus,    // GW points WITH auto-subs
                     autoSubs: autoSubs,
