@@ -5932,12 +5932,17 @@
                     const captainTeam = captainInfo ? captainInfo.team : 0;
                     const captainMins = captainData ? captainData.minutes : 0;
 
+                    console.log(`VC Debug [${entryId}]: captain=${captainInfo?.name}(mult=${captain.multiplier}), VC=${players?.[viceCaptain.element]?.name}, captainTeam=${captainTeam}, captainMins=${captainMins}, teamFinished=${teamsFinished.has(captainTeam)}, teamPlaying=${teamsPlaying.has(captainTeam)}`);
+
                     // If captain's fixture is finished and they played 0 minutes - VC CONFIRMED
                     if (teamsFinished.has(captainTeam) && captainMins === 0) {
                         // Transfer captain multiplier to vice captain
-                        effectiveMultipliers[captain.element] = 1; // Captain loses multiplier
-                        effectiveMultipliers[viceCaptain.element] = captain.multiplier; // VC gets it
+                        // Use at least 2 in case API already zeroed captain's multiplier
+                        const captainMult = captain.multiplier >= 2 ? captain.multiplier : 2;
+                        effectiveMultipliers[captain.element] = 0; // Captain gets nothing
+                        effectiveMultipliers[viceCaptain.element] = captainMult; // VC gets doubling
                         vcActivated = true;
+                        console.log(`VC Activated [${entryId}]: ${captainInfo?.name} → ${players?.[viceCaptain.element]?.name}, mult=${captainMult}`);
                     }
                     // If captain is likely not playing - VC LIKELY
                     // Check: flagged unavailable in bootstrap data, OR fixture in progress with 0 mins
@@ -5951,8 +5956,10 @@
                         if (captainUnavailable || captainFixturePlaying) {
                             vcLikely = true;
                             // Also transfer multipliers so predicted points include VC doubling
-                            effectiveMultipliers[captain.element] = 1;
-                            effectiveMultipliers[viceCaptain.element] = captain.multiplier;
+                            const captainMult = captain.multiplier >= 2 ? captain.multiplier : 2;
+                            effectiveMultipliers[captain.element] = 0;
+                            effectiveMultipliers[viceCaptain.element] = captainMult;
+                            console.log(`VC Likely [${entryId}]: ${captainInfo?.name} → ${players?.[viceCaptain.element]?.name}, mult=${captainMult}`);
                         }
                     }
                 }
@@ -6105,10 +6112,9 @@
 
                         const benchPoints = playerScores ? (playerScores[benchPlayer.element] || 0) : 0;
                         const outPoints = playerScores ? (playerScores[outPlayer.element] || 0) : 0;
-                        const outMultiplier = effectiveMultipliers[outPlayer.element] || 1;
-
-                        // Add the difference (use effective multiplier for VC scenarios)
-                        predictedPoints += (benchPoints - outPoints) * outMultiplier;
+                        // For auto-subs, bench player replaces at 1x (not captain multiplier)
+                        // outPoints is already 0 for players who didn't play
+                        predictedPoints += benchPoints - outPoints;
 
                         // Count if this auto-subbed player is yet to play or playing
                         if (teamsYetToPlay.has(benchTeam)) {
@@ -6163,10 +6169,11 @@
                             isConfirmed: provisionalBonus === 0 && confirmedBonus > 0
                         });
                     }
-                    // Only add provisional to liveBonus (confirmed already in total_points)
-                    // Apply captain multiplier so captain's bonus counts 2x (or 3x for TC)
+                    // Only add the EXTRA provisional bonus not already in total_points
+                    // confirmed bonus is already included in total_points from the API
                     const bonusMultiplier = effectiveMultipliers[pick.element] || 1;
-                    liveBonus += provisionalBonus * bonusMultiplier;
+                    const extraBonus = Math.max(0, provisionalBonus - confirmedBonus);
+                    liveBonus += extraBonus * bonusMultiplier;
 
                     // Sum DEFCON points for active players
                     if (playerLiveData && playerLiveData.defcon) {
