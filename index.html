@@ -5937,8 +5937,9 @@
                     // If captain's fixture is finished and they played 0 minutes - VC CONFIRMED
                     if (teamsFinished.has(captainTeam) && captainMins === 0) {
                         // Transfer captain multiplier to vice captain
-                        // Use at least 2 in case API already zeroed captain's multiplier
-                        const captainMult = captain.multiplier >= 2 ? captain.multiplier : 2;
+                        // Use at least 2 (or 3 for TC) in case API already zeroed captain's multiplier
+                        const isTc = data.active_chip === '3xc';
+                        const captainMult = captain.multiplier >= 2 ? captain.multiplier : (isTc ? 3 : 2);
                         effectiveMultipliers[captain.element] = 0; // Captain gets nothing
                         effectiveMultipliers[viceCaptain.element] = captainMult; // VC gets doubling
                         vcActivated = true;
@@ -5956,7 +5957,8 @@
                         if (captainUnavailable || captainFixturePlaying) {
                             vcLikely = true;
                             // Also transfer multipliers so predicted points include VC doubling
-                            const captainMult = captain.multiplier >= 2 ? captain.multiplier : 2;
+                            const isTc = data.active_chip === '3xc';
+                            const captainMult = captain.multiplier >= 2 ? captain.multiplier : (isTc ? 3 : 2);
                             effectiveMultipliers[captain.element] = 0;
                             effectiveMultipliers[viceCaptain.element] = captainMult;
                             console.log(`VC Likely [${entryId}]: ${captainInfo?.name} → ${players?.[viceCaptain.element]?.name}, mult=${captainMult}`);
@@ -5995,12 +5997,12 @@
                     // Check if player yet to play
                     if (teamsYetToPlay.has(team)) {
                         playersYetToPlay++;
-                    } else if (teamsPlaying.has(team)) {
+                    } else if (teamsPlaying.has(team) && minutes > 0) {
                         playersPlaying++;
-                    } else if (teamsFinished.has(team) && minutes === 0) {
-                        // Player didn't play and fixture is done - needs auto-sub
+                    } else if ((teamsFinished.has(team) || teamsPlaying.has(team)) && minutes === 0) {
+                        // Player didn't play - fixture done OR in progress with 0 mins (not in squad)
                         const pName = players ? players[pick.element]?.name : pick.element;
-                        console.log(`Needs auto-sub: ${pName} (team ${team} finished, 0 mins)`);
+                        console.log(`Needs auto-sub: ${pName} (team ${team}, 0 mins, finished=${teamsFinished.has(team)}, playing=${teamsPlaying.has(team)})`);
                         needsAutoSub.push(pick);
                     } else if (teamsFinished.has(team)) {
                         playersPlayed++;
@@ -6125,24 +6127,22 @@
                             playersPlayed++;
                         }
 
-                        // Include provisional bonus in pointsGained display
+                        // Include only EXTRA provisional bonus in pointsGained display
                         const autoSubProvBonus = liveBonusMap[benchPlayer.element] || 0;
+                        const autoSubConfBonus = (livePlayerData ? livePlayerData[benchPlayer.element]?.bonus : 0) || 0;
+                        const autoSubExtraBonus = Math.max(0, autoSubProvBonus - autoSubConfBonus);
                         autoSubs.push({
                             out: outPlayer.element,
                             in: benchPlayer.element,
                             outName: outInfo?.name || '?',
                             inName: benchInfo?.name || '?',
-                            pointsGained: benchPoints + autoSubProvBonus
+                            pointsGained: benchPoints + autoSubExtraBonus
                         });
                         break;
                     }
                 }
 
-                // Always use calculated points - it sums live player scores in real-time
-                // h.points from API only updates after games finish
-                const points = calculatedPoints;
                 const transferCost = h.event_transfers_cost || 0;
-                const netPoints = points - transferCost;
 
                 // Calculate provisional bonus for in-progress fixtures only
                 // (confirmed bonus is already included in total_points)
@@ -6208,23 +6208,27 @@
                             isConfirmed: provisionalBonus === 0 && confirmedBonus > 0
                         });
                     }
-                    // Add provisional bonus to liveBonus (confirmed already in total_points)
-                    liveBonus += provisionalBonus;
+                    // Only add EXTRA provisional bonus not already in total_points
+                    const confirmedBonusForCalc = playerLiveData?.bonus || 0;
+                    liveBonus += Math.max(0, provisionalBonus - confirmedBonusForCalc);
                 });
 
                 // Get captain and vice captain names for display
                 const captainInfo = captain && players ? players[captain.element] : null;
                 const captainName = captainInfo ? captainInfo.name : null;
-                // Include provisional bonus in captain points for display
+                // Include only EXTRA provisional bonus in captain points for display
+                // (playerScores already includes confirmed bonus)
                 let captainPoints = captain && playerScores ? (playerScores[captain.element] || 0) : 0;
                 if (captain) {
-                    captainPoints += liveBonusMap[captain.element] || 0;
+                    const captainConfirmedBonus = livePlayerData?.[captain.element]?.bonus || 0;
+                    captainPoints += Math.max(0, (liveBonusMap[captain.element] || 0) - captainConfirmedBonus);
                 }
                 const vcInfo = viceCaptain && players ? players[viceCaptain.element] : null;
                 const vcName = vcInfo ? vcInfo.name : null;
                 let vcPoints = viceCaptain && playerScores ? (playerScores[viceCaptain.element] || 0) : 0;
                 if (viceCaptain) {
-                    vcPoints += liveBonusMap[viceCaptain.element] || 0;
+                    const vcConfirmedBonus = livePlayerData?.[viceCaptain.element]?.bonus || 0;
+                    vcPoints += Math.max(0, (liveBonusMap[viceCaptain.element] || 0) - vcConfirmedBonus);
                 }
 
                 // Sort BPS players by bonus (highest first)
@@ -6238,6 +6242,10 @@
                 // Add provisional bonus to predicted points for live updates
                 calculatedPoints += liveBonus;
                 predictedPoints += liveBonus;
+
+                // Calculate points and netPoints AFTER bonus is included
+                const points = calculatedPoints;
+                const netPoints = points - transferCost;
 
                 // Store both: basePoints (without auto-subs) and predictedPoints (with auto-subs)
                 const basePointsWithBonus = calculatedPoints - transferCost;
