@@ -6121,9 +6121,17 @@
                             if (unavailable || zeroChance) continue; // Won't play this GW
                         }
 
-                        // Check if bench player actually played (for finished fixtures)
+                        // Skip bench players who didn't play
                         const benchFixtureFinished = teamsFinished.has(benchTeam);
-                        if (benchFixtureFinished && benchMins === 0) continue; // Didn't play
+                        if (benchFixtureFinished && benchMins === 0) continue; // Fixture done, didn't play
+
+                        // Skip bench players with 0 mins in an in-progress match where teammates have mins
+                        if (teamsPlaying.has(benchTeam) && benchMins === 0) {
+                            const teammatesWithMins = players && livePlayerData && Object.entries(players).some(([pid, p]) =>
+                                p.team === benchTeam && livePlayerData[pid]?.minutes > 0
+                            );
+                            if (teammatesWithMins) continue; // Match underway, player not in squad
+                        }
 
                         // Check if substitution is valid for formation
                         if (!isValidSub(outPos, benchPos, currentFormation)) continue;
