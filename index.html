@@ -5881,7 +5881,7 @@
                     if (f.started) {
                         console.log(`Fixture ${f.team_h}v${f.team_a}: started=${f.started}, finished=${f.finished}, bonus_added=${f.bonus_added}, date=${fixtureDate}, isToday=${isToday}`);
                     }
-                    if (f.started && !f.bonus_added && isToday) {
+                    if (f.started && !f.finished && !f.finished_provisional && !f.bonus_added && isToday) {
                         liveFixtureCount++;
                         // Get all players from both teams in this fixture
                         const fixturePlayers = [];
