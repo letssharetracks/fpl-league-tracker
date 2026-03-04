@@ -5952,7 +5952,15 @@
                             ['i', 'u', 's'].includes(captainInfo.status) ||
                             captainInfo.chanceOfPlaying === 0
                         );
-                        const captainFixturePlaying = teamsPlaying.has(captainTeam);
+                        // Only flag as "not playing mid-game" if teammates already have minutes
+                        // (proves the match is genuinely underway, not just kicked off)
+                        let captainFixturePlaying = false;
+                        if (teamsPlaying.has(captainTeam) && players && livePlayerData) {
+                            const teammatesWithMins = Object.entries(players).some(([pid, p]) =>
+                                p.team === captainTeam && livePlayerData[pid]?.minutes > 0
+                            );
+                            captainFixturePlaying = teammatesWithMins;
+                        }
 
                         if (captainUnavailable || captainFixturePlaying) {
                             vcLikely = true;
@@ -5999,11 +6007,23 @@
                         playersYetToPlay++;
                     } else if (teamsPlaying.has(team) && minutes > 0) {
                         playersPlaying++;
-                    } else if ((teamsFinished.has(team) || teamsPlaying.has(team)) && minutes === 0) {
-                        // Player didn't play - fixture done OR in progress with 0 mins (not in squad)
+                    } else if (teamsFinished.has(team) && minutes === 0) {
+                        // Player didn't play - fixture finished with 0 mins
                         const pName = players ? players[pick.element]?.name : pick.element;
-                        console.log(`Needs auto-sub: ${pName} (team ${team}, 0 mins, finished=${teamsFinished.has(team)}, playing=${teamsPlaying.has(team)})`);
+                        console.log(`Needs auto-sub: ${pName} (team ${team} finished, 0 mins)`);
                         needsAutoSub.push(pick);
+                    } else if (teamsPlaying.has(team) && minutes === 0) {
+                        // Match in progress, 0 mins - only flag if teammates have minutes (match genuinely underway)
+                        const teammatesWithMins = players && livePlayerData && Object.entries(players).some(([pid, p]) =>
+                            p.team === team && livePlayerData[pid]?.minutes > 0
+                        );
+                        if (teammatesWithMins) {
+                            const pName = players ? players[pick.element]?.name : pick.element;
+                            console.log(`Needs auto-sub: ${pName} (team ${team} playing, 0 mins, teammates have mins)`);
+                            needsAutoSub.push(pick);
+                        } else {
+                            playersPlaying++; // Match just kicked off, count as playing
+                        }
                     } else if (teamsFinished.has(team)) {
                         playersPlayed++;
                     }
