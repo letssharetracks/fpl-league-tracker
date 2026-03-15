@@ -3100,6 +3100,7 @@
             const hasGoals = recent.some(g => g.goals_scored > 0);
             const hasAssists = recent.some(g => g.assists > 0);
             const hasBonus = recent.some(g => g.bonus > 0);
+            const hasBPS = recent.some(g => g.bps > 0);
             const hasCS = (posType >= 1 && posType <= 3) && recent.some(g => g.clean_sheets > 0);
             const hasSaves = recent.some(g => g.saves > 0);
             const hasYC = recent.some(g => g.yellow_cards > 0);
@@ -3116,6 +3117,7 @@
             if (hasGoals) header += '<span class="h-stat">⚽</span>';
             if (hasAssists) header += '<span class="h-stat">🎯</span>';
             if (hasBonus) header += '<span class="h-stat">B</span>';
+            if (hasBPS) header += '<span class="h-stat">BPS</span>';
             if (hasCS) header += '<span class="h-stat">CS</span>';
             if (hasDC) header += '<span class="h-stat">DC</span>';
             if (hasSaves) header += '<span class="h-stat">SV</span>';
@@ -3152,6 +3154,7 @@
                 if (hasGoals) rows += cell(gw.goals_scored);
                 if (hasAssists) rows += cell(gw.assists);
                 if (hasBonus) rows += cell(gw.bonus);
+                if (hasBPS) rows += '<span class="h-stat" style="color:#aaa;">' + (gw.bps > 0 ? gw.bps : '') + '</span>';
                 if (hasCS) rows += cell(gw.clean_sheets);
                 if (hasDC) rows += '<span class="h-stat" style="color:#e056fd;">' + (playerDC[gw.round] > 0 ? '✓' : '') + '</span>';
                 if (hasSaves) rows += cell(gw.saves);
@@ -3343,8 +3346,8 @@
                 if (isSmallLeague || data.player.rank <= 100) {
                     // Small league or top 100: assign position based on total points order
                     data.leaguePosition = idx + 1;
-                    // Calculate movement: old rank - new position (positive = moved up)
-                    data.movement = (data.player.last_rank || data.player.rank) - (idx + 1);
+                    // Calculate movement: API rank (start of GW) - live position (positive = moved up)
+                    data.movement = data.player.rank - (idx + 1);
                 } else {
                     // Large league, outside top 100: use API rank (can't recalculate global position)
                     data.leaguePosition = data.player.rank;
@@ -5881,7 +5884,7 @@
                     if (f.started) {
                         console.log(`Fixture ${f.team_h}v${f.team_a}: started=${f.started}, finished=${f.finished}, bonus_added=${f.bonus_added}, date=${fixtureDate}, isToday=${isToday}`);
                     }
-                    if (f.started && !f.finished && !f.finished_provisional && !f.bonus_added && isToday) {
+                    if (f.started && !f.bonus_added && isToday) {
                         liveFixtureCount++;
                         // Get all players from both teams in this fixture
                         const fixturePlayers = [];
