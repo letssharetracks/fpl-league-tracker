@@ -3346,8 +3346,10 @@
                 if (isSmallLeague || data.player.rank <= 100) {
                     // Small league or top 100: assign position based on total points order
                     data.leaguePosition = idx + 1;
-                    // Calculate movement: API rank (start of GW) - live position (positive = moved up)
-                    data.movement = data.player.rank - (idx + 1);
+                    // Calculate movement: live position vs API rank
+                    const liveMovement = data.player.rank - (idx + 1);
+                    // If live scores haven't changed positions, show FPL's official movement (last GW result)
+                    data.movement = liveMovement !== 0 ? liveMovement : (data.player.last_rank ? data.player.last_rank - data.player.rank : 0);
                 } else {
                     // Large league, outside top 100: use API rank (can't recalculate global position)
                     data.leaguePosition = data.player.rank;
