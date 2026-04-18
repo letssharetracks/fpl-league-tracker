@@ -5854,19 +5854,29 @@
                 const fixtures = sharedData?.fixtures || await fetchGwFixtures(gameweek);
 
                 // Build set of teams that have finished playing
+                // Also track fixture counts per team so DGW players are reflected correctly
                 const teamsFinished = new Set();
                 const teamsPlaying = new Set();
                 const teamsYetToPlay = new Set();
+                const teamFinishedCount = {};
+                const teamPlayingCount = {};
+                const teamYetToPlayCount = {};
                 fixtures.forEach(f => {
                     if (f.finished || f.finished_provisional) {
                         teamsFinished.add(f.team_h);
                         teamsFinished.add(f.team_a);
+                        teamFinishedCount[f.team_h] = (teamFinishedCount[f.team_h] || 0) + 1;
+                        teamFinishedCount[f.team_a] = (teamFinishedCount[f.team_a] || 0) + 1;
                     } else if (f.started) {
                         teamsPlaying.add(f.team_h);
                         teamsPlaying.add(f.team_a);
+                        teamPlayingCount[f.team_h] = (teamPlayingCount[f.team_h] || 0) + 1;
+                        teamPlayingCount[f.team_a] = (teamPlayingCount[f.team_a] || 0) + 1;
                     } else {
                         teamsYetToPlay.add(f.team_h);
                         teamsYetToPlay.add(f.team_a);
+                        teamYetToPlayCount[f.team_h] = (teamYetToPlayCount[f.team_h] || 0) + 1;
+                        teamYetToPlayCount[f.team_a] = (teamYetToPlayCount[f.team_a] || 0) + 1;
                     }
                 });
                 globalTeamsFinished = teamsFinished;
@@ -6007,30 +6017,45 @@
 
                     calculatedPoints += playerPoints * multiplier;
 
-                    // Check if player yet to play
-                    if (teamsYetToPlay.has(team)) {
-                        playersYetToPlay++;
-                    } else if (teamsPlaying.has(team) && minutes > 0) {
-                        playersPlaying++;
-                    } else if (teamsFinished.has(team) && minutes === 0) {
-                        // Player didn't play - fixture finished with 0 mins
-                        const pName = players ? players[pick.element]?.name : pick.element;
-                        console.log(`Needs auto-sub: ${pName} (team ${team} finished, 0 mins)`);
-                        needsAutoSub.push(pick);
-                    } else if (teamsPlaying.has(team) && minutes === 0) {
-                        // Match in progress, 0 mins - only flag if teammates have minutes (match genuinely underway)
-                        const teammatesWithMins = players && livePlayerData && Object.entries(players).some(([pid, p]) =>
-                            p.team === team && livePlayerData[pid]?.minutes > 0
-                        );
-                        if (teammatesWithMins) {
-                            const pName = players ? players[pick.element]?.name : pick.element;
-                            console.log(`Needs auto-sub: ${pName} (team ${team} playing, 0 mins, teammates have mins)`);
-                            needsAutoSub.push(pick);
+                    // Count fixtures per status so DGW players contribute the right amount
+                    const yetCount = teamYetToPlayCount[team] || 0;
+                    const playingCount = teamPlayingCount[team] || 0;
+                    const finishedCount = teamFinishedCount[team] || 0;
+
+                    // yet-to-play fixtures always add to the "left" count
+                    playersYetToPlay += yetCount;
+
+                    // In-progress fixtures
+                    if (playingCount > 0) {
+                        if (minutes > 0) {
+                            playersPlaying += playingCount;
                         } else {
-                            playersPlaying++; // Match just kicked off, count as playing
+                            const teammatesWithMins = players && livePlayerData && Object.entries(players).some(([pid, p]) =>
+                                p.team === team && livePlayerData[pid]?.minutes > 0
+                            );
+                            if (teammatesWithMins) {
+                                // Match underway, player not in squad - only auto-sub if nothing else to come
+                                if (yetCount === 0 && finishedCount === 0) {
+                                    const pName = players ? players[pick.element]?.name : pick.element;
+                                    console.log(`Needs auto-sub: ${pName} (team ${team} playing, 0 mins, teammates have mins)`);
+                                    needsAutoSub.push(pick);
+                                }
+                            } else {
+                                playersPlaying += playingCount; // Match just kicked off
+                            }
                         }
-                    } else if (teamsFinished.has(team)) {
-                        playersPlayed++;
+                    }
+
+                    // Finished fixtures
+                    if (finishedCount > 0) {
+                        if (minutes > 0 || playingCount > 0) {
+                            playersPlayed += finishedCount;
+                        } else if (yetCount === 0) {
+                            // All fixtures done, 0 mins - needs auto-sub
+                            const pName = players ? players[pick.element]?.name : pick.element;
+                            console.log(`Needs auto-sub: ${pName} (team ${team} finished, 0 mins)`);
+                            if (!needsAutoSub.includes(pick)) needsAutoSub.push(pick);
+                        }
                     }
                 }
 
@@ -6048,13 +6073,9 @@
                         // Add bench points to calculated total (Bench Boost scores all 15)
                         calculatedPoints += playerPoints;
 
-                        if (teamsYetToPlay.has(team)) {
-                            playersYetToPlay++;
-                        } else if (teamsPlaying.has(team)) {
-                            playersPlaying++;
-                        } else if (teamsFinished.has(team)) {
-                            playersPlayed++;
-                        }
+                        playersYetToPlay += teamYetToPlayCount[team] || 0;
+                        playersPlaying += teamPlayingCount[team] || 0;
+                        playersPlayed += teamFinishedCount[team] || 0;
                     }
                 }
 
@@ -6151,14 +6172,10 @@
                         // outPoints is already 0 for players who didn't play
                         predictedPoints += benchPoints - outPoints;
 
-                        // Count if this auto-subbed player is yet to play or playing
-                        if (teamsYetToPlay.has(benchTeam)) {
-                            playersYetToPlay++;
-                        } else if (teamsPlaying.has(benchTeam)) {
-                            playersPlaying++;
-                        } else if (teamsFinished.has(benchTeam)) {
-                            playersPlayed++;
-                        }
+                        // Count if this auto-subbed player is yet to play or playing (DGW aware)
+                        playersYetToPlay += teamYetToPlayCount[benchTeam] || 0;
+                        playersPlaying += teamPlayingCount[benchTeam] || 0;
+                        playersPlayed += teamFinishedCount[benchTeam] || 0;
 
                         // Include only EXTRA provisional bonus in pointsGained display
                         const autoSubProvBonus = liveBonusMap[benchPlayer.element] || 0;
