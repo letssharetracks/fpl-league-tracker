@@ -3291,7 +3291,13 @@
                 const history = playerHistories[player.entry] || [];
                 const prevGwIndex = currentGameweek - 2;
                 const prevGwData = prevGwIndex >= 0 && history[prevGwIndex] ? history[prevGwIndex] : null;
-                const prevGwTotal = prevGwData ? prevGwData.total_points : 0;
+                let prevGwTotal = prevGwData ? prevGwData.total_points : 0;
+
+                // Fallback: derive previous-GW total from API standings when history hasn't loaded yet
+                // (player.total is cumulative incl. current GW; player.event_total is the API's frozen GW score)
+                if (prevGwTotal === 0 && player.total !== undefined && player.event_total !== undefined) {
+                    prevGwTotal = player.total - player.event_total;
+                }
 
                 // Calculate GW points (with live bonus, respect auto-subs toggle)
                 let gwPoints;
@@ -3312,8 +3318,7 @@
                     gwPoints = player.event_total || 0;
                 }
 
-                // Calculate total consistently for ALL players
-                // Use API total when we have it, otherwise calculate from history
+                // Live total = previous GW total + this GW's live points (always, when we have a prevGwTotal)
                 const totalDisplay = (prevGwTotal > 0) ? (prevGwTotal + gwPoints) : player.total;
 
                 return {
@@ -6474,7 +6479,12 @@
                 const live = newLivePoints[p.entry];
                 const history = playerHistories[p.entry] || [];
                 const prevGwData = prevGwIndex >= 0 && history[prevGwIndex] ? history[prevGwIndex] : null;
-                const prevTotal = prevGwData ? prevGwData.total_points : 0;
+                let prevTotal = prevGwData ? prevGwData.total_points : 0;
+
+                // Fallback when history hasn't loaded: derive from API standings
+                if (prevTotal === 0 && p.total !== undefined && p.event_total !== undefined) {
+                    prevTotal = p.total - p.event_total;
+                }
 
                 let currentTotal;
                 let gwPoints;
@@ -6649,7 +6659,12 @@
                     const history = playerHistories[player.entry] || [];
                     const prevGwIndex = currentGameweek - 2;
                     const prevGwData = prevGwIndex >= 0 && history[prevGwIndex] ? history[prevGwIndex] : null;
-                    const prevTotal = prevGwData ? prevGwData.total_points : 0;
+                    let prevTotal = prevGwData ? prevGwData.total_points : 0;
+
+                    // Fallback when history hasn't loaded: derive from API standings
+                    if (prevTotal === 0 && player.total !== undefined && player.event_total !== undefined) {
+                        prevTotal = player.total - player.event_total;
+                    }
 
                     let currentTotal, gwPoints;
                     if (live) {
