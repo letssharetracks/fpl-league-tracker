@@ -1692,7 +1692,10 @@
                     <button class="race-modal-close" onclick="closeRaceModal()" aria-label="Close">✕</button>
                 </div>
                 <img id="raceModalImg" class="race-modal-img" alt="Top 10 season race">
-                <div class="race-modal-foot">Cumulative points, gameweek by gameweek &middot; the top 10 reshuffles as the season unfolds</div>
+                <div class="race-modal-foot">
+                    <span>Cumulative points, gameweek by gameweek &middot; the top 10 reshuffles as the season unfolds</span>
+                    <div style="margin-top:10px;"><button class="view-btn race-replay-btn" onclick="playRace()">&#9654; Play again</button></div>
+                </div>
             </div>
         </div>
         <style>
@@ -1704,6 +1707,7 @@
             .race-modal-close { background:none; border:none; color:#fff; font-size:20px; cursor:pointer; line-height:1; }
             .race-modal-img { display:block; width:100%; height:auto; background:#1d0a33; }
             .race-modal-foot { padding:10px 18px; color:#c9a6ff; font-size:12px; text-align:center; }
+            .race-replay-btn { background:linear-gradient(135deg,#04f5ff,#00ff85) !important; color:#37003c !important; border:none !important; font-weight:700; cursor:pointer; padding:8px 18px; border-radius:6px; }
         </style>
 
         <div id="statusBar" style="display: none; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
@@ -4149,11 +4153,18 @@
         }
 
         const RACE_GIF = '5lb-league-2025-26-race.gif';
+        function playRace() {
+            // Restart the (non-looping) gif from frame 1, reusing the browser cache
+            const img = document.getElementById('raceModalImg');
+            if (!img) return;
+            img.src = '';
+            void img.offsetWidth;        // force reflow so the reassignment restarts it
+            img.src = RACE_GIF;
+        }
         function openRaceModal() {
             const m = document.getElementById('raceModal');
-            const img = document.getElementById('raceModalImg');
-            if (img && !img.src) img.src = RACE_GIF;   // lazy load on first open
             if (m) { m.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+            playRace();                  // always play from the start on open
         }
         function closeRaceModal() {
             const m = document.getElementById('raceModal');
