@@ -4287,7 +4287,10 @@
                 let hi = 0; entries.forEach(e => { if (!color[e]) { color[e] = `hsl(${(hi * 47) % 360},72%,60%)`; hi++; } });
 
                 status.textContent = 'Loading encoder…';
-                const { GIFEncoder, quantize, applyPalette } = await import('https://unpkg.com/gifenc@1.0.4');
+                let gifLib;
+                try { gifLib = await import('https://cdn.jsdelivr.net/npm/gifenc@1.0.3/+esm'); }
+                catch (e1) { gifLib = await import('https://esm.sh/gifenc@1.0.3'); }
+                const { GIFEncoder, quantize, applyPalette } = gifLib;
                 const enc = GIFEncoder();
 
                 const W = 860, H = 520, canvas = document.createElement('canvas');
