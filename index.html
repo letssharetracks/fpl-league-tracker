@@ -1718,7 +1718,7 @@
                 </div>
                 <img id="raceModalImg" class="race-modal-img" alt="Top 10 season race">
                 <div class="race-modal-foot">
-                    <span>Cumulative points, gameweek by gameweek &middot; the top 10 reshuffles as the season unfolds</span>
+                    <span id="raceStatus">Cumulative points, gameweek by gameweek &middot; the top 10 reshuffles as the season unfolds</span>
                     <div style="margin-top:10px;"><button class="view-btn race-replay-btn" onclick="playRace()">&#9654; Play again</button></div>
                 </div>
             </div>
@@ -4182,19 +4182,34 @@
             }
         }
 
-        const RACE_GIF = '5lb-league-2025-26-race.gif';
-        function playRace() {
-            // Restart the (non-looping) gif from frame 1, reusing the browser cache
-            const img = document.getElementById('raceModalImg');
-            if (!img) return;
-            img.src = '';
-            void img.offsetWidth;        // force reflow so the reassignment restarts it
-            img.src = RACE_GIF;
-        }
-        function openRaceModal() {
+        function _restartImg(img, url) { img.src = ''; void img.offsetWidth; img.src = url; }
+        let _raceState = { url: null, league: null };   // cached Season Race gif per league
+        async function openRaceModal() {
             const m = document.getElementById('raceModal');
             if (m) { m.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
-            playRace();                  // always play from the start on open
+            const img = document.getElementById('raceModalImg');
+            const statusEl = document.getElementById('raceStatus');
+            if (!allPlayers || allPlayers.length === 0) { if (statusEl) statusEl.textContent = 'Load a league first.'; return; }
+            // reuse cached gif if it's for the league currently loaded
+            if (_raceState.url && _raceState.league === LEAGUE_ID) {
+                img.style.display = 'block'; _restartImg(img, _raceState.url);
+                if (statusEl) statusEl.textContent = 'Top 10 race · ' + (leagueName || 'this league');
+                return;
+            }
+            img.style.display = 'none';
+            try {
+                const { url } = await buildRaceGifBlob({ topN: 10, gwStart: 1, gwEnd: (currentGameweek || 38), speed: 'med' }, statusEl);
+                _raceState = { url, league: LEAGUE_ID };
+                img.style.display = 'block'; _restartImg(img, url);
+                if (statusEl) statusEl.textContent = 'Top 10 race · ' + (leagueName || 'this league');
+            } catch (err) {
+                console.error('Season Race build failed:', err);
+                if (statusEl) statusEl.textContent = 'Error: ' + (err && err.message ? err.message : err);
+            }
+        }
+        function playRace() {
+            const img = document.getElementById('raceModalImg');
+            if (img && _raceState.url) _restartImg(img, _raceState.url);
         }
         function closeRaceModal() {
             const m = document.getElementById('raceModal');
@@ -4224,20 +4239,13 @@
             c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
             c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
         }
-        async function generateRaceGif() {
-            const status = document.getElementById('gifStatus');
-            const btn = document.getElementById('gifGenBtn');
-            const prev = document.getElementById('gifPreview');
-            const dl = document.getElementById('gifDownload');
-            prev.style.display = 'none'; dl.style.display = 'none';
-            if (!allPlayers || allPlayers.length === 0) { status.textContent = 'Load a league first.'; return; }
-            btn.disabled = true;
-            try {
-                let N = parseInt(document.getElementById('gifTopN').value, 10);
-                let gwStart = parseInt(document.getElementById('gifGwStart').value, 10);
-                let gwEnd = parseInt(document.getElementById('gifGwEnd').value, 10);
+        async function buildRaceGifBlob(opts, status) {
+            if (!allPlayers || allPlayers.length === 0) throw new Error('Load a league first');
+            {
+                let N = opts.topN;
+                let gwStart = opts.gwStart, gwEnd = opts.gwEnd;
                 if (gwStart > gwEnd) { const t = gwStart; gwStart = gwEnd; gwEnd = t; }
-                const speed = document.getElementById('gifSpeed').value;
+                const speed = opts.speed || 'med';
                 const FPT = speed === 'slow' ? 11 : (speed === 'fast' ? 6 : 9);
                 const dur = speed === 'slow' ? 75 : (speed === 'fast' ? 45 : 60);
 
@@ -4258,7 +4266,7 @@
                 }
 
                 const GWS = []; for (let g = gwStart; g <= gwEnd; g++) GWS.push(g);
-                if (GWS.length < 2) { status.textContent = 'Pick a range of at least 2 gameweeks.'; btn.disabled = false; return; }
+                if (GWS.length < 2) throw new Error('Pick a range of at least 2 gameweeks');
                 const entries = pool.map(p => p.entry);
                 const series = {}, teamName = {}, mgrName = {};
                 pool.forEach(p => {
@@ -4330,9 +4338,28 @@
                 const bytes = enc.bytes();
                 const blob = new Blob([bytes], { type: 'image/gif' });
                 const url = URL.createObjectURL(blob);
+                return { url, sizeKB: Math.round(bytes.length / 1024), topN: N };
+            }
+        }
+        async function generateRaceGif() {
+            const status = document.getElementById('gifStatus');
+            const btn = document.getElementById('gifGenBtn');
+            const prev = document.getElementById('gifPreview');
+            const dl = document.getElementById('gifDownload');
+            prev.style.display = 'none'; dl.style.display = 'none';
+            if (!allPlayers || allPlayers.length === 0) { status.textContent = 'Load a league first.'; return; }
+            btn.disabled = true;
+            try {
+                const opts = {
+                    topN: parseInt(document.getElementById('gifTopN').value, 10),
+                    gwStart: parseInt(document.getElementById('gifGwStart').value, 10),
+                    gwEnd: parseInt(document.getElementById('gifGwEnd').value, 10),
+                    speed: document.getElementById('gifSpeed').value
+                };
+                const { url, sizeKB, topN } = await buildRaceGifBlob(opts, status);
                 prev.src = url; prev.style.display = 'block';
-                dl.href = url; dl.download = (leagueName || 'league').replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-top' + N + '-race.gif'; dl.style.display = 'inline-block';
-                status.textContent = `Done — ${Math.round(bytes.length / 1024)} KB. Right-click the image or hit Download.`;
+                dl.href = url; dl.download = (leagueName || 'league').replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-top' + topN + '-race.gif'; dl.style.display = 'inline-block';
+                status.textContent = `Done — ${sizeKB} KB. Right-click the image or hit Download.`;
             } catch (err) {
                 console.error('GIF export failed:', err);
                 document.getElementById('gifStatus').textContent = 'Error: ' + (err && err.message ? err.message : err);
