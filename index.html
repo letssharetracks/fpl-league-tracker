@@ -1679,7 +1679,32 @@
                 </select>
                 <button class="btn btn-top-10" onclick="resetWeekRange()">All</button>
             </div>
+            <div class="control-group">
+                <button class="view-btn race-btn" onclick="openRaceModal()" title="Watch the 2025/26 top 10 race">🏁 Season Race</button>
+            </div>
         </div>
+
+        <!-- Season race infographic modal -->
+        <div id="raceModal" class="race-modal-overlay" style="display:none;" onclick="if(event.target===this)closeRaceModal()">
+            <div class="race-modal">
+                <div class="race-modal-header">
+                    <span class="race-modal-title">🏁 The 5lb League 2025/26 — Top 10 Race</span>
+                    <button class="race-modal-close" onclick="closeRaceModal()" aria-label="Close">✕</button>
+                </div>
+                <img id="raceModalImg" class="race-modal-img" alt="Top 10 season race">
+                <div class="race-modal-foot">Cumulative points, gameweek by gameweek &middot; the top 10 reshuffles as the season unfolds</div>
+            </div>
+        </div>
+        <style>
+            .race-btn { background: linear-gradient(135deg,#ff2d95,#b14aff) !important; color:#fff !important; border:none !important; }
+            .race-modal-overlay { position:fixed; inset:0; background:rgba(10,2,20,.85); -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:20px; }
+            .race-modal { background:linear-gradient(160deg,#2a0f47,#1d0a33); border:1px solid #04f5ff; border-radius:14px; box-shadow:0 0 40px rgba(4,245,255,.35); max-width:900px; width:100%; overflow:hidden; }
+            .race-modal-header { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid rgba(4,245,255,.25); }
+            .race-modal-title { color:#00ff85; font-weight:700; font-size:16px; }
+            .race-modal-close { background:none; border:none; color:#fff; font-size:20px; cursor:pointer; line-height:1; }
+            .race-modal-img { display:block; width:100%; height:auto; background:#1d0a33; }
+            .race-modal-foot { padding:10px 18px; color:#c9a6ff; font-size:12px; text-align:center; }
+        </style>
 
         <div id="statusBar" style="display: none; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
             <span id="statusText" style="color: #04f5ff;">Loading...</span>
@@ -2295,6 +2320,7 @@
         }
 
         // Initialize app
+        let deepLinkLeagueId = null;
         function initApp() {
             // Check if user has saved Team ID
             const savedTeamId = localStorage.getItem('fpl_team_id');
@@ -2303,6 +2329,22 @@
             if (savedTeamId && savedLeagues) {
                 userTeamId = parseInt(savedTeamId, 10);
                 userLeagues = JSON.parse(savedLeagues);
+            }
+
+            // Deep-link support: ?league=39846 opens straight into that league
+            const urlLeague = new URLSearchParams(window.location.search).get('league');
+            if (urlLeague && !isNaN(urlLeague)) {
+                const id = parseInt(urlLeague, 10);
+                deepLinkLeagueId = id;
+                LEAGUE_ID = id;
+                if (!userLeagues.some(l => String(l.id) === String(id))) {
+                    userLeagues.unshift({ id: id, name: 'League ' + id });
+                }
+                showMainApp();
+                return;
+            }
+
+            if (savedTeamId && savedLeagues) {
                 showMainApp();
             } else if (DEFAULT_TEAM_ID) {
                 // Auto-lookup for development
@@ -2436,9 +2478,12 @@
 
             select.innerHTML = options;
 
-            // Check for default league first, then fall back to LEAGUE_ID
+            // Deep-link league wins, then default league, then current LEAGUE_ID
             const defaultLeagueId = getDefaultLeague();
-            if (defaultLeagueId && userLeagues.some(l => String(l.id) === String(defaultLeagueId))) {
+            if (deepLinkLeagueId) {
+                select.value = deepLinkLeagueId;
+                LEAGUE_ID = parseInt(deepLinkLeagueId);
+            } else if (defaultLeagueId && userLeagues.some(l => String(l.id) === String(defaultLeagueId))) {
                 select.value = defaultLeagueId;
                 LEAGUE_ID = parseInt(defaultLeagueId);
             } else if (LEAGUE_ID) {
@@ -4103,6 +4148,19 @@
             }
         }
 
+        const RACE_GIF = '5lb-league-2025-26-race.gif';
+        function openRaceModal() {
+            const m = document.getElementById('raceModal');
+            const img = document.getElementById('raceModalImg');
+            if (img && !img.src) img.src = RACE_GIF;   // lazy load on first open
+            if (m) { m.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+        }
+        function closeRaceModal() {
+            const m = document.getElementById('raceModal');
+            if (m) { m.style.display = 'none'; document.body.style.overflow = ''; }
+        }
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRaceModal(); });
+
         function loadNewLeague() {
             const newId = document.getElementById('leagueId').value.trim();
             if (newId && !isNaN(newId)) {
@@ -4537,6 +4595,14 @@
                 if (data.league) {
                     leagueName = data.league.name;
                     document.title = 'FPL Tracker - ' + leagueName;
+                    // For a deep-linked league, replace the placeholder name now we know it
+                    if (deepLinkLeagueId) {
+                        const ul = userLeagues.find(l => String(l.id) === String(deepLinkLeagueId));
+                        if (ul) ul.name = leagueName;
+                        const sel = document.getElementById('leagueSelect');
+                        const opt = sel && [...sel.options].find(o => String(o.value) === String(deepLinkLeagueId));
+                        if (opt) opt.textContent = leagueName;
+                    }
                 }
 
                 players.push(...data.standings.results);
