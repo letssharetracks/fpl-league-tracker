@@ -4246,23 +4246,18 @@
                 let gwStart = opts.gwStart, gwEnd = opts.gwEnd;
                 if (gwStart > gwEnd) { const t = gwStart; gwStart = gwEnd; gwEnd = t; }
                 const speed = opts.speed || 'med';
-                const FPT = speed === 'slow' ? 11 : (speed === 'fast' ? 6 : 9);
-                const dur = speed === 'slow' ? 75 : (speed === 'fast' ? 45 : 60);
+                const FPT = speed === 'slow' ? 8 : (speed === 'fast' ? 3 : 5);
+                const dur = speed === 'slow' ? 70 : (speed === 'fast' ? 45 : 55);
 
                 // pool: enough teams that anyone who reaches the top N is included
                 const sorted = [...allPlayers].sort((a, b) => (a.rank || 9999) - (b.rank || 9999) || (b.total || 0) - (a.total || 0));
                 N = Math.min(N, sorted.length);
                 const pool = sorted.slice(0, Math.min(sorted.length, Math.max(30, N * 3)));
 
-                status.textContent = 'Fetching gameweek data…';
-                let done = 0;
-                for (const p of pool) {
-                    if (!playerHistories[p.entry]) {
-                        const hist = await fetchPlayerHistory(p.entry);
-                        if (hist) playerHistories[p.entry] = hist;
-                    }
-                    done++;
-                    if (done % 3 === 0 || done === pool.length) { status.textContent = `Fetching data… ${done}/${pool.length}`; await new Promise(r => setTimeout(r, 0)); }
+                const toFetch = pool.filter(p => !playerHistories[p.entry]);
+                if (toFetch.length) {
+                    status.textContent = `Fetching data… (${toFetch.length} teams)`;
+                    await Promise.all(toFetch.map(async p => { const hist = await fetchPlayerHistory(p.entry); if (hist) playerHistories[p.entry] = hist; }));
                 }
 
                 const GWS = []; for (let g = gwStart; g <= gwEnd; g++) GWS.push(g);
@@ -4293,10 +4288,15 @@
                 const { GIFEncoder, quantize, applyPalette } = gifLib;
                 const enc = GIFEncoder();
 
-                const W = 860, H = 520, canvas = document.createElement('canvas');
+                const W = 720, H = 440, canvas = document.createElement('canvas');
                 canvas.width = W; canvas.height = H;
                 const ctx = canvas.getContext('2d');
-                const yTop = 96, bottomPad = 22, rowH = (H - yTop - bottomPad) / N, barMaxW = W - 200, barX = 18;
+                const yTop = 84, bottomPad = 18, rowH = (H - yTop - bottomPad) / N, barMaxW = W - 180, barX = 16;
+                // Build ONE palette from every colour we use, so we skip the slow per-frame quantize
+                ctx.fillStyle = '#1d0a33'; ctx.fillRect(0, 0, W, H);
+                const swatch = ['#1d0a33', '#39ff14', '#c9a6ff', '#16f2c8', '#0c0420', '#ffffff'].concat(Object.values(color));
+                swatch.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect((i * 7) % W, Math.floor(i * 7 / W) * 7, 7, 7); });
+                const GIFPAL = quantize(ctx.getImageData(0, 0, W, H).data, 256);
                 const title = (leagueName || 'League').length > 28 ? leagueName.slice(0, 27) + '…' : (leagueName || 'League');
 
                 function drawFrame(vals, ys, gwLabel) {
@@ -4320,11 +4320,10 @@
                 }
                 function pushFrame() {
                     const img = ctx.getImageData(0, 0, W, H).data;
-                    const palette = quantize(img, 256);
-                    const index = applyPalette(img, palette);
-                    enc.writeFrame(index, W, H, { palette, delay: dur });
+                    const index = applyPalette(img, GIFPAL);
+                    enc.writeFrame(index, W, H, { palette: GIFPAL, delay: dur });
                 }
-                { const v = {}, ys = {}; entries.forEach(e => { v[e] = series[e][0]; ys[e] = ranks[0][e]; }); drawFrame(v, ys, 'GW ' + GWS[0]); for (let k = 0; k < 8; k++) pushFrame(); }
+                { const v = {}, ys = {}; entries.forEach(e => { v[e] = series[e][0]; ys[e] = ranks[0][e]; }); drawFrame(v, ys, 'GW ' + GWS[0]); for (let k = 0; k < 3; k++) pushFrame(); }
                 for (let gi = 0; gi < GWS.length - 1; gi++) {
                     for (let f = 1; f <= FPT; f++) {
                         const t = f / FPT, v = {}, ys = {};
@@ -4334,7 +4333,7 @@
                     status.textContent = `Rendering… GW ${GWS[gi + 1]}/${GWS[GWS.length - 1]}`;
                     await new Promise(r => setTimeout(r, 0));
                 }
-                { const v = {}, ys = {}; entries.forEach(e => { v[e] = series[e][GWS.length - 1]; ys[e] = ranks[GWS.length - 1][e]; }); drawFrame(v, ys, 'GW ' + GWS[GWS.length - 1] + ' — FINAL'); for (let k = 0; k < 26; k++) pushFrame(); }
+                { const v = {}, ys = {}; entries.forEach(e => { v[e] = series[e][GWS.length - 1]; ys[e] = ranks[GWS.length - 1][e]; }); drawFrame(v, ys, 'GW ' + GWS[GWS.length - 1] + ' — FINAL'); for (let k = 0; k < 14; k++) pushFrame(); }
 
                 status.textContent = 'Encoding…'; await new Promise(r => setTimeout(r, 0));
                 enc.finish();
