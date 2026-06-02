@@ -1681,6 +1681,31 @@
             </div>
             <div class="control-group">
                 <button class="view-btn race-btn" onclick="openRaceModal()" title="Watch the 2025/26 top 10 race">🏁 Season Race</button>
+                <button class="view-btn gifmaker-btn" onclick="openGifMaker()" title="Generate your own race GIF for this league">🎬 Make GIF</button>
+            </div>
+        </div>
+
+        <!-- Interactive GIF maker modal -->
+        <div id="gifMakerModal" class="race-modal-overlay" style="display:none;" onclick="if(event.target===this)closeGifMaker()">
+            <div class="race-modal" style="max-width:960px;">
+                <div class="race-modal-header">
+                    <span class="race-modal-title">🎬 Make your own race GIF</span>
+                    <button class="race-modal-close" onclick="closeGifMaker()" aria-label="Close">✕</button>
+                </div>
+                <div class="gifmaker-body">
+                    <div class="gifmaker-controls">
+                        <label>Top <select id="gifTopN"><option>5</option><option selected>10</option><option>15</option><option>20</option></select></label>
+                        <label>GW <select id="gifGwStart"></select></label>
+                        <label>to <select id="gifGwEnd"></select></label>
+                        <label>Speed <select id="gifSpeed"><option value="slow">Slow</option><option value="med" selected>Medium</option><option value="fast">Fast</option></select></label>
+                        <button id="gifGenBtn" class="view-btn race-replay-btn" onclick="generateRaceGif()">Generate GIF</button>
+                    </div>
+                    <div id="gifStatus" class="gifmaker-status">Pick your options and hit Generate. Bigger leagues take a few seconds to fetch data.</div>
+                    <img id="gifPreview" class="race-modal-img" style="display:none;border-radius:8px;margin-top:10px;">
+                    <div style="text-align:center;margin-top:10px;">
+                        <a id="gifDownload" class="view-btn race-replay-btn" style="display:none;text-decoration:none;">&#11015; Download GIF</a>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1708,6 +1733,11 @@
             .race-modal-img { display:block; width:100%; height:auto; background:#1d0a33; }
             .race-modal-foot { padding:10px 18px; color:#c9a6ff; font-size:12px; text-align:center; }
             .race-replay-btn { background:linear-gradient(135deg,#04f5ff,#00ff85) !important; color:#37003c !important; border:none !important; font-weight:700; cursor:pointer; padding:8px 18px; border-radius:6px; }
+            .gifmaker-btn { background:linear-gradient(135deg,#ffe600,#ff7b1a) !important; color:#37003c !important; border:none !important; }
+            .gifmaker-body { padding:16px 18px; }
+            .gifmaker-controls { display:flex; flex-wrap:wrap; gap:12px; align-items:center; color:#c9a6ff; font-size:13px; }
+            .gifmaker-controls select { background:#2a0f47; color:#fff; border:1px solid #4a2f6e; border-radius:5px; padding:5px 8px; }
+            .gifmaker-status { color:#04f5ff; font-size:13px; margin-top:12px; min-height:18px; }
         </style>
 
         <div id="statusBar" style="display: none; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
@@ -4170,7 +4200,146 @@
             const m = document.getElementById('raceModal');
             if (m) { m.style.display = 'none'; document.body.style.overflow = ''; }
         }
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRaceModal(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeRaceModal(); closeGifMaker(); } });
+
+        // ---- Interactive bar-chart-race GIF exporter ----
+        function openGifMaker() {
+            const m = document.getElementById('gifMakerModal');
+            if (!m) return;
+            const maxGw = currentGameweek || 38;
+            const s = document.getElementById('gifGwStart'), e = document.getElementById('gifGwEnd');
+            if (s && s.options.length === 0) {
+                for (let g = 1; g <= maxGw; g++) { s.add(new Option('GW' + g, g)); e.add(new Option('GW' + g, g)); }
+                s.value = 1; e.value = maxGw;
+            }
+            m.style.display = 'flex'; document.body.style.overflow = 'hidden';
+        }
+        function closeGifMaker() {
+            const m = document.getElementById('gifMakerModal');
+            if (m) { m.style.display = 'none'; document.body.style.overflow = ''; }
+        }
+        function gifRoundRect(c, x, y, w, h, r) {
+            r = Math.min(r, h / 2, w / 2);
+            c.beginPath(); c.moveTo(x + r, y);
+            c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+            c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+        }
+        async function generateRaceGif() {
+            const status = document.getElementById('gifStatus');
+            const btn = document.getElementById('gifGenBtn');
+            const prev = document.getElementById('gifPreview');
+            const dl = document.getElementById('gifDownload');
+            prev.style.display = 'none'; dl.style.display = 'none';
+            if (!allPlayers || allPlayers.length === 0) { status.textContent = 'Load a league first.'; return; }
+            btn.disabled = true;
+            try {
+                let N = parseInt(document.getElementById('gifTopN').value, 10);
+                let gwStart = parseInt(document.getElementById('gifGwStart').value, 10);
+                let gwEnd = parseInt(document.getElementById('gifGwEnd').value, 10);
+                if (gwStart > gwEnd) { const t = gwStart; gwStart = gwEnd; gwEnd = t; }
+                const speed = document.getElementById('gifSpeed').value;
+                const FPT = speed === 'slow' ? 11 : (speed === 'fast' ? 6 : 9);
+                const dur = speed === 'slow' ? 75 : (speed === 'fast' ? 45 : 60);
+
+                // pool: enough teams that anyone who reaches the top N is included
+                const sorted = [...allPlayers].sort((a, b) => (a.rank || 9999) - (b.rank || 9999) || (b.total || 0) - (a.total || 0));
+                N = Math.min(N, sorted.length);
+                const pool = sorted.slice(0, Math.min(sorted.length, Math.max(30, N * 3)));
+
+                status.textContent = 'Fetching gameweek data…';
+                let done = 0;
+                for (const p of pool) {
+                    if (!playerHistories[p.entry]) {
+                        const hist = await fetchPlayerHistory(p.entry);
+                        if (hist) playerHistories[p.entry] = hist;
+                    }
+                    done++;
+                    if (done % 3 === 0 || done === pool.length) { status.textContent = `Fetching data… ${done}/${pool.length}`; await new Promise(r => setTimeout(r, 0)); }
+                }
+
+                const GWS = []; for (let g = gwStart; g <= gwEnd; g++) GWS.push(g);
+                if (GWS.length < 2) { status.textContent = 'Pick a range of at least 2 gameweeks.'; btn.disabled = false; return; }
+                const entries = pool.map(p => p.entry);
+                const series = {}, teamName = {}, mgrName = {};
+                pool.forEach(p => {
+                    const cur = playerHistories[p.entry] || [];
+                    const byGw = {}; cur.forEach(c => byGw[c.event] = c.total_points);
+                    let last = 0; series[p.entry] = GWS.map(g => { if (byGw[g] != null) last = byGw[g]; return last; });
+                    let tn = p.entry_name || ('Team ' + p.entry); teamName[p.entry] = tn.length > 20 ? tn.slice(0, 19) + '…' : tn;
+                    let mn = p.player_name || ''; mgrName[p.entry] = mn.length > 22 ? mn.slice(0, 21) + '…' : mn;
+                });
+                const ranks = GWS.map((g, gi) => {
+                    const ord = [...entries].sort((a, b) => series[b][gi] - series[a][gi]);
+                    const m = {}; ord.forEach((e, i) => m[e] = i + 1); return m;
+                });
+                const finalOrder = [...entries].sort((a, b) => series[b][GWS.length - 1] - series[a][GWS.length - 1]);
+                const NEON = ['#16f2c8', '#39ff14', '#ff2d95', '#ffe600', '#ff7b1a', '#b14aff', '#ff5db1', '#2d9bff', '#b6ff00', '#ff4d4d', '#00d0ff', '#ffd000', '#7bff00', '#ff00aa', '#00ffaa', '#ff9e2c', '#5cff9e', '#c77dff', '#ff5252', '#2cffd6'];
+                const color = {};
+                finalOrder.slice(0, N).forEach((e, i) => color[e] = NEON[i % NEON.length]);
+                let hi = 0; entries.forEach(e => { if (!color[e]) { color[e] = `hsl(${(hi * 47) % 360},72%,60%)`; hi++; } });
+
+                status.textContent = 'Loading encoder…';
+                const { GIFEncoder, quantize, applyPalette } = await import('https://unpkg.com/gifenc@1.0.4');
+                const enc = GIFEncoder();
+
+                const W = 860, H = 520, canvas = document.createElement('canvas');
+                canvas.width = W; canvas.height = H;
+                const ctx = canvas.getContext('2d');
+                const yTop = 96, bottomPad = 22, rowH = (H - yTop - bottomPad) / N, barMaxW = W - 200, barX = 18;
+                const title = (leagueName || 'League').length > 28 ? leagueName.slice(0, 27) + '…' : (leagueName || 'League');
+
+                function drawFrame(vals, ys, gwLabel) {
+                    ctx.fillStyle = '#1d0a33'; ctx.fillRect(0, 0, W, H);
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = '#39ff14'; ctx.font = 'bold 24px Arial'; ctx.textAlign = 'left'; ctx.fillText(title, 18, 30);
+                    ctx.fillStyle = '#c9a6ff'; ctx.font = '13px Arial'; ctx.fillText('Top ' + N + ' each gameweek', 18, 54);
+                    ctx.fillStyle = '#16f2c8'; ctx.font = 'bold 30px Arial'; ctx.textAlign = 'right'; ctx.fillText(gwLabel, W - 16, 34);
+                    const shown = entries.filter(e => ys[e] <= N + 0.5 && ys[e] >= 0.5);
+                    const maxV = Math.max(1, ...shown.map(e => vals[e]));
+                    shown.forEach(e => {
+                        const y = yTop + (ys[e] - 1) * rowH;
+                        const w = Math.max(2, (vals[e] / (maxV * 1.18)) * barMaxW);
+                        const bh = rowH * 0.82;
+                        ctx.fillStyle = color[e]; gifRoundRect(ctx, barX, y, w, bh, 5); ctx.fill();
+                        ctx.fillStyle = '#0c0420'; ctx.font = 'bold 13px Arial'; ctx.textAlign = 'right';
+                        ctx.fillText(teamName[e] + '  ·  ' + mgrName[e], barX + w - 8, y + bh / 2);
+                        ctx.fillStyle = '#fff'; ctx.font = 'bold 14px Arial'; ctx.textAlign = 'left';
+                        ctx.fillText(Math.round(vals[e]), barX + w + 8, y + bh / 2);
+                    });
+                }
+                function pushFrame() {
+                    const img = ctx.getImageData(0, 0, W, H).data;
+                    const palette = quantize(img, 256);
+                    const index = applyPalette(img, palette);
+                    enc.writeFrame(index, W, H, { palette, delay: dur });
+                }
+                { const v = {}, ys = {}; entries.forEach(e => { v[e] = series[e][0]; ys[e] = ranks[0][e]; }); drawFrame(v, ys, 'GW ' + GWS[0]); for (let k = 0; k < 8; k++) pushFrame(); }
+                for (let gi = 0; gi < GWS.length - 1; gi++) {
+                    for (let f = 1; f <= FPT; f++) {
+                        const t = f / FPT, v = {}, ys = {};
+                        entries.forEach(e => { v[e] = series[e][gi] * (1 - t) + series[e][gi + 1] * t; ys[e] = ranks[gi][e] * (1 - t) + ranks[gi + 1][e] * t; });
+                        drawFrame(v, ys, 'GW ' + GWS[gi + 1]); pushFrame();
+                    }
+                    status.textContent = `Rendering… GW ${GWS[gi + 1]}/${GWS[GWS.length - 1]}`;
+                    await new Promise(r => setTimeout(r, 0));
+                }
+                { const v = {}, ys = {}; entries.forEach(e => { v[e] = series[e][GWS.length - 1]; ys[e] = ranks[GWS.length - 1][e]; }); drawFrame(v, ys, 'GW ' + GWS[GWS.length - 1] + ' — FINAL'); for (let k = 0; k < 26; k++) pushFrame(); }
+
+                status.textContent = 'Encoding…'; await new Promise(r => setTimeout(r, 0));
+                enc.finish();
+                const bytes = enc.bytes();
+                const blob = new Blob([bytes], { type: 'image/gif' });
+                const url = URL.createObjectURL(blob);
+                prev.src = url; prev.style.display = 'block';
+                dl.href = url; dl.download = (leagueName || 'league').replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-top' + N + '-race.gif'; dl.style.display = 'inline-block';
+                status.textContent = `Done — ${Math.round(bytes.length / 1024)} KB. Right-click the image or hit Download.`;
+            } catch (err) {
+                console.error('GIF export failed:', err);
+                document.getElementById('gifStatus').textContent = 'Error: ' + (err && err.message ? err.message : err);
+            } finally {
+                document.getElementById('gifGenBtn').disabled = false;
+            }
+        }
 
         function loadNewLeague() {
             const newId = document.getElementById('leagueId').value.trim();
